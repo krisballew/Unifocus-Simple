@@ -13,6 +13,8 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "clean": "pnpm --recursive --parallel run clean && rm -rf node_modules",
     "prepare": "husky",
+    "validate:env": "tsx scripts/validate-env.ts",
+    "validate:env:web": "WEB_ENV=true tsx scripts/validate-env.ts",
     "deps:start": "./scripts/start-deps.sh",
     "deps:stop": "./scripts/stop-deps.sh",
     "db:migrate": "./scripts/migrate.sh",
@@ -29,6 +31,7 @@
     "husky": "^9.0.7",
     "lint-staged": "^15.2.0",
     "prettier": "^3.2.4",
+    "tsx": "^4.21.0",
     "typescript": "^5.3.3"
   },
   "engines": {
