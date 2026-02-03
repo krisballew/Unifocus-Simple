@@ -120,3 +120,22 @@ module "web_hosting" {
   environment  = var.environment
   domain_name  = var.web_domain_name
 }
+
+# GitHub OIDC for GitHub Actions deployments
+module "github_oidc" {
+  source = "../../modules/github-oidc"
+
+  project_name                = var.project_name
+  environment                 = var.environment
+  github_org                  = var.github_org
+  github_repo                 = var.github_repo
+  aws_region                  = var.aws_region
+  aws_account_id              = data.aws_caller_identity.current.account_id
+  web_bucket_arn              = module.web_hosting.s3_bucket_arn
+  cloudfront_distribution_arn = module.web_hosting.cloudfront_distribution_arn
+  ecr_repository_arn          = module.ecr.repository_arn
+  ecs_cluster_name            = module.ecs.cluster_name
+  ecs_service_arn             = module.ecs.service_arn
+  ecs_execution_role_arn      = module.ecs.execution_role_arn
+  ecs_task_role_arn           = module.ecs.task_role_arn
+}

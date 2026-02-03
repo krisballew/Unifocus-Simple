@@ -64,3 +64,13 @@ output "cloudwatch_log_group" {
   description = "CloudWatch log group for ECS"
   value       = module.cloudwatch.ecs_log_group_name
 }
+
+output "github_actions_role_arn" {
+  description = "IAM role ARN for GitHub Actions to assume"
+  value       = module.github_oidc.github_actions_role_arn
+}
+
+output "github_oidc_provider_arn" {
+  description = "GitHub OIDC provider ARN"
+  value       = module.github_oidc.oidc_provider_arn
+}
