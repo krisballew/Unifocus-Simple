@@ -1,0 +1,384 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ============================================================================
+// TENANT & ORGANIZATION STRUCTURE
+// ============================================================================
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  properties  Property[]
+  departments Department[]
+  users       User[]
+  employees   Employee[]
+  schedules   Schedule[]
+  shifts      Shift[]
+  punches     Punch[]
+  exceptions  Exception[]
+  auditLogs   AuditLog[]
+
+  @@index([createdAt])
+}
+
+model Property {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  address   String?
+  city      String?
+  state     String?
+  zipCode   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  departments         Department[]
+  users               User[]
+  userRoleAssignments UserRoleAssignment[]
+  employees           Employee[]
+  schedules           Schedule[]
+  auditLogs           AuditLog[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId])
+  @@index([createdAt])
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId String
+  property  Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name      String
+  code      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users               User[]
+  userRoleAssignments UserRoleAssignment[]
+  auditLogs           AuditLog[]
+
+  @@unique([tenantId, propertyId, id])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// USERS & ROLES
+// ============================================================================
+
+model User {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId String?
+  property  Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  departmentId String?
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  
+  email     String
+  name      String
+  password  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roleAssignments UserRoleAssignment[]
+  auditLogs       AuditLog[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([departmentId])
+  @@index([email])
+  @@index([createdAt])
+}
+
+model Role {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  description String?
+  permissions String[] // JSON array of permission strings
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userAssignments UserRoleAssignment[]
+
+  @@index([createdAt])
+}
+
+model UserRoleAssignment {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  // Scope: optional property and/or department
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  departmentId String?
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  auditLogs AuditLog[]
+
+  @@unique([userId, roleId, propertyId, departmentId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([propertyId])
+  @@index([departmentId])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// EMPLOYEES & ASSIGNMENTS
+// ============================================================================
+
+model Employee {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId String
+  property  Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  firstName String
+  lastName  String
+  email     String?
+  phone     String?
+  externalId String? // For integration with other systems
+  
+  isActive  Boolean  @default(true)
+  hireDate  DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  jobAssignments EmployeeJobAssignment[]
+  schedules      Schedule[]
+  punches        Punch[]
+  exceptions     Exception[]
+  auditLogs      AuditLog[]
+
+  @@unique([tenantId, propertyId, id])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([email])
+  @@index([createdAt])
+}
+
+model EmployeeJobAssignment {
+  id        String   @id @default(cuid())
+  tenantId  String
+  employeeId String
+  employee  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  jobTitle  String
+  department String?
+  
+  startDate DateTime
+  endDate   DateTime?
+  
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  auditLogs AuditLog[]
+
+  @@unique([tenantId, employeeId, id])
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([startDate])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// SCHEDULING
+// ============================================================================
+
+model Schedule {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId String
+  property  Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  employeeId String
+  employee  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  name      String?
+  startDate DateTime
+  endDate   DateTime?
+  
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shifts    Shift[]
+  auditLogs AuditLog[]
+
+  @@unique([tenantId, propertyId, employeeId, id])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([employeeId])
+  @@index([startDate])
+  @@index([createdAt])
+}
+
+model Shift {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  scheduleId String
+  schedule  Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  
+  dayOfWeek Int      // 0-6, Sunday-Saturday
+  startTime String   // HH:MM format
+  endTime   String   // HH:MM format
+  breakMinutes Int   @default(0)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  punches   Punch[]
+  auditLogs AuditLog[]
+
+  @@unique([tenantId, scheduleId, id])
+  @@index([tenantId])
+  @@index([scheduleId])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// TIME TRACKING
+// ============================================================================
+
+model Punch {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId String
+  employee  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shiftId   String?
+  shift     Shift?   @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  
+  type      String   // "in", "out", "break_start", "break_end"
+  timestamp DateTime
+  
+  latitude  Float?
+  longitude Float?
+  deviceId  String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  auditLogs AuditLog[]
+
+  @@unique([tenantId, employeeId, id])
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([shiftId])
+  @@index([timestamp])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model Exception {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeId String
+  employee  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  type      String   // "absence", "late", "early_out", "manual_adjustment", etc.
+  reason    String?
+  date      DateTime
+  
+  startTime String?  // HH:MM format
+  endTime   String?  // HH:MM format
+  
+  status    String   @default("pending") // "pending", "approved", "rejected"
+  approvedAt DateTime?
+  approvedBy String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  auditLogs AuditLog[]
+
+  @@unique([tenantId, employeeId, id])
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([date])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// AUDIT LOG
+// ============================================================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userRoleAssignmentId String?
+  userRoleAssignment UserRoleAssignment? @relation(fields: [userRoleAssignmentId], references: [id], onDelete: SetNull)
+  
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  departmentId String?
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  
+  employeeId String?
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  employeeJobAssignmentId String?
+  employeeJobAssignment EmployeeJobAssignment? @relation(fields: [employeeJobAssignmentId], references: [id], onDelete: SetNull)
+  
+  scheduleId String?
+  schedule   Schedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  shiftId    String?
+  shift      Shift? @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  
+  punchId    String?
+  punch      Punch? @relation(fields: [punchId], references: [id], onDelete: SetNull)
+  exceptionId String?
+  exception  Exception? @relation(fields: [exceptionId], references: [id], onDelete: SetNull)
+  
+  action    String   // "created", "updated", "deleted", etc.
+  entity    String   // "User", "Employee", "Shift", etc.
+  changes   String?  // JSON object with before/after values
+  
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([propertyId])
+  @@index([departmentId])
+  @@index([employeeId])
+  @@index([action])
+  @@index([entity])
+  @@index([createdAt])
+}
