@@ -53,6 +53,12 @@ variable "cognito_secret_arn" {
   type        = string
 }
 
+variable "cors_origin" {
+  description = "CORS origin for API"
+  type        = string
+  default     = "*"
+}
+
 variable "aws_region" {
   description = "AWS region"
   type        = string

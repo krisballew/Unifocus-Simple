@@ -79,13 +79,14 @@ export async function healthRoutes(server: FastifyInstance) {
         }
       }
 
-      // Check if Redis is configured (full connectivity check not required for readiness)
-      // Redis is optional for this application, so we just check if it's configured
+      // Redis is optional - if not configured, report as error but don't fail readiness
+      // Application can run without Redis for development
       if (!server.config.redisUrl) {
         checks.redis = 'error';
       }
 
-      const isReady = checks.database === 'ok' && checks.redis === 'ok';
+      // Only require database to be ready; Redis is optional for dev
+      const isReady = checks.database === 'ok';
       const statusCode = isReady ? 200 : 503;
 
       reply.status(statusCode).send({

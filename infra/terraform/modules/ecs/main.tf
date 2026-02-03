@@ -175,8 +175,24 @@ resource "aws_ecs_task_definition" "api" {
           value = "3000"
         },
         {
+          name  = "HOST"
+          value = "0.0.0.0"
+        },
+        {
           name  = "AWS_REGION"
           value = var.aws_region
+        },
+        {
+          name  = "LOG_LEVEL"
+          value = "info"
+        },
+        {
+          name  = "CORS_ORIGIN"
+          value = var.cors_origin
+        },
+        {
+          name  = "AUTH_SKIP_VERIFICATION"
+          value = "false"
         }
       ]
 
@@ -184,6 +200,26 @@ resource "aws_ecs_task_definition" "api" {
         {
           name      = "DATABASE_URL"
           valueFrom = "${var.db_secret_arn}:dbConnectionString::"
+        },
+        {
+          name      = "COGNITO_USER_POOL_ID"
+          valueFrom = "${var.cognito_secret_arn}:userPoolId::"
+        },
+        {
+          name      = "COGNITO_CLIENT_ID"
+          valueFrom = "${var.cognito_secret_arn}:clientId::"
+        },
+        {
+          name      = "COGNITO_REGION"
+          valueFrom = "${var.cognito_secret_arn}:region::"
+        },
+        {
+          name      = "COGNITO_ISSUER"
+          valueFrom = "${var.cognito_secret_arn}:issuer::"
+        },
+        {
+          name      = "JWT_SECRET"
+          valueFrom = "${var.cognito_secret_arn}:jwtSecret::"
         }
       ]
 

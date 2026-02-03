@@ -126,6 +126,7 @@ module "ecs" {
   db_secret_arn            = module.secrets.db_secret_arn
   cognito_secret_arn       = module.secrets.cognito_secret_arn
   aws_region               = var.aws_region
+  cors_origin              = var.web_domain_name != "" ? "https://${var.web_domain_name}" : "*"
   cpu                      = var.ecs_task_cpu
   memory                   = var.ecs_task_memory
   desired_count            = var.ecs_desired_count
