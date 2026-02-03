@@ -1,0 +1,9 @@
+{
+  "node-arg": [
+    "--import=tsx",
+    "--no-warnings"
+  ],
+  "files": [
+    "tests/**/*.test.ts"
+  ]
+}
