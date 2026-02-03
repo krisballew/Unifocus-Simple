@@ -28,6 +28,8 @@ export async function buildServer(config: AppConfig): Promise<FastifyInstance> {
     genReqId: (req) => {
       return req.headers['x-correlation-id']?.toString() ?? crypto.randomUUID();
     },
+    // Security: Set body size limits
+    bodyLimit: 1048576, // 1 MB for JSON bodies
   });
 
   // Set Zod as the validator and serializer

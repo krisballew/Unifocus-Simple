@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "tap",
     "test:watch": "tap --watch",
+    "verify:security": "node ../../scripts/verify-security.js",
     "clean": "rm -rf dist .turbo node_modules",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
@@ -24,6 +25,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",
+    "@fastify/rate-limit": "^9.1.0",
     "@fastify/swagger": "^9.6.1",
     "@fastify/swagger-ui": "^5.2.5",
     "@prisma/client": "^5.22.0",
