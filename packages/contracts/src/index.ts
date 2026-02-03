@@ -35,6 +35,16 @@ export const CreateTenantSchema = TenantSchema.omit({
 
 export type CreateTenant = z.infer<typeof CreateTenantSchema>;
 
+// Tenant Settings
+export const TenantSettingsSchema = z.object({
+  weekStartDay: z.number().int().min(0).max(6).default(0), // 0 = Sunday, 1 = Monday, etc.
+  defaultLocale: z.enum(['en-US', 'es-ES']).default('en-US'),
+  defaultTimezone: z.string().default('UTC'),
+  defaultCurrency: z.string().default('USD'),
+});
+
+export type TenantSettings = z.infer<typeof TenantSettingsSchema>;
+
 // ============================================================================
 // Property
 // ============================================================================
@@ -152,6 +162,8 @@ export const UserSchema = z.object({
   phoneNumber: z.string().optional(),
   roleId: UUIDSchema,
   isActive: z.boolean().default(true),
+  locale: z.enum(['en-US', 'es-ES']).default('en-US'),
+  timezone: z.string().default('UTC'),
   lastLoginAt: TimestampSchema.optional(),
   createdAt: TimestampSchema,
   updatedAt: TimestampSchema,
@@ -161,14 +173,32 @@ export type User = z.infer<typeof UserSchema>;
 
 export const CreateUserSchema = UserSchema.omit({
   id: true,
+  locale: true,
+  timezone: true,
   lastLoginAt: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
   password: z.string().min(8),
+  locale: z.enum(['en-US', 'es-ES']).optional(),
+  timezone: z.string().optional(),
 });
 
 export type CreateUser = z.infer<typeof CreateUserSchema>;
+
+export const UpdateUserSchema = UserSchema.omit({
+  id: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+})
+  .partial()
+  .extend({
+    locale: z.enum(['en-US', 'es-ES']).optional(),
+    timezone: z.string().optional(),
+  });
+
+export type UpdateUser = z.infer<typeof UpdateUserSchema>;
 
 // ============================================================================
 // Employee

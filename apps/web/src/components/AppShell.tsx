@@ -18,6 +18,9 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Home', path: '/' },
+  { label: 'Time Clock', path: '/time-clock', roles: ['Admin', 'Manager', 'Employee'] },
+  { label: 'Timecard', path: '/timecard', roles: ['Admin', 'Manager', 'Employee'] },
+  { label: 'Exceptions', path: '/exceptions', roles: ['Admin', 'Manager'] },
   { label: 'Properties', path: '/properties', roles: ['Admin', 'Manager'] },
   { label: 'Employees', path: '/employees', roles: ['Admin', 'Manager'] },
   { label: 'Schedules', path: '/schedules', roles: ['Admin', 'Manager'] },

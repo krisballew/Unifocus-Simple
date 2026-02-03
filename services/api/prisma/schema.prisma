@@ -21,6 +21,12 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Tenant-level settings
+  weekStartDay Int    @default(0)    // 0 = Sunday, 1 = Monday, etc.
+  defaultLocale String @default("en-US")
+  defaultTimezone String @default("UTC")
+  defaultCurrency String @default("USD")
+
   properties  Property[]
   departments Department[]
   users       User[]
@@ -91,11 +97,16 @@ model User {
   property  Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   departmentId String?
   department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  
+
   email     String
   name      String
   password  String?
   isActive  Boolean  @default(true)
+  
+  // User locale preferences
+  locale    String?  // e.g., "en-US", "es-ES" - null means use tenant default
+  timezone  String?  // e.g., "America/New_York" - null means use tenant default
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -130,13 +141,13 @@ model UserRoleAssignment {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   roleId    String
   role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  
+
   // Scope: optional property and/or department
   propertyId String?
   property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   departmentId String?
   department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  
+
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -162,13 +173,13 @@ model Employee {
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   propertyId String
   property  Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  
+
   firstName String
   lastName  String
   email     String?
   phone     String?
   externalId String? // For integration with other systems
-  
+
   isActive  Boolean  @default(true)
   hireDate  DateTime?
   createdAt DateTime @default(now())
@@ -192,13 +203,13 @@ model EmployeeJobAssignment {
   tenantId  String
   employeeId String
   employee  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  
+
   jobTitle  String
   department String?
-  
+
   startDate DateTime
   endDate   DateTime?
-  
+
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -224,11 +235,11 @@ model Schedule {
   property  Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   employeeId String
   employee  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  
+
   name      String?
   startDate DateTime
   endDate   DateTime?
-  
+
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -250,12 +261,12 @@ model Shift {
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   scheduleId String
   schedule  Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-  
+
   dayOfWeek Int      // 0-6, Sunday-Saturday
   startTime String   // HH:MM format
   endTime   String   // HH:MM format
   breakMinutes Int   @default(0)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -280,14 +291,14 @@ model Punch {
   employee  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   shiftId   String?
   shift     Shift?   @relation(fields: [shiftId], references: [id], onDelete: SetNull)
-  
+
   type      String   // "in", "out", "break_start", "break_end"
   timestamp DateTime
-  
+
   latitude  Float?
   longitude Float?
   deviceId  String?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -308,18 +319,18 @@ model Exception {
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employeeId String
   employee  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  
+
   type      String   // "absence", "late", "early_out", "manual_adjustment", etc.
   reason    String?
   date      DateTime
-  
+
   startTime String?  // HH:MM format
   endTime   String?  // HH:MM format
-  
+
   status    String   @default("pending") // "pending", "approved", "rejected"
   approvedAt DateTime?
   approvedBy String?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -341,36 +352,36 @@ model AuditLog {
   id        String   @id @default(cuid())
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
+
   userId    String?
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   userRoleAssignmentId String?
   userRoleAssignment UserRoleAssignment? @relation(fields: [userRoleAssignmentId], references: [id], onDelete: SetNull)
-  
+
   propertyId String?
   property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   departmentId String?
   department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  
+
   employeeId String?
   employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
   employeeJobAssignmentId String?
   employeeJobAssignment EmployeeJobAssignment? @relation(fields: [employeeJobAssignmentId], references: [id], onDelete: SetNull)
-  
+
   scheduleId String?
   schedule   Schedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
   shiftId    String?
   shift      Shift? @relation(fields: [shiftId], references: [id], onDelete: SetNull)
-  
+
   punchId    String?
   punch      Punch? @relation(fields: [punchId], references: [id], onDelete: SetNull)
   exceptionId String?
   exception  Exception? @relation(fields: [exceptionId], references: [id], onDelete: SetNull)
-  
+
   action    String   // "created", "updated", "deleted", etc.
   entity    String   // "User", "Employee", "Shift", etc.
   changes   String?  // JSON object with before/after values
-  
+
   createdAt DateTime @default(now())
 
   @@index([tenantId])
