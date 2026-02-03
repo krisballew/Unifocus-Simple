@@ -35,6 +35,7 @@ module.exports = {
         alphabetize: { order: 'asc', caseInsensitive: true },
       },
     ],
+    'import/no-named-as-default-member': 'off',
   },
   settings: {
     'import/resolver': {
