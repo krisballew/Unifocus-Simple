@@ -7,6 +7,14 @@ export interface AppConfig {
   redisUrl: string;
   jwtSecret: string;
   logLevel: string;
+  cognito: {
+    region: string;
+    userPoolId: string;
+    clientId: string;
+    issuer: string;
+    jwksUri: string;
+  };
+  authSkipVerification: boolean;
 }
 
 export function getConfig(): AppConfig {
@@ -19,5 +27,13 @@ export function getConfig(): AppConfig {
     redisUrl: process.env['REDIS_URL'] ?? '',
     jwtSecret: process.env['JWT_SECRET'] ?? 'dev-secret-change-me',
     logLevel: process.env['LOG_LEVEL'] ?? 'info',
+    cognito: {
+      region: process.env['COGNITO_REGION'] ?? 'us-east-1',
+      userPoolId: process.env['COGNITO_USER_POOL_ID'] ?? '',
+      clientId: process.env['COGNITO_CLIENT_ID'] ?? '',
+      issuer: process.env['COGNITO_ISSUER'] ?? '',
+      jwksUri: process.env['COGNITO_JWKS_URI'] ?? '',
+    },
+    authSkipVerification: (process.env['AUTH_SKIP_VERIFICATION'] ?? 'false') === 'true',
   };
 }

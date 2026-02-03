@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 
 import type { AppConfig } from '../config';
 
+import { registerAuthPlugin } from './auth';
 import errorHandler from './error-handler';
 import { registerCors, registerSwagger } from './external';
 
@@ -14,6 +15,9 @@ export async function registerPlugins(server: FastifyInstance, config: AppConfig
 
   // Register CORS
   await registerCors(server, config);
+
+  // Register Auth/JWT validation
+  await registerAuthPlugin(server, config);
 
   // Register Swagger
   await registerSwagger(server);

@@ -1,236 +1,250 @@
-import { CreateTenantSchema, TenantSchema } from '@unifocus/contracts';
-import type { Tenant } from '@unifocus/contracts';
+import { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
 
-// Mock data store (replace with real DB later)
-const tenantsStore: Tenant[] = [
-  {
-    id: '1',
-    name: 'Demo Hotel Group',
-    slug: 'demo-hotel',
-    status: 'active',
-    settings: {
-      timezone: 'America/New_York',
-      locale: 'en-US',
-      currency: 'USD',
-    },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+import { getAuthContext } from '../auth/rbac';
+
+const prisma = new PrismaClient();
 
 export async function tenantRoutes(server: FastifyInstance) {
-  // List all tenants
-  server.get(
-    '/api/tenants',
-    {
-      schema: {
-        tags: ['tenants'],
-        description: 'List all tenants',
-        response: {
-          200: {
-            type: 'array',
-            items: TenantSchema,
-          },
-        },
-      },
-    },
-    async () => {
-      return tenantsStore;
-    }
-  );
-
-  // Get a tenant by ID
+  // GET /api/tenants/:id - Get tenant details with tenant scoping
   server.get(
     '/api/tenants/:id',
     {
       schema: {
         tags: ['tenants'],
-        description: 'Get a tenant by ID',
-        params: {
-          type: 'object',
-          properties: {
-            id: { type: 'string' },
-          },
-          required: ['id'],
-        },
+        description: 'Get a tenant by ID (must be member of tenant)',
+        params: z.object({
+          id: z.string(),
+        }),
         response: {
-          200: TenantSchema,
-          404: {
+          200: {
             type: 'object',
             properties: {
-              statusCode: { type: 'number' },
-              error: { type: 'string' },
-              message: { type: 'string' },
+              id: { type: 'string' },
+              name: { type: 'string' },
+              slug: { type: 'string' },
+              createdAt: { type: 'string' },
+              updatedAt: { type: 'string' },
             },
           },
         },
       },
     },
     async (request, reply) => {
-      const { id } = request.params as { id: string };
-      const tenant = tenantsStore.find((t) => t.id === id);
+      const authCtx = getAuthContext(request);
+      const tenantId = request.params.id as string;
+
+      if (!authCtx.userId) {
+        return reply.status(401).send({
+          code: 'UNAUTHORIZED',
+          message: 'Authentication required',
+        });
+      }
+
+      // Check if user has access to this tenant
+      const userInTenant = await prisma.user.findFirst({
+        where: {
+          id: authCtx.userId,
+          tenantId: tenantId,
+        },
+      });
+
+      if (!userInTenant) {
+        return reply.status(403).send({
+          code: 'FORBIDDEN',
+          message: 'Access denied to this tenant',
+        });
+      }
+
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
 
       if (!tenant) {
         return reply.status(404).send({
-          statusCode: 404,
-          error: 'Not Found',
-          message: `Tenant with id ${id} not found`,
+          code: 'NOT_FOUND',
+          message: 'Tenant not found',
         });
       }
 
-      return tenant;
+      return reply.send(tenant);
     }
   );
 
-  // Create a new tenant
-  server.post(
-    '/api/tenants',
+  // GET /api/tenants/:id/properties - List properties in tenant
+  server.get(
+    '/api/tenants/:id/properties',
     {
       schema: {
-        tags: ['tenants'],
-        description: 'Create a new tenant',
-        body: CreateTenantSchema,
+        tags: ['properties'],
+        description: 'List all properties in a tenant',
+        params: z.object({
+          id: z.string(),
+        }),
         response: {
-          201: TenantSchema,
-        },
-      },
-    },
-    async (request, reply) => {
-      const data = request.body as {
-        name: string;
-        slug: string;
-        settings?: { timezone: string; locale: string; currency: string };
-      };
-
-      const newTenant: Tenant = {
-        id: String(tenantsStore.length + 1),
-        name: data.name,
-        slug: data.slug,
-        status: 'active',
-        settings: data.settings ?? {
-          timezone: 'America/New_York',
-          locale: 'en-US',
-          currency: 'USD',
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      tenantsStore.push(newTenant);
-
-      return reply.status(201).send(newTenant);
-    }
-  );
-
-  // Update a tenant
-  server.put(
-    '/api/tenants/:id',
-    {
-      schema: {
-        tags: ['tenants'],
-        description: 'Update a tenant',
-        params: {
-          type: 'object',
-          properties: {
-            id: { type: 'string' },
-          },
-          required: ['id'],
-        },
-        body: CreateTenantSchema,
-        response: {
-          200: TenantSchema,
-          404: {
-            type: 'object',
-            properties: {
-              statusCode: { type: 'number' },
-              error: { type: 'string' },
-              message: { type: 'string' },
+          200: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                name: { type: 'string' },
+                address: { type: 'string', nullable: true },
+                city: { type: 'string', nullable: true },
+                state: { type: 'string', nullable: true },
+                zipCode: { type: 'string', nullable: true },
+              },
             },
           },
         },
       },
     },
     async (request, reply) => {
-      const { id } = request.params as { id: string };
-      const data = request.body as {
-        name: string;
-        slug: string;
-        settings?: { timezone: string; locale: string; currency: string };
-      };
+      const authCtx = getAuthContext(request);
+      const tenantId = request.params.id as string;
 
-      const index = tenantsStore.findIndex((t) => t.id === id);
-
-      if (index === -1) {
-        return reply.status(404).send({
-          statusCode: 404,
-          error: 'Not Found',
-          message: `Tenant with id ${id} not found`,
+      if (!authCtx.userId) {
+        return reply.status(401).send({
+          code: 'UNAUTHORIZED',
+          message: 'Authentication required',
         });
       }
 
-      const current = tenantsStore[index]!;
-      const updated: Tenant = {
-        id: current.id,
-        name: data.name,
-        slug: data.slug,
-        status: current.status,
-        createdAt: current.createdAt,
-        updatedAt: new Date().toISOString(),
-        settings: data.settings ?? current.settings,
-        domain: current.domain,
-      };
+      // Verify user belongs to tenant
+      const userInTenant = await prisma.user.findFirst({
+        where: {
+          id: authCtx.userId,
+          tenantId: tenantId,
+        },
+      });
 
-      tenantsStore[index] = updated;
+      if (!userInTenant) {
+        return reply.status(403).send({
+          code: 'FORBIDDEN',
+          message: 'Access denied',
+        });
+      }
 
-      return updated;
+      const properties = await prisma.property.findMany({
+        where: { tenantId: tenantId },
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          city: true,
+          state: true,
+          zipCode: true,
+        },
+      });
+
+      return reply.send(properties);
     }
   );
 
-  // Delete a tenant
-  server.delete(
-    '/api/tenants/:id',
+  // GET /api/properties - List user's properties (auto-scoped to their tenant)
+  server.get(
+    '/api/properties',
     {
       schema: {
-        tags: ['tenants'],
-        description: 'Delete a tenant',
-        params: {
-          type: 'object',
-          properties: {
-            id: { type: 'string' },
-          },
-          required: ['id'],
-        },
+        tags: ['properties'],
+        description: 'List all properties accessible to user',
         response: {
-          204: {
-            type: 'null',
-            description: 'Tenant deleted successfully',
-          },
-          404: {
-            type: 'object',
-            properties: {
-              statusCode: { type: 'number' },
-              error: { type: 'string' },
-              message: { type: 'string' },
+          200: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                name: { type: 'string' },
+                tenantId: { type: 'string' },
+                address: { type: 'string', nullable: true },
+                city: { type: 'string', nullable: true },
+              },
             },
           },
         },
       },
     },
     async (request, reply) => {
-      const { id } = request.params as { id: string };
-      const index = tenantsStore.findIndex((t) => t.id === id);
+      const authCtx = getAuthContext(request);
 
-      if (index === -1) {
-        return reply.status(404).send({
-          statusCode: 404,
-          error: 'Not Found',
-          message: `Tenant with id ${id} not found`,
+      if (!authCtx.userId || !authCtx.tenantId) {
+        return reply.status(401).send({
+          code: 'UNAUTHORIZED',
+          message: 'Authentication and tenant scope required',
         });
       }
 
-      tenantsStore.splice(index, 1);
-      return reply.status(204).send();
+      const properties = await prisma.property.findMany({
+        where: { tenantId: authCtx.tenantId },
+        select: {
+          id: true,
+          name: true,
+          tenantId: true,
+          address: true,
+          city: true,
+        },
+      });
+
+      return reply.send(properties);
+    }
+  );
+
+  // GET /api/properties/:id - Get property details
+  server.get(
+    '/api/properties/:id',
+    {
+      schema: {
+        tags: ['properties'],
+        description: "Get a property by ID (must belong to user's tenant)",
+        params: z.object({
+          id: z.string(),
+        }),
+      },
+    },
+    async (request, reply) => {
+      const authCtx = getAuthContext(request);
+      const propertyId = request.params.id as string;
+
+      if (!authCtx.userId || !authCtx.tenantId) {
+        return reply.status(401).send({
+          code: 'UNAUTHORIZED',
+          message: 'Authentication required',
+        });
+      }
+
+      const property = await prisma.property.findFirst({
+        where: {
+          id: propertyId,
+          tenantId: authCtx.tenantId,
+        },
+        select: {
+          id: true,
+          name: true,
+          tenantId: true,
+          address: true,
+          city: true,
+          state: true,
+          zipCode: true,
+        },
+      });
+
+      if (!property) {
+        return reply.status(404).send({
+          code: 'NOT_FOUND',
+          message: 'Property not found',
+        });
+      }
+
+      return reply.send(property);
     }
   );
 }
