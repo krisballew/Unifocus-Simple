@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 
-import { getAuthContext } from '../auth/rbac';
+import { getAuthContext } from '../auth/rbac.js';
 
 const prisma = new PrismaClient();
 

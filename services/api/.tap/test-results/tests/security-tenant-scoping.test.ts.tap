@@ -1,12 +1,12 @@
 TAP version 14
-# Subtest: Tenant Routes
+# Subtest: Security: Tenant Scoping and Authorization
     not ok 1 - Cannot read properties of undefined (reading 'issuer')
       ---
       stack: |
         registerAuthPlugin (src/plugins/auth.ts:1:419)
         registerPlugins (src/plugins/index.ts:1:413)
         async buildServer (src/server.ts:1:848)
-        async Test.<anonymous> (tests/tenants.test.ts:1:302)
+        async Test.<anonymous> (tests/security-tenant-scoping.test.ts:1:445)
       at:
         fileName: src/plugins/auth.ts
         lineNumber: 1
@@ -21,20 +21,20 @@ TAP version 14
       ...
     
     1..1
-not ok 1 - Tenant Routes # time=146.029ms
+not ok 1 - Security: Tenant Scoping and Authorization # time=183.317ms
   ---
   at:
-    fileName: tests/tenants.test.ts
-    lineNumber: 5
+    fileName: tests/security-tenant-scoping.test.ts
+    lineNumber: 14
     columnNumber: 1
     isToplevel: true
-  source: |
-    import { buildServer } from '../src/server.js';
-  
-    test('Tenant Routes', async (t) => {
+  source: |2
+     * when attempting cross-tenant or unauthorized access.
+     */
+    test('Security: Tenant Scoping and Authorization', async (t) => {
     ^
       const config = {
-        port: 3001,
+        port: 3002,
   ...
 
 1..1

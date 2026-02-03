@@ -1,0 +1,40 @@
+TAP version 14
+# Subtest: Health Routes
+    not ok 1 - Cannot read properties of undefined (reading 'issuer')
+      ---
+      stack: |
+        registerAuthPlugin (src/plugins/auth.ts:1:419)
+        registerPlugins (src/plugins/index.ts:1:413)
+        async buildServer (src/server.ts:1:848)
+        async Test.<anonymous> (tests/health.test.ts:1:302)
+      at:
+        fileName: src/plugins/auth.ts
+        lineNumber: 1
+        columnNumber: 419
+        functionName: registerAuthPlugin
+      type: TypeError
+      tapCaught: returnedPromiseRejection
+      source: |
+        import type { FastifyInstance, FastifyRequest } from 'fastify';
+        import { jwtVerify, importSPKI } from 'jose';
+        import NodeCache from 'node-cache';
+      ...
+    
+    1..1
+not ok 1 - Health Routes # time=154.714ms
+  ---
+  at:
+    fileName: tests/health.test.ts
+    lineNumber: 5
+    columnNumber: 1
+    isToplevel: true
+  source: |
+    import { buildServer } from '../src/server.js';
+  
+    test('Health Routes', async (t) => {
+    ^
+      const config = {
+        port: 3001,
+  ...
+
+1..1

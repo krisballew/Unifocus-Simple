@@ -74,7 +74,7 @@ module "rds" {
   db_username           = var.db_username
   db_instance_class     = var.db_instance_class
   db_allocated_storage  = var.db_allocated_storage
-  
+
   # Backup and retention (production-grade)
   backup_retention_period      = 30
   skip_final_snapshot          = false
@@ -131,7 +131,7 @@ module "ecs" {
   cpu                      = var.ecs_task_cpu
   memory                   = var.ecs_task_memory
   desired_count            = var.ecs_desired_count
-  
+
   # Auto-scaling (production settings)
   autoscaling_min_capacity    = 3
   autoscaling_max_capacity    = 20
@@ -170,7 +170,7 @@ module "github_oidc" {
 module "route53_acm" {
   count  = var.root_domain != "" ? 1 : 0
   source = "../../modules/route53-acm"
-  
+
   providers = {
     aws.us_east_1 = aws.us_east_1
   }

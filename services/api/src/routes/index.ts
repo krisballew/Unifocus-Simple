@@ -1,11 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 
-import { authRoutes } from './auth';
-import { healthRoutes } from './health';
-import { settingsRoutes } from './settings';
-import { taRoutes } from './ta';
-import { tenantRoutes } from './tenants';
-import { userRoutes } from './users';
+import { authRoutes } from './auth.js';
+import { healthRoutes } from './health.js';
+import { settingsRoutes } from './settings.js';
+import { taRoutes } from './ta.js';
+import { tenantRoutes } from './tenants.js';
+import { userRoutes } from './users.js';
 
 export async function registerRoutes(server: FastifyInstance) {
   // Register health routes (no prefix)

@@ -1,12 +1,12 @@
 TAP version 14
-# Subtest: Tenant Routes
+# Subtest: Punch Idempotency
     not ok 1 - Cannot read properties of undefined (reading 'issuer')
       ---
       stack: |
         registerAuthPlugin (src/plugins/auth.ts:1:419)
         registerPlugins (src/plugins/index.ts:1:413)
         async buildServer (src/server.ts:1:848)
-        async Test.<anonymous> (tests/tenants.test.ts:1:302)
+        async Test.<anonymous> (tests/idempotency.test.ts:1:420)
       at:
         fileName: src/plugins/auth.ts
         lineNumber: 1
@@ -21,17 +21,17 @@ TAP version 14
       ...
     
     1..1
-not ok 1 - Tenant Routes # time=146.029ms
+not ok 1 - Punch Idempotency # time=143.396ms
   ---
   at:
-    fileName: tests/tenants.test.ts
-    lineNumber: 5
+    fileName: tests/idempotency.test.ts
+    lineNumber: 8
     columnNumber: 1
     isToplevel: true
   source: |
-    import { buildServer } from '../src/server.js';
+    const prisma = new PrismaClient();
   
-    test('Tenant Routes', async (t) => {
+    test('Punch Idempotency', async (t) => {
     ^
       const config = {
         port: 3001,

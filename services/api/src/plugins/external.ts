@@ -6,7 +6,7 @@ import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import type { FastifyInstance } from 'fastify';
 
-import type { AppConfig } from '../config';
+import type { AppConfig } from '../config.js';
 
 export async function registerCors(server: FastifyInstance, config: AppConfig) {
   await server.register(fastifyCors, {

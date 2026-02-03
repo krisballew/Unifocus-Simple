@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { jwtVerify, importSPKI } from 'jose';
 import NodeCache from 'node-cache';
 
-import type { AppConfig } from '../config';
+import type { AppConfig } from '../config.js';
 
 export interface AuthenticatedRequest extends FastifyRequest {
   user?: {

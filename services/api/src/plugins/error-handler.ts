@@ -1,6 +1,8 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 
+import type { AuthenticatedRequest } from '../plugins/auth';
+
 export interface ErrorResponse {
   statusCode: number;
   error: string;
@@ -8,27 +10,51 @@ export interface ErrorResponse {
   correlationId?: string;
 }
 
+/**
+ * Extract structured logging context from request
+ */
+function getLoggingContext(request: FastifyRequest) {
+  const authRequest = request as AuthenticatedRequest;
+  const tenantId =
+    (authRequest.user?.tenantId as string) ||
+    (request.headers['x-tenant-id'] as string) ||
+    undefined;
+  const userId =
+    (authRequest.user?.userId as string) || (request.headers['x-user-id'] as string) || undefined;
+
+  return {
+    correlationId: request.id,
+    tenantId,
+    userId,
+    method: request.method,
+    route: request.url,
+    remoteAddress: request.ip,
+  };
+}
+
 async function errorHandlerPlugin(server: FastifyInstance) {
   server.setErrorHandler(
     (error: Error & { statusCode?: number }, request: FastifyRequest, reply: FastifyReply) => {
       const statusCode = error.statusCode ?? 500;
-      const correlationId = request.id;
+      const loggingContext = getLoggingContext(request);
 
+      // Structured error logging
       server.log.error(
         {
-          err: error,
-          correlationId,
-          url: request.url,
-          method: request.method,
+          ...loggingContext,
+          statusCode,
+          errorName: error.name,
+          errorMessage: error.message,
+          errorStack: error.stack,
         },
-        'Error occurred'
+        'Request error'
       );
 
       const response: ErrorResponse = {
         statusCode,
         error: error.name ?? 'Error',
         message: error.message ?? 'An unexpected error occurred',
-        correlationId,
+        correlationId: loggingContext.correlationId,
       };
 
       // Don't expose internal errors in production
@@ -36,33 +62,48 @@ async function errorHandlerPlugin(server: FastifyInstance) {
         response.message = 'Internal server error';
       }
 
-      reply.status(statusCode).send(response);
+      // Add correlation ID to response headers
+      reply
+        .header('x-correlation-id', loggingContext.correlationId)
+        .status(statusCode)
+        .send(response);
     }
   );
 
-  // Add request logging
+  // Add request logging on entry
   server.addHook('onRequest', async (request) => {
+    const loggingContext = getLoggingContext(request);
+
     request.log.info(
       {
-        correlationId: request.id,
-        method: request.method,
-        url: request.url,
+        ...loggingContext,
+        event: 'request_started',
       },
       'Incoming request'
     );
   });
 
+  // Add response logging on completion
   server.addHook('onResponse', async (request, reply) => {
+    const loggingContext = getLoggingContext(request);
+
+    // Convert latency from milliseconds to number if it's a BigInt
+    const latencyMs =
+      typeof reply.elapsedTime === 'bigint' ? Number(reply.elapsedTime) : (reply.elapsedTime ?? 0);
+
     request.log.info(
       {
-        correlationId: request.id,
-        method: request.method,
-        url: request.url,
+        ...loggingContext,
         statusCode: reply.statusCode,
-        responseTime: reply.elapsedTime,
+        latencyMs,
+        contentLength: reply.getHeader('content-length'),
+        event: 'request_completed',
       },
       'Request completed'
     );
+
+    // Add correlation ID to all responses
+    reply.header('x-correlation-id', loggingContext.correlationId);
   });
 }
 

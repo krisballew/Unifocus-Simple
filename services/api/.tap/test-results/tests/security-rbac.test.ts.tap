@@ -1,0 +1,78 @@
+TAP version 14
+# Subtest: Security: RBAC Authorization
+    not ok 1 - Cannot read properties of undefined (reading 'issuer')
+      ---
+      stack: |
+        registerAuthPlugin (src/plugins/auth.ts:1:419)
+        registerPlugins (src/plugins/index.ts:1:413)
+        async buildServer (src/server.ts:1:848)
+        async Test.<anonymous> (tests/security-rbac.test.ts:1:431)
+      at:
+        fileName: src/plugins/auth.ts
+        lineNumber: 1
+        columnNumber: 419
+        functionName: registerAuthPlugin
+      type: TypeError
+      tapCaught: returnedPromiseRejection
+      source: |
+        import type { FastifyInstance, FastifyRequest } from 'fastify';
+        import { jwtVerify, importSPKI } from 'jose';
+        import NodeCache from 'node-cache';
+      ...
+    
+    1..1
+not ok 1 - Security: RBAC Authorization # time=165.89ms
+  ---
+  at:
+    fileName: tests/security-rbac.test.ts
+    lineNumber: 13
+    columnNumber: 1
+    isToplevel: true
+  source: |2
+     * Ensures proper role-based authorization for manager/admin workflows
+     */
+    test('Security: RBAC Authorization', async (t) => {
+    ^
+      const config = {
+        port: 3003,
+  ...
+
+# Subtest: Security: Fail-Closed Authorization
+    not ok 1 - Cannot read properties of undefined (reading 'issuer')
+      ---
+      stack: |
+        registerAuthPlugin (src/plugins/auth.ts:1:419)
+        registerPlugins (src/plugins/index.ts:1:413)
+        async buildServer (src/server.ts:1:848)
+        async Test.<anonymous> (tests/security-rbac.test.ts:1:3388)
+      at:
+        fileName: src/plugins/auth.ts
+        lineNumber: 1
+        columnNumber: 419
+        functionName: registerAuthPlugin
+      type: TypeError
+      tapCaught: returnedPromiseRejection
+      source: |
+        import type { FastifyInstance, FastifyRequest } from 'fastify';
+        import { jwtVerify, importSPKI } from 'jose';
+        import NodeCache from 'node-cache';
+      ...
+    
+    1..1
+not ok 2 - Security: Fail-Closed Authorization # time=8.414ms
+  ---
+  at:
+    fileName: tests/security-rbac.test.ts
+    lineNumber: 156
+    columnNumber: 1
+    isToplevel: true
+  source: |2
+     * Ensures routes fail closed (deny by default) when authorization is unclear
+     */
+    test('Security: Fail-Closed Authorization', async (t) => {
+    ^
+      const config = {
+        port: 3004,
+  ...
+
+1..2

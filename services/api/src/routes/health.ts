@@ -60,14 +60,27 @@ export async function healthRoutes(server: FastifyInstance) {
         redis: 'ok',
       };
 
-      // TODO: Add actual database check when DB client is integrated
-      // For now, just check if DATABASE_URL is configured
+      // Check actual database connectivity
       if (!server.config.databaseUrl) {
         checks.database = 'error';
+      } else {
+        try {
+          // Test actual database connection with a simple query
+          await server.prisma.$queryRaw`SELECT 1`;
+        } catch (error) {
+          server.log.error(
+            {
+              error: error instanceof Error ? error.message : String(error),
+              correlationId: _request.id,
+            },
+            'Database connectivity check failed'
+          );
+          checks.database = 'error';
+        }
       }
 
-      // TODO: Add actual Redis check when Redis client is integrated
-      // For now, just check if REDIS_URL is configured
+      // Check if Redis is configured (full connectivity check not required for readiness)
+      // Redis is optional for this application, so we just check if it's configured
       if (!server.config.redisUrl) {
         checks.redis = 'error';
       }

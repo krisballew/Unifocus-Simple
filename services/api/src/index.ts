@@ -1,5 +1,5 @@
-import { getConfig } from './config';
-import { buildServer } from './server';
+import { getConfig } from './config.js';
+import { buildServer } from './server.js';
 
 async function start() {
   const config = getConfig();

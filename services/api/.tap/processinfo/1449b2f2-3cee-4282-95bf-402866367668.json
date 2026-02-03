@@ -1,6 +1,9 @@
 {
-  "date": "2026-02-03T06:00:48.270Z",
-  "argv": ["/usr/local/bin/node", "/workspaces/Unifocus-Simple/services/api/tests/health.test.ts"],
+  "date": "2026-02-03T19:39:16.201Z",
+  "argv": [
+    "/usr/local/bin/node",
+    "/workspaces/Unifocus-Simple/services/api/tests/punch-validator.test.ts"
+  ],
   "execArgv": [
     "--import=file:///workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+typescript@3.5.0_@tapjs+core@4.4.0_@types+node@20.19.30_typescript@5.9.3/node_modules/@tapjs/typescript/dist/esm/import.mjs",
     "--import=file:///workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+mock@4.3.0_@tapjs+core@4.4.0/node_modules/@tapjs/mock/dist/esm/import.mjs",
@@ -11,16 +14,12 @@
   ],
   "NODE_OPTIONS": "\"--import=file:///workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+processinfo@3.1.9/node_modules/@tapjs/processinfo/dist/esm/import.mjs\"",
   "cwd": "/workspaces/Unifocus-Simple/services/api",
-  "pid": 24169,
-  "ppid": 24134,
+  "pid": 49598,
+  "ppid": 49411,
   "parent": null,
-  "uuid": "f763ae53-1416-44e9-9a9a-fa98fbaca256",
+  "uuid": "1449b2f2-3cee-4282-95bf-402866367668",
   "files": [
-    "/workspaces/Unifocus-Simple/services/api/tests/health.test.ts",
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/read-json.js",
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/find-star-match.js",
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/glob@13.0.0/node_modules/glob/dist/esm/index.js",
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/walk-up-path@4.0.0/node_modules/walk-up-path/dist/esm/index.js",
+    "/workspaces/Unifocus-Simple/services/api/tests/punch-validator.test.ts",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/glob@13.0.0/node_modules/glob/dist/esm/glob.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/glob@13.0.0/node_modules/glob/dist/esm/has-magic.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/glob@13.0.0/node_modules/glob/dist/esm/ignore.js",
@@ -31,27 +30,26 @@
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/minimatch@10.1.1/node_modules/minimatch/dist/esm/assert-valid-pattern.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/minimatch@10.1.1/node_modules/minimatch/dist/esm/ast.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/minimatch@10.1.1/node_modules/minimatch/dist/esm/escape.js",
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@isaacs+brace-expansion@5.0.0/node_modules/@isaacs/brace-expansion/dist/esm/index.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/minimatch@10.1.1/node_modules/minimatch/dist/esm/unescape.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@isaacs+brace-expansion@5.0.0/node_modules/@isaacs/brace-expansion/dist/esm/index.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/glob@13.0.0/node_modules/glob/dist/esm/processor.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/minipass@7.1.2/node_modules/minipass/dist/esm/index.js",
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/minimatch@10.1.1/node_modules/minimatch/dist/esm/brace-expressions.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/lru-cache@11.2.5/node_modules/lru-cache/dist/esm/index.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/minimatch@10.1.1/node_modules/minimatch/dist/esm/brace-expressions.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@isaacs+balanced-match@4.0.1/node_modules/@isaacs/balanced-match/dist/esm/index.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+mock@4.3.0_@tapjs+core@4.4.0/node_modules/@tapjs/mock/dist/esm/loader.mjs",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+mock@4.3.0_@tapjs+core@4.4.0/node_modules/@tapjs/mock/dist/esm/hooks.mjs",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+mock@4.3.0_@tapjs+core@4.4.0/node_modules/@tapjs/mock/dist/esm/mock-service-client.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+mock@4.3.0_@tapjs+core@4.4.0/node_modules/@tapjs/mock/dist/esm/mock-service.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+stack@4.3.0/node_modules/@tapjs/stack/dist/esm/index.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/index.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/is-relative-require.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+mock@4.3.0_@tapjs+core@4.4.0/node_modules/@tapjs/mock/dist/esm/export-line.js",
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/index.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+mock@4.3.0_@tapjs+core@4.4.0/node_modules/@tapjs/mock/dist/esm/munge-mocks.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+mock@4.3.0_@tapjs+core@4.4.0/node_modules/@tapjs/mock/dist/esm/resolve-mock-entry-point.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+mock@4.3.0_@tapjs+core@4.4.0/node_modules/@tapjs/mock/dist/esm/service-key.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+stack@4.3.0/node_modules/@tapjs/stack/dist/esm/call-site-like.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+stack@4.3.0/node_modules/@tapjs/stack/dist/esm/require-resolve.js",
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/is-windows.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/get-all-conditional-values.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/get-all-conditions.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/get-unique-condition-sets.js",
@@ -59,34 +57,63 @@
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/resolve-all-local-imports.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/resolve-conditional-value.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/resolve-import.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/is-windows.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+mock@4.3.0_@tapjs+core@4.4.0/node_modules/@tapjs/mock/dist/commonjs/service-key.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+stack@4.3.0/node_modules/@tapjs/stack/dist/esm/parse.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/get-conditional-values-list.js",
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/errors.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/get-named-exports-list.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/read-pkg.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/resolve-export.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/errors.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/star-glob.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/to-path.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/file-exists.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/find-dep-package.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/to-file-url.js",
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/resolve-dependency-export.js",
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/resolve-package-import.js"
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/resolve-package-import.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/read-json.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/find-star-match.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/glob@13.0.0/node_modules/glob/dist/esm/index.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/walk-up-path@4.0.0/node_modules/walk-up-path/dist/esm/index.js",
+    "/workspaces/Unifocus-Simple/services/api/src/services/punch-validator.ts",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/vitest@1.6.1_@types+node@20.19.30/node_modules/vitest/dist/index.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/vitest@1.6.1_@types+node@20.19.30/node_modules/vitest/dist/vendor/benchmark.yGkUTKnC.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/vitest@1.6.1_@types+node@20.19.30/node_modules/vitest/dist/vendor/run-once.Olz_Zkd8.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/vitest@1.6.1_@types+node@20.19.30/node_modules/vitest/dist/vendor/vi.YFlodzP_.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/vitest@1.6.1_@types+node@20.19.30/node_modules/vitest/dist/vendor/index.dI9lHwVn.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/chai@4.5.0/node_modules/chai/index.mjs",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@vitest+runner@1.6.1/node_modules/@vitest/runner/dist/index.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/vitest@1.6.1_@types+node@20.19.30/node_modules/vitest/dist/vendor/index.SMVOaj7F.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/pathe@1.1.2/node_modules/pathe/dist/index.mjs",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/vitest@1.6.1_@types+node@20.19.30/node_modules/vitest/dist/vendor/global.CkGT_TMy.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/vitest@1.6.1_@types+node@20.19.30/node_modules/vitest/dist/vendor/env.AtSIuHFg.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@vitest+runner@1.6.1/node_modules/@vitest/runner/dist/utils.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/std-env@3.10.0/node_modules/std-env/dist/index.mjs",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/vitest@1.6.1_@types+node@20.19.30/node_modules/vitest/dist/vendor/_commonjsHelpers.jjO7Zipk.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@vitest+utils@1.6.1/node_modules/@vitest/utils/dist/index.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@vitest+utils@1.6.1/node_modules/@vitest/utils/dist/error.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/vitest@1.6.1_@types+node@20.19.30/node_modules/vitest/dist/vendor/tasks.IknbGB2n.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@vitest+utils@1.6.1/node_modules/@vitest/utils/dist/source-map.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/vitest@1.6.1_@types+node@20.19.30/node_modules/vitest/dist/vendor/base.5NT-gWu5.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/vitest@1.6.1_@types+node@20.19.30/node_modules/vitest/dist/vendor/date.Ns1pGd_X.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@vitest+expect@1.6.1/node_modules/@vitest/expect/dist/index.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@vitest+snapshot@1.6.1/node_modules/@vitest/snapshot/dist/index.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@vitest+spy@1.6.1/node_modules/@vitest/spy/dist/index.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/chai@4.5.0/node_modules/chai/index.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@vitest+runner@1.6.1/node_modules/@vitest/runner/dist/chunk-tasks.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/pretty-format@29.7.0/node_modules/pretty-format/build/index.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/p-limit@5.0.0/node_modules/p-limit/index.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/loupe@2.3.7/node_modules/loupe/loupe.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/diff-sequences@29.6.3/node_modules/diff-sequences/build/index.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/pathe@1.1.2/node_modules/pathe/dist/shared/pathe.ff20891b.mjs",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@vitest+utils@1.6.1/node_modules/@vitest/utils/dist/diff.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@vitest+utils@1.6.1/node_modules/@vitest/utils/dist/helpers.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@vitest+utils@1.6.1/node_modules/@vitest/utils/dist/chunk-display.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@vitest+utils@1.6.1/node_modules/@vitest/utils/dist/chunk-colors.js",
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/tinyspy@2.2.1/node_modules/tinyspy/dist/index.js"
   ],
   "sources": {
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/read-json.js": [
-      "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/read-json.ts"
-    ],
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/find-star-match.js": [
-      "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/find-star-match.ts"
-    ],
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/glob@13.0.0/node_modules/glob/dist/esm/index.js": [
-      "/workspaces/Unifocus-Simple/node_modules/.pnpm/glob@13.0.0/node_modules/glob/src/index.ts"
-    ],
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/walk-up-path@4.0.0/node_modules/walk-up-path/dist/esm/index.js": [
-      "/workspaces/Unifocus-Simple/node_modules/.pnpm/walk-up-path@4.0.0/node_modules/walk-up-path/src/index.ts"
-    ],
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/glob@13.0.0/node_modules/glob/dist/esm/glob.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/glob@13.0.0/node_modules/glob/src/glob.ts"
     ],
@@ -117,11 +144,11 @@
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/minimatch@10.1.1/node_modules/minimatch/dist/esm/escape.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/minimatch@10.1.1/node_modules/minimatch/src/escape.ts"
     ],
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@isaacs+brace-expansion@5.0.0/node_modules/@isaacs/brace-expansion/dist/esm/index.js": [
-      "/workspaces/Unifocus-Simple/node_modules/.pnpm/@isaacs+brace-expansion@5.0.0/node_modules/@isaacs/brace-expansion/src/index.ts"
-    ],
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/minimatch@10.1.1/node_modules/minimatch/dist/esm/unescape.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/minimatch@10.1.1/node_modules/minimatch/src/unescape.ts"
+    ],
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@isaacs+brace-expansion@5.0.0/node_modules/@isaacs/brace-expansion/dist/esm/index.js": [
+      "/workspaces/Unifocus-Simple/node_modules/.pnpm/@isaacs+brace-expansion@5.0.0/node_modules/@isaacs/brace-expansion/src/index.ts"
     ],
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/glob@13.0.0/node_modules/glob/dist/esm/processor.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/glob@13.0.0/node_modules/glob/src/processor.ts"
@@ -129,11 +156,11 @@
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/minipass@7.1.2/node_modules/minipass/dist/esm/index.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/minipass@7.1.2/node_modules/minipass/src/index.ts"
     ],
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/minimatch@10.1.1/node_modules/minimatch/dist/esm/brace-expressions.js": [
-      "/workspaces/Unifocus-Simple/node_modules/.pnpm/minimatch@10.1.1/node_modules/minimatch/src/brace-expressions.ts"
-    ],
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/lru-cache@11.2.5/node_modules/lru-cache/dist/esm/index.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/lru-cache@11.2.5/node_modules/lru-cache/src/index.ts"
+    ],
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/minimatch@10.1.1/node_modules/minimatch/dist/esm/brace-expressions.js": [
+      "/workspaces/Unifocus-Simple/node_modules/.pnpm/minimatch@10.1.1/node_modules/minimatch/src/brace-expressions.ts"
     ],
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@isaacs+balanced-match@4.0.1/node_modules/@isaacs/balanced-match/dist/esm/index.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/@isaacs+balanced-match@4.0.1/node_modules/@isaacs/balanced-match/src/index.ts"
@@ -144,14 +171,14 @@
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+stack@4.3.0/node_modules/@tapjs/stack/dist/esm/index.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+stack@4.3.0/node_modules/@tapjs/stack/src/index.ts"
     ],
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/index.js": [
+      "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/index.ts"
+    ],
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/is-relative-require.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/is-relative-require.ts"
     ],
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+mock@4.3.0_@tapjs+core@4.4.0/node_modules/@tapjs/mock/dist/esm/export-line.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+mock@4.3.0_@tapjs+core@4.4.0/node_modules/@tapjs/mock/src/export-line.ts"
-    ],
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/index.js": [
-      "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/index.ts"
     ],
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+mock@4.3.0_@tapjs+core@4.4.0/node_modules/@tapjs/mock/dist/esm/munge-mocks.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+mock@4.3.0_@tapjs+core@4.4.0/node_modules/@tapjs/mock/src/munge-mocks.ts"
@@ -167,9 +194,6 @@
     ],
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+stack@4.3.0/node_modules/@tapjs/stack/dist/esm/require-resolve.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+stack@4.3.0/node_modules/@tapjs/stack/src/require-resolve.ts"
-    ],
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/is-windows.js": [
-      "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/is-windows.ts"
     ],
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/get-all-conditional-values.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/get-all-conditional-values.ts"
@@ -192,6 +216,9 @@
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/resolve-import.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/resolve-import.ts"
     ],
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/is-windows.js": [
+      "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/is-windows.ts"
+    ],
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+mock@4.3.0_@tapjs+core@4.4.0/node_modules/@tapjs/mock/dist/commonjs/service-key.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/@tapjs+mock@4.3.0_@tapjs+core@4.4.0/node_modules/@tapjs/mock/src/service-key-cjs.cts"
     ],
@@ -201,9 +228,6 @@
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/get-conditional-values-list.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/get-conditional-values-list.ts"
     ],
-    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/errors.js": [
-      "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/errors.ts"
-    ],
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/get-named-exports-list.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/get-named-exports-list.ts"
     ],
@@ -212,6 +236,9 @@
     ],
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/resolve-export.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/resolve-export.ts"
+    ],
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/errors.js": [
+      "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/errors.ts"
     ],
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/star-glob.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/star-glob.ts"
@@ -233,11 +260,26 @@
     ],
     "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/resolve-package-import.js": [
       "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/resolve-package-import.ts"
+    ],
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/read-json.js": [
+      "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/read-json.ts"
+    ],
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/dist/esm/find-star-match.js": [
+      "/workspaces/Unifocus-Simple/node_modules/.pnpm/resolve-import@2.1.1/node_modules/resolve-import/src/find-star-match.ts"
+    ],
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/glob@13.0.0/node_modules/glob/dist/esm/index.js": [
+      "/workspaces/Unifocus-Simple/node_modules/.pnpm/glob@13.0.0/node_modules/glob/src/index.ts"
+    ],
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/walk-up-path@4.0.0/node_modules/walk-up-path/dist/esm/index.js": [
+      "/workspaces/Unifocus-Simple/node_modules/.pnpm/walk-up-path@4.0.0/node_modules/walk-up-path/src/index.ts"
+    ],
+    "/workspaces/Unifocus-Simple/node_modules/.pnpm/@vitest+snapshot@1.6.1/node_modules/@vitest/snapshot/dist/index.js": [
+      "/workspaces/Unifocus-Simple/node_modules/.pnpm/@vitest+snapshot@1.6.1/node_modules/@vitest/snapshot/dist/index.js"
     ]
   },
-  "root": "f763ae53-1416-44e9-9a9a-fa98fbaca256",
-  "externalID": "tests/health.test.ts",
+  "root": "1449b2f2-3cee-4282-95bf-402866367668",
+  "externalID": "tests/punch-validator.test.ts",
   "code": 1,
   "signal": null,
-  "runtime": 385.17619
+  "runtime": 627.324712
 }

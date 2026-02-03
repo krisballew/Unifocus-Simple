@@ -1,6 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
-import type { AuthenticatedRequest } from './auth';
+import type { AuthenticatedRequest } from '../plugins/auth.js';
 
 export type Permission = string;
 

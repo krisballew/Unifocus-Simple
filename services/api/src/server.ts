@@ -2,9 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import Fastify from 'fastify';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 
-import type { AppConfig } from './config';
-import { registerPlugins } from './plugins';
-import { registerRoutes } from './routes';
+import type { AppConfig } from './config.js';
+import { registerPlugins } from './plugins/index.js';
+import { registerRoutes } from './routes/index.js';
 
 export async function buildServer(config: AppConfig): Promise<FastifyInstance> {
   const server = Fastify({
