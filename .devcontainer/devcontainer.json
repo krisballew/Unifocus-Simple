@@ -5,7 +5,8 @@
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/node:1": {
       "version": "20"
-    }
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
   "customizations": {
     "vscode": {
@@ -27,9 +28,9 @@
       }
     }
   },
-  "postCreateCommand": "pnpm install",
-  "postStartCommand": "pnpm run dev",
-  "forwardPorts": [3000, 3001],
+  "postCreateCommand": "pnpm install && cp .env.example .env || true",
+  "postStartCommand": "docker-compose up -d && pnpm run dev",
+  "forwardPorts": [3000, 3001, 5432, 6379],
   "portsAttributes": {
     "3000": {
       "label": "Web App",
@@ -38,6 +39,14 @@
     "3001": {
       "label": "API",
       "onAutoForward": "notify"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "silent"
+    },
+    "6379": {
+      "label": "Redis",
+      "onAutoForward": "silent"
     }
   },
   "remoteUser": "node"

@@ -12,7 +12,11 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "clean": "pnpm --recursive --parallel run clean && rm -rf node_modules",
-    "prepare": "husky"
+    "prepare": "husky",
+    "deps:start": "./scripts/start-deps.sh",
+    "deps:stop": "./scripts/stop-deps.sh",
+    "db:migrate": "./scripts/migrate.sh",
+    "db:reset": "./scripts/reset-db.sh"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",
