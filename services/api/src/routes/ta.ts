@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { requireTenantScope, getAuthContext } from '../auth/rbac';
 import { AuditLogger } from '../services/audit-logger';
+import { IdempotencyService } from '../services/idempotency';
 import { PunchValidator } from '../services/punch-validator';
 
 const prisma = new PrismaClient();
@@ -34,7 +35,6 @@ const CreatePunchSchema = z.object({
   latitude: z.number().optional(),
   longitude: z.number().optional(),
   deviceId: z.string().optional(),
-  idempotencyKey: z.string().optional(),
 });
 
 const ResolveExceptionSchema = z.object({
@@ -184,121 +184,219 @@ export async function taRoutes(server: FastifyInstance) {
 
   /**
    * POST /api/punches - Record a punch (clock in/out)
-   * Supports idempotency via idempotencyKey header or body field
+   * Supports idempotency via Idempotency-Key header
    */
-  server.post('/api/punches', { onRequest: requireTenantScope }, async (request, reply) => {
-    const context = getAuthContext(request);
-    const data = CreatePunchSchema.parse(request.body);
-
-    // Verify employee belongs to tenant
-    const employee = await prisma.employee.findUnique({
-      where: { id: data.employeeId },
-    });
-
-    if (!employee || employee.tenantId !== context.tenantId) {
-      return reply.status(404).send({ message: 'Employee not found' });
-    }
-
-    // Get recent punches for validation (last 24 hours)
-    // Note: idempotencyKey field can be used for request deduplication
-    void data.idempotencyKey;
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const recentPunches = await prisma.punch.findMany({
-      where: {
-        employeeId: data.employeeId,
-        tenantId: context.tenantId,
-        timestamp: { gte: yesterday },
+  server.post(
+    '/api/punches',
+    {
+      onRequest: requireTenantScope,
+      schema: {
+        tags: ['time'],
+        description:
+          'Record a time punch (clock in/out/break). Supports idempotency via Idempotency-Key header to prevent duplicate punches.',
+        headers: z.object({
+          'idempotency-key': z
+            .string()
+            .optional()
+            .describe(
+              'Unique key for idempotent request processing. If provided, duplicate requests with the same key will return the same response without creating duplicate punches.'
+            ),
+        }),
+        body: CreatePunchSchema,
+        response: {
+          201: {
+            type: 'object',
+            description: 'Successfully created punch',
+            properties: {
+              id: { type: 'string' },
+              tenantId: { type: 'string' },
+              employeeId: { type: 'string' },
+              shiftId: { type: 'string', nullable: true },
+              type: { type: 'string', enum: ['in', 'out', 'break_start', 'break_end'] },
+              timestamp: { type: 'string', format: 'date-time' },
+              latitude: { type: 'number', nullable: true },
+              longitude: { type: 'number', nullable: true },
+              deviceId: { type: 'string', nullable: true },
+              createdAt: { type: 'string', format: 'date-time' },
+              updatedAt: { type: 'string', format: 'date-time' },
+            },
+          },
+          400: {
+            type: 'object',
+            description: 'Validation error',
+            properties: {
+              message: { type: 'string' },
+              errors: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    code: { type: 'string' },
+                    message: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+          404: {
+            type: 'object',
+            description: 'Employee not found',
+            properties: {
+              message: { type: 'string' },
+            },
+          },
+        },
       },
-      orderBy: { timestamp: 'desc' },
-      take: 10,
-    });
+    },
+    async (request, reply) => {
+      const context = getAuthContext(request);
+      const data = CreatePunchSchema.parse(request.body);
 
-    // Get shift if provided
-    let shift = null;
-    if (data.shiftId) {
-      shift = await prisma.shift.findUnique({
-        where: { id: data.shiftId },
+      // Check for idempotency key in header
+      const idempotencyKey = request.headers['idempotency-key'] as string | undefined;
+
+      if (idempotencyKey) {
+        // Check if this request was already processed
+        const stored = await IdempotencyService.getStoredResponse(prisma, {
+          tenantId: context.tenantId,
+          userId: context.userId,
+          idempotencyKey,
+          endpoint: 'POST /api/punches',
+        });
+
+        if (stored) {
+          // Replay the stored response
+          IdempotencyService.replayResponse(reply, stored);
+          return;
+        }
+      }
+
+      // Verify employee belongs to tenant
+      const employee = await prisma.employee.findUnique({
+        where: { id: data.employeeId },
       });
-    }
 
-    // Validate punch
-    const validationErrors = PunchValidator.validate({
-      employeeId: data.employeeId,
-      tenantId: context.tenantId,
-      punchType: data.type,
-      timestamp: new Date(),
-      shift: shift ?? undefined,
-      recentPunches,
-    });
+      if (!employee || employee.tenantId !== context.tenantId) {
+        return reply.status(404).send({ message: 'Employee not found' });
+      }
 
-    if (validationErrors.length > 0) {
-      return reply.status(400).send({
-        message: 'Punch validation failed',
-        errors: validationErrors,
-      });
-    }
-
-    // Create punch
-    const punch = await prisma.punch.create({
-      data: {
-        tenantId: context.tenantId,
-        employeeId: data.employeeId,
-        shiftId: data.shiftId,
-        type: data.type,
-        timestamp: new Date(),
-        latitude: data.latitude,
-        longitude: data.longitude,
-        deviceId: data.deviceId,
-      },
-    });
-
-    // Generate exceptions if this was a clock out
-    if (data.type === 'out' && shift) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const todayPunches = await prisma.punch.findMany({
+      // Get recent punches for validation (last 24 hours)
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const recentPunches = await prisma.punch.findMany({
         where: {
           employeeId: data.employeeId,
           tenantId: context.tenantId,
-          timestamp: { gte: today },
+          timestamp: { gte: yesterday },
+        },
+        orderBy: { timestamp: 'desc' },
+        take: 10,
+      });
+
+      // Get shift if provided
+      let shift = null;
+      if (data.shiftId) {
+        shift = await prisma.shift.findUnique({
+          where: { id: data.shiftId },
+        });
+      }
+
+      // Validate punch
+      const validationErrors = PunchValidator.validate({
+        employeeId: data.employeeId,
+        tenantId: context.tenantId,
+        punchType: data.type,
+        timestamp: new Date(),
+        shift: shift ?? undefined,
+        recentPunches,
+      });
+
+      if (validationErrors.length > 0) {
+        return reply.status(400).send({
+          message: 'Punch validation failed',
+          errors: validationErrors,
+        });
+      }
+
+      // Create punch
+      const punch = await prisma.punch.create({
+        data: {
+          tenantId: context.tenantId,
+          employeeId: data.employeeId,
+          shiftId: data.shiftId,
+          type: data.type,
+          timestamp: new Date(),
+          latitude: data.latitude,
+          longitude: data.longitude,
+          deviceId: data.deviceId,
         },
       });
 
-      const exceptions = PunchValidator.generateExceptions(
-        data.employeeId,
-        context.tenantId,
-        today,
-        todayPunches,
-        shift
-      );
+      // Generate exceptions if this was a clock out
+      if (data.type === 'out' && shift) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-      for (const exc of exceptions) {
-        await prisma.exception.create({
-          data: {
-            tenantId: context.tenantId,
+        const todayPunches = await prisma.punch.findMany({
+          where: {
             employeeId: data.employeeId,
-            type: exc.type,
-            reason: exc.reason,
-            date: today,
-            status: 'pending',
+            tenantId: context.tenantId,
+            timestamp: { gte: today },
           },
         });
+
+        const exceptions = PunchValidator.generateExceptions(
+          data.employeeId,
+          context.tenantId,
+          today,
+          todayPunches,
+          shift
+        );
+
+        for (const exc of exceptions) {
+          await prisma.exception.create({
+            data: {
+              tenantId: context.tenantId,
+              employeeId: data.employeeId,
+              type: exc.type,
+              reason: exc.reason,
+              date: today,
+              status: 'pending',
+            },
+          });
+        }
       }
+
+      await AuditLogger.log(prisma, {
+        tenantId: context.tenantId,
+        userId: context.userId,
+        action: 'created',
+        entity: 'Punch',
+        entityId: punch.id,
+        employeeId: data.employeeId,
+        punchId: punch.id,
+      });
+
+      const responseBody = punch;
+      const statusCode = 201;
+
+      // Store response for idempotency if key was provided
+      if (idempotencyKey) {
+        await IdempotencyService.storeResponse(
+          prisma,
+          {
+            tenantId: context.tenantId,
+            userId: context.userId,
+            idempotencyKey,
+            endpoint: 'POST /api/punches',
+          },
+          statusCode,
+          responseBody
+        );
+      }
+
+      return reply.status(statusCode).send(responseBody);
     }
-
-    await AuditLogger.log(prisma, {
-      tenantId: context.tenantId,
-      userId: context.userId,
-      action: 'created',
-      entity: 'Punch',
-      entityId: punch.id,
-      employeeId: data.employeeId,
-      punchId: punch.id,
-    });
-
-    return reply.status(201).send(punch);
-  });
+  );
 
   /**
    * GET /api/punches - List punches for employee/date range
