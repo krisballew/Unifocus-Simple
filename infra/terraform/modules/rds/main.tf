@@ -36,16 +36,54 @@ resource "aws_db_instance" "main" {
   vpc_security_group_ids = [var.db_security_group_id]
   publicly_accessible    = false
 
-  backup_retention_period = 7
-  backup_window           = "03:00-04:00"
-  maintenance_window      = "mon:04:00-mon:05:00"
+  # Backup configuration
+  backup_retention_period   = var.backup_retention_period
+  backup_window             = var.backup_window
+  maintenance_window        = var.maintenance_window
+  delete_automated_backups  = var.delete_automated_backups
+  copy_tags_to_snapshot     = true
+  skip_final_snapshot       = var.skip_final_snapshot
+  final_snapshot_identifier = var.skip_final_snapshot ? null : "${var.project_name}-${var.environment}-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
 
-  skip_final_snapshot       = true
-  final_snapshot_identifier = "${var.project_name}-${var.environment}-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
-
+  # Enhanced monitoring
   enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
+  performance_insights_enabled    = var.performance_insights_enabled
+  monitoring_interval             = var.monitoring_interval
+  monitoring_role_arn             = var.monitoring_interval > 0 ? aws_iam_role.rds_monitoring[0].arn : null
+
+  # Deletion protection
+  deletion_protection = var.deletion_protection
 
   tags = {
     Name = "${var.project_name}-${var.environment}-postgres"
   }
+}
+
+# IAM role for enhanced monitoring
+resource "aws_iam_role" "rds_monitoring" {
+  count = var.monitoring_interval > 0 ? 1 : 0
+  name_prefix = "${var.project_name}-${var.environment}-rds-monitoring-"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "monitoring.rds.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-rds-monitoring-role"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "rds_monitoring" {
+  count      = var.monitoring_interval > 0 ? 1 : 0
+  role       = aws_iam_role.rds_monitoring[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
 }

@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "environment" {
   description = "Environment name"
   type        = string
-  default     = "dev"
+  default     = "stage"
 }
 
 variable "project_name" {
@@ -19,7 +19,7 @@ variable "project_name" {
 variable "vpc_cidr" {
   description = "CIDR block for VPC"
   type        = string
-  default     = "10.0.0.0/16"
+  default     = "10.1.0.0/16"
 }
 
 # Database variables
@@ -39,7 +39,7 @@ variable "db_username" {
 variable "db_instance_class" {
   description = "RDS instance class"
   type        = string
-  default     = "db.t3.micro"
+  default     = "db.t3.small"
 }
 
 variable "db_allocated_storage" {
@@ -52,19 +52,19 @@ variable "db_allocated_storage" {
 variable "ecs_task_cpu" {
   description = "CPU units for ECS task"
   type        = string
-  default     = "256"
+  default     = "512"
 }
 
 variable "ecs_task_memory" {
   description = "Memory for ECS task in MB"
   type        = string
-  default     = "512"
+  default     = "1024"
 }
 
 variable "ecs_desired_count" {
   description = "Desired number of ECS tasks"
   type        = number
-  default     = 1
+  default     = 2
 }
 
 # Web hosting variables
@@ -93,7 +93,7 @@ variable "root_domain" {
 }
 
 variable "api_domain_name" {
-  description = "Full domain name for API (e.g., dev-api.example.com)"
+  description = "Full domain name for API (e.g., stage-api.example.com)"
   type        = string
   default     = ""
 }

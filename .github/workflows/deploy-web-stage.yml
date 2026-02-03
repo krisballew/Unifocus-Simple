@@ -1,0 +1,87 @@
+name: Deploy Web to Stage
+
+on:
+  push:
+    tags:
+      - 'v*-stage'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  NODE_VERSION: '20'
+  ENVIRONMENT: stage
+
+jobs:
+  deploy:
+    name: Build and Deploy Web App to Stage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web app
+        run: pnpm --filter @unifocus/web build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL_STAGE }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGE }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-DeployWebStage
+
+      - name: Sync files to S3
+        run: |
+          aws s3 sync apps/web/dist/ s3://${{ secrets.WEB_BUCKET_NAME_STAGE }}/ \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html"
+
+          aws s3 cp apps/web/dist/index.html s3://${{ secrets.WEB_BUCKET_NAME_STAGE }}/index.html \
+            --cache-control "no-cache, no-store, must-revalidate"
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGE }} \
+            --paths "/*"
+
+      - name: Deployment summary
+        run: |
+          echo "✅ Web app deployed successfully to Stage"
+          echo "🌐 CloudFront URL: https://${{ secrets.CLOUDFRONT_DOMAIN_STAGE }}"
+          echo "📦 S3 Bucket: ${{ secrets.WEB_BUCKET_NAME_STAGE }}"
+          echo "🏷️ Tag: ${{ github.ref_name }}"

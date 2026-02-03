@@ -1,0 +1,100 @@
+name: Deploy API to Production
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ENVIRONMENT: prod
+
+jobs:
+  approve:
+    name: Approval Required
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Wait for approval
+        run: |
+          echo "⏸️ Deployment to production requires manual approval"
+          echo "🏷️ Version: ${{ github.ref_name }}"
+
+  deploy:
+    name: Build and Deploy API to Production
+    needs: approve
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-DeployAPIProd
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build, tag, and push image to ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_NAME_PROD }}
+          IMAGE_TAG: ${{ github.sha }}
+          VERSION_TAG: ${{ github.ref_name }}
+        run: |
+          docker build \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION_TAG \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+            -f services/api/Dockerfile \
+            .
+
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ secrets.ECS_TASK_FAMILY_PROD }} \
+            --query taskDefinition > task-definition.json
+
+      - name: Update task definition with new image
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: api
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ secrets.ECS_SERVICE_NAME_PROD }}
+          cluster: ${{ secrets.ECS_CLUSTER_NAME_PROD }}
+          wait-for-service-stability: true
+
+      - name: Deployment summary
+        run: |
+          echo "🎉 API deployed successfully to Production"
+          echo "🐳 Image: ${{ steps.build-image.outputs.image }}"
+          echo "📊 Cluster: ${{ secrets.ECS_CLUSTER_NAME_PROD }}"
+          echo "🔧 Service: ${{ secrets.ECS_SERVICE_NAME_PROD }}"
+          echo "🏷️ Version: ${{ github.ref_name }}"

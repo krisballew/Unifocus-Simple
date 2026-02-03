@@ -75,3 +75,34 @@ variable "desired_count" {
   type        = number
   default     = 1
 }
+
+# Auto-scaling variables
+variable "autoscaling_min_capacity" {
+  description = "Minimum number of tasks for auto-scaling"
+  type        = number
+  default     = 1
+}
+
+variable "autoscaling_max_capacity" {
+  description = "Maximum number of tasks for auto-scaling"
+  type        = number
+  default     = 10
+}
+
+variable "autoscaling_cpu_target" {
+  description = "Target CPU utilization percentage for auto-scaling"
+  type        = number
+  default     = 70
+}
+
+variable "autoscaling_memory_target" {
+  description = "Target memory utilization percentage for auto-scaling"
+  type        = number
+  default     = 80
+}
+
+variable "autoscaling_requests_target" {
+  description = "Target request count per target for auto-scaling (0 to disable)"
+  type        = number
+  default     = 0
+}

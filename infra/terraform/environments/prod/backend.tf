@@ -10,10 +10,10 @@
 
 # terraform {
 #   backend "s3" {
-#     bucket         = "unifocus-terraform-state-dev"
-#     key            = "dev/terraform.tfstate"
+#     bucket         = "unifocus-terraform-state-prod"
+#     key            = "prod/terraform.tfstate"
 #     region         = "us-east-1"
 #     encrypt        = true
-#     dynamodb_table = "unifocus-terraform-locks-dev"
+#     dynamodb_table = "unifocus-terraform-locks-prod"
 #   }
 # }

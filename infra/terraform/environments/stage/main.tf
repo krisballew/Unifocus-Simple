@@ -75,10 +75,12 @@ module "rds" {
   db_instance_class     = var.db_instance_class
   db_allocated_storage  = var.db_allocated_storage
   
-  # Backup and retention (relaxed for dev)
-  backup_retention_period = 7
-  skip_final_snapshot     = true
-  deletion_protection     = false
+  # Backup and retention (stricter for stage)
+  backup_retention_period      = 14
+  skip_final_snapshot          = false
+  deletion_protection          = false
+  performance_insights_enabled = true
+  monitoring_interval          = 60
 }
 
 # Secrets Manager
@@ -130,9 +132,9 @@ module "ecs" {
   memory                   = var.ecs_task_memory
   desired_count            = var.ecs_desired_count
   
-  # Auto-scaling (minimal for dev)
-  autoscaling_min_capacity = 1
-  autoscaling_max_capacity = 4
+  # Auto-scaling (moderate for stage)
+  autoscaling_min_capacity = 2
+  autoscaling_max_capacity = 8
 }
 
 # S3 and CloudFront for Web Hosting

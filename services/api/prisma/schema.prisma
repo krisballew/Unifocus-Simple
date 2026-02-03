@@ -102,11 +102,11 @@ model User {
   name      String
   password  String?
   isActive  Boolean  @default(true)
-  
+
   // User locale preferences
   locale    String?  // e.g., "en-US", "es-ES" - null means use tenant default
   timezone  String?  // e.g., "America/New_York" - null means use tenant default
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -42,3 +42,18 @@ output "task_role_arn" {
   description = "ECS task role ARN"
   value       = aws_iam_role.ecs_task_role.arn
 }
+
+output "alb_arn_suffix" {
+  description = "ALB ARN suffix for CloudWatch metrics"
+  value       = aws_lb.main.arn_suffix
+}
+
+output "alb_zone_id" {
+  description = "ALB hosted zone ID"
+  value       = aws_lb.main.zone_id
+}
+
+output "target_group_arn_suffix" {
+  description = "Target group ARN suffix for CloudWatch metrics"
+  value       = aws_lb_target_group.api.arn_suffix
+}
