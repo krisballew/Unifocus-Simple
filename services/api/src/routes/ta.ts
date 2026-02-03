@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
-import { requireTenantScope, getAuthContext } from '../auth/rbac';
+import { requireTenantScope, getAuthContext, hasAnyRole } from '../auth/rbac';
 import { AuditLogger } from '../services/audit-logger';
 import { IdempotencyService } from '../services/idempotency';
 import { PunchValidator } from '../services/punch-validator';
@@ -292,12 +292,19 @@ export async function taRoutes(server: FastifyInstance) {
         take: 10,
       });
 
-      // Get shift if provided
+      // Get shift if provided (with tenant validation)
       let shift = null;
       if (data.shiftId) {
         shift = await prisma.shift.findUnique({
           where: { id: data.shiftId },
         });
+
+        // Validate shift belongs to tenant
+        if (shift && shift.tenantId !== context.tenantId) {
+          return reply.status(403).send({
+            message: 'Shift does not belong to your tenant',
+          });
+        }
       }
 
       // Validate punch
@@ -505,6 +512,14 @@ export async function taRoutes(server: FastifyInstance) {
       const context = getAuthContext(request);
       const { exceptionId } = request.params as { exceptionId: string };
       const data = ResolveExceptionSchema.parse(request.body);
+
+      // Require manager or admin role to resolve exceptions
+      if (!hasAnyRole(context, ['Manager', 'Admin', 'TenantAdmin'])) {
+        return reply.status(403).send({
+          code: 'FORBIDDEN',
+          message: 'Manager or Admin role required to resolve exceptions',
+        });
+      }
 
       const exception = await prisma.exception.findUnique({
         where: { id: exceptionId },

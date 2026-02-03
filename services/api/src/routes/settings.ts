@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
+import { getAuthContext, hasRole } from '../auth/rbac';
+
 const prisma = new PrismaClient();
 
 interface UpdateUserPreferencesBody {
@@ -261,6 +263,16 @@ export async function settingsRoutes(server: FastifyInstance) {
         const { weekStartDay } = request.body;
         const userId = request.headers['x-user-id'] as string;
 
+        if (!userId) {
+          return reply.status(401).send({
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
+          });
+        }
+
+        // Get auth context for RBAC
+        const authContext = getAuthContext(request);
+
         // Verify user is admin of this tenant
         const user = await prisma.user.findFirst({
           where: {
@@ -273,6 +285,14 @@ export async function settingsRoutes(server: FastifyInstance) {
           return reply.status(403).send({
             code: 'FORBIDDEN',
             message: 'Access denied',
+          });
+        }
+
+        // Require admin role for tenant settings
+        if (!hasRole(authContext, 'Admin') && !hasRole(authContext, 'TenantAdmin')) {
+          return reply.status(403).send({
+            code: 'FORBIDDEN',
+            message: 'Admin role required to update tenant settings',
           });
         }
 
