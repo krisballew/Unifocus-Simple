@@ -154,10 +154,10 @@ check "Git repository"
 
 if [ -d "$PROJECT_ROOT/.git" ]; then
     pass "Git repository found"
-    
+
     GITHUB_REPO=$(cd "$PROJECT_ROOT" && git config --get remote.origin.url | sed 's/.*\///' | sed 's/\.git$//')
     GITHUB_ORG=$(cd "$PROJECT_ROOT" && git config --get remote.origin.url | sed 's/.*://' | sed 's/\/.*//')
-    
+
     if [ -n "$GITHUB_REPO" ] && [ -n "$GITHUB_ORG" ]; then
         pass "GitHub org: $GITHUB_ORG"
         pass "GitHub repo: $GITHUB_REPO"

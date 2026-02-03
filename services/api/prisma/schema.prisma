@@ -354,14 +354,14 @@ model IdempotencyRecord {
   userId    String?  // Optional: user who made the request
   idempotencyKey String
   endpoint  String   // e.g., "POST /api/punches"
-  
+
   // Store the response for replay
   statusCode Int
   responseBody String // JSON response
-  
+
   createdAt DateTime @default(now())
   expiresAt DateTime // Records expire after 24 hours
-  
+
   @@unique([tenantId, userId, idempotencyKey, endpoint])
   @@index([tenantId])
   @@index([idempotencyKey])
