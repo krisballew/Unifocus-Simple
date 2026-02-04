@@ -1,4 +1,9 @@
-import { CognitoUserPool, CognitoUser, AuthenticationDetails } from 'amazon-cognito-identity-js';
+import {
+  CognitoUserPool,
+  CognitoUser,
+  AuthenticationDetails,
+  CognitoRefreshToken,
+} from 'amazon-cognito-identity-js';
 
 interface CognitoConfig {
   region: string;
@@ -25,7 +30,6 @@ interface AuthUser {
 class CognitoAuthService {
   private config: CognitoConfig;
   private userPool: CognitoUserPool;
-  private currentUser: CognitoUser | null = null;
 
   constructor(config: CognitoConfig) {
     this.config = config;
@@ -106,7 +110,6 @@ class CognitoAuthService {
             refreshToken: result.getRefreshToken()?.getToken(),
           };
           this.storeTokens(tokens);
-          this.currentUser = user;
           resolve(tokens);
         },
         onFailure: (error) => {
@@ -125,7 +128,6 @@ class CognitoAuthService {
       return null;
     }
 
-    this.currentUser = user;
     return {
       username: user.getUsername(),
     };
@@ -182,7 +184,9 @@ class CognitoAuthService {
 
     // Check if token is expired
     try {
-      const payload = JSON.parse(atob(tokens.accessToken.split('.')[1]));
+      const tokenPart = tokens.accessToken.split('.')[1];
+      if (!tokenPart) return false;
+      const payload = JSON.parse(atob(tokenPart));
       return payload.exp * 1000 > Date.now();
     } catch {
       return false;
@@ -222,8 +226,10 @@ class CognitoAuthService {
     }
 
     return new Promise((resolve, reject) => {
-      const refreshToken = new user.constructor.CognitoRefreshToken({
-        RefreshToken: tokens.refreshToken,
+      // TypeScript doesn't narrow the type after the check above, so we assert it's defined
+      const refreshTokenValue = tokens.refreshToken as string;
+      const refreshToken = new CognitoRefreshToken({
+        RefreshToken: refreshTokenValue,
       });
 
       user.refreshSession(refreshToken, (error, session) => {

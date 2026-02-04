@@ -1,5 +1,5 @@
 import type { LocaleConfig, SupportedLocale } from '@unifocus/i18n';
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 import { useI18nContext } from '../context/I18nContext';
 import { useTranslate, useSupportedLocales, useSupportedTimezones } from '../hooks/useI18n';

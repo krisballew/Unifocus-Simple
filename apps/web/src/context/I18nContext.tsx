@@ -1,10 +1,10 @@
 import { DEFAULT_LOCALE_CONFIG } from '@unifocus/i18n';
 import type { LocaleConfig } from '@unifocus/i18n';
 import type { ReactNode } from 'react';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 import { setGlobalLocaleConfig } from '../hooks/useI18n';
-import { apiClient } from '../services/api-client';
+import { getApiClient } from '../services/api-client';
 
 interface LocaleResponse {
   locale: string;
@@ -43,6 +43,7 @@ export function I18nProvider({ children, initialConfig }: I18nProviderProps) {
     try {
       // Persist to server
       try {
+        const apiClient = getApiClient();
         await apiClient.patch('/users/me/locale', {
           locale: newConfig.locale,
           timezone: newConfig.timezone,
@@ -68,6 +69,7 @@ export function I18nProvider({ children, initialConfig }: I18nProviderProps) {
       const loadUserLocalePreference = async () => {
         try {
           setLoading(true);
+          const apiClient = getApiClient();
           const response = (await apiClient.get('/users/me/locale')) as LocaleResponse;
 
           if (response && response.locale) {

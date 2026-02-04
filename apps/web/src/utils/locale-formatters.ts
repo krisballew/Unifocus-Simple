@@ -14,10 +14,8 @@ import {
   getWeekDays,
   getWeekStartDay,
   getMessage,
-} from '@unifocus/i18n';
-import type {
-  MessageKey,
-  SupportedLocale,
+  type MessageKey,
+  type SupportedLocale,
   type LocaleConfig,
   type WeekStartDay,
 } from '@unifocus/i18n';

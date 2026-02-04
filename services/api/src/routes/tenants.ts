@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 
 export async function tenantRoutes(server: FastifyInstance) {
   // GET /api/tenants/:id - Get tenant details with tenant scoping
-  server.get(
+  server.get<{ Params: { id: string } }>(
     '/api/tenants/:id',
     {
       schema: {
@@ -28,12 +28,33 @@ export async function tenantRoutes(server: FastifyInstance) {
               updatedAt: { type: 'string' },
             },
           },
+          401: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+          403: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+          404: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
         },
       },
     },
     async (request, reply) => {
       const authCtx = getAuthContext(request);
-      const tenantId = request.params.id as string;
+      const tenantId = request.params.id;
 
       if (!authCtx.userId) {
         return reply.status(401).send({
@@ -80,7 +101,7 @@ export async function tenantRoutes(server: FastifyInstance) {
   );
 
   // GET /api/tenants/:id/properties - List properties in tenant
-  server.get(
+  server.get<{ Params: { id: string } }>(
     '/api/tenants/:id/properties',
     {
       schema: {
@@ -104,12 +125,26 @@ export async function tenantRoutes(server: FastifyInstance) {
               },
             },
           },
+          401: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+          403: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
         },
       },
     },
     async (request, reply) => {
       const authCtx = getAuthContext(request);
-      const tenantId = request.params.id as string;
+      const tenantId = request.params.id;
 
       if (!authCtx.userId) {
         return reply.status(401).send({
@@ -170,6 +205,13 @@ export async function tenantRoutes(server: FastifyInstance) {
               },
             },
           },
+          401: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
         },
       },
     },
@@ -199,7 +241,7 @@ export async function tenantRoutes(server: FastifyInstance) {
   );
 
   // GET /api/properties/:id - Get property details
-  server.get(
+  server.get<{ Params: { id: string } }>(
     '/api/properties/:id',
     {
       schema: {
@@ -208,11 +250,39 @@ export async function tenantRoutes(server: FastifyInstance) {
         params: z.object({
           id: z.string(),
         }),
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              name: { type: 'string' },
+              tenantId: { type: 'string' },
+              address: { type: 'string', nullable: true },
+              city: { type: 'string', nullable: true },
+              state: { type: 'string', nullable: true },
+              zipCode: { type: 'string', nullable: true },
+            },
+          },
+          401: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+          404: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+        },
       },
     },
     async (request, reply) => {
       const authCtx = getAuthContext(request);
-      const propertyId = request.params.id as string;
+      const propertyId = request.params.id;
 
       if (!authCtx.userId || !authCtx.tenantId) {
         return reply.status(401).send({
@@ -249,7 +319,7 @@ export async function tenantRoutes(server: FastifyInstance) {
   );
 
   // GET /api/tenants/:id/settings - Get tenant settings
-  server.get(
+  server.get<{ Params: { id: string } }>(
     '/api/tenants/:id/settings',
     {
       schema: {
@@ -268,12 +338,33 @@ export async function tenantRoutes(server: FastifyInstance) {
               defaultCurrency: { type: 'string' },
             },
           },
+          401: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+          403: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+          404: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
         },
       },
     },
     async (request, reply) => {
       const authCtx = getAuthContext(request);
-      const tenantId = request.params.id as string;
+      const tenantId = request.params.id;
 
       if (!authCtx.userId) {
         return reply.status(401).send({
@@ -319,7 +410,7 @@ export async function tenantRoutes(server: FastifyInstance) {
   );
 
   // PATCH /api/tenants/:id/settings - Update tenant settings (admin only)
-  server.patch(
+  server.patch<{ Params: { id: string } }>(
     '/api/tenants/:id/settings',
     {
       schema: {
@@ -347,12 +438,26 @@ export async function tenantRoutes(server: FastifyInstance) {
               defaultCurrency: { type: 'string' },
             },
           },
+          401: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+          403: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
         },
       },
     },
     async (request, reply) => {
       const authCtx = getAuthContext(request);
-      const tenantId = request.params.id as string;
+      const tenantId = request.params.id;
 
       if (!authCtx.userId || !authCtx.tenantId) {
         return reply.status(401).send({

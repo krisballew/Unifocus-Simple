@@ -51,8 +51,8 @@ export function App() {
       clientId: import.meta.env.VITE_COGNITO_CLIENT_ID || '',
       domain: import.meta.env.VITE_COGNITO_DOMAIN || '',
       redirectUri:
-        import.meta.env.VITE_COGNITO_REDIRECT_URI || 'http://localhost:5173/auth/callback',
-      logoutUri: import.meta.env.VITE_COGNITO_LOGOUT_URI || 'http://localhost:5173/login',
+        import.meta.env['VITE_COGNITO_REDIRECT_URI'] || 'http://localhost:5173/auth/callback',
+      logoutUri: import.meta.env['VITE_COGNITO_LOGOUT_URI'] || 'http://localhost:5173/login',
     };
 
     try {
@@ -61,7 +61,7 @@ export function App() {
       console.error('Failed to initialize Cognito:', error);
     }
 
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+    const apiBaseUrl = import.meta.env['VITE_API_BASE_URL'] || 'http://localhost:3001';
     try {
       initializeApiClient(apiBaseUrl);
     } catch (error) {

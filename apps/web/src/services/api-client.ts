@@ -26,7 +26,7 @@ class ApiClient {
       const authService = getAuthService();
       const token = authService.getAccessToken();
       if (token) {
-        headers.Authorization = `Bearer ${token}`;
+        (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
       }
     } catch {
       // Auth service not initialized, skip token attachment
@@ -61,6 +61,14 @@ class ApiClient {
     return this.request<T>(path, {
       ...options,
       method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  }
+
+  async patch<T>(path: string, body?: unknown, options?: FetchOptions): Promise<T> {
+    return this.request<T>(path, {
+      ...options,
+      method: 'PATCH',
       body: body ? JSON.stringify(body) : undefined,
     });
   }

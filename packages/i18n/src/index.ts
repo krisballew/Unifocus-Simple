@@ -201,7 +201,7 @@ export type MessageCatalog = (typeof messageCatalogs)['en-US'];
 // Simple ICU message formatter - handles basic variable substitution and plurals
 export function formatMessage(
   template: string,
-  params?: Record<string, string | number | boolean>
+  params?: Record<string, string | number | boolean | Date>
 ): string {
   if (!params) return template;
 

@@ -48,7 +48,7 @@ export async function registerAuthPlugin(
       jwksCache.set('jwks', jwks);
       return jwks;
     } catch (error) {
-      server.log.error('Failed to fetch JWKS:', error);
+      server.log.error({ err: error }, 'Failed to fetch JWKS');
       throw new Error('Failed to fetch JWKS');
     }
   }
@@ -95,14 +95,14 @@ export async function registerAuthPlugin(
       const claims = verified.payload;
       (request as AuthenticatedRequest).user = {
         userId: (claims.sub as string) ?? '',
-        email: (claims.email as string) ?? '',
+        email: (claims['email'] as string) ?? '',
         username: (claims['cognito:username'] as string) ?? '',
         tenantId: claims['custom:tenant_id'] as string,
         roles: (claims['cognito:groups'] as string[]) ?? [],
-        scopes: (claims.scope as string)?.split(' ') ?? [],
+        scopes: (claims['scope'] as string)?.split(' ') ?? [],
       };
     } catch (error) {
-      server.log.error('JWT verification failed:', error);
+      server.log.error({ err: error }, 'JWT verification failed');
       return reply.status(401).send({
         code: 'UNAUTHORIZED',
         message: 'Invalid token',

@@ -1,5 +1,8 @@
+import { PrismaClient } from '@prisma/client';
 import { z } from '@unifocus/contracts';
 import type { FastifyInstance } from 'fastify';
+
+const prisma = new PrismaClient();
 
 const HealthResponseSchema = z.object({
   status: z.literal('ok'),
@@ -66,7 +69,7 @@ export async function healthRoutes(server: FastifyInstance) {
       } else {
         try {
           // Test actual database connection with a simple query
-          await server.prisma.$queryRaw`SELECT 1`;
+          await prisma.$queryRaw`SELECT 1`;
         } catch (error) {
           server.log.error(
             {

@@ -92,8 +92,8 @@ export class PunchValidator {
   private static validateTimeWindow(context: PunchContext): PunchValidationError | null {
     if (!context.shift) return null;
 
-    const [shiftStartHour, shiftStartMin] = context.shift.startTime.split(':').map(Number);
-    const [shiftEndHour, shiftEndMin] = context.shift.endTime.split(':').map(Number);
+    const [shiftStartHour = 0, shiftStartMin = 0] = context.shift.startTime.split(':').map(Number);
+    const [shiftEndHour = 0, shiftEndMin = 0] = context.shift.endTime.split(':').map(Number);
 
     const shiftStart = new Date(context.timestamp);
     shiftStart.setHours(shiftStartHour, shiftStartMin, 0, 0);
@@ -185,8 +185,8 @@ export class PunchValidator {
    * Generate exceptions based on punch history and scheduled shift
    */
   static generateExceptions(
-    employeeId: string,
-    tenantId: string,
+    _employeeId: string,
+    _tenantId: string,
     date: Date,
     punches: Punch[],
     shift: ShiftWithDetails | null
@@ -216,20 +216,20 @@ export class PunchValidator {
     }
 
     if (inPunches.length > 0) {
-      const [shiftStartHour, shiftStartMin] = shift.startTime.split(':').map(Number);
-      const [shiftEndHour, shiftEndMin] = shift.endTime.split(':').map(Number);
+      const [shiftStartHour = 0, shiftStartMin = 0] = shift.startTime.split(':').map(Number);
+      const [shiftEndHour = 0, shiftEndMin = 0] = shift.endTime.split(':').map(Number);
 
       const shiftStart = new Date(date);
       shiftStart.setHours(shiftStartHour, shiftStartMin, 0, 0);
       const shiftEnd = new Date(date);
       shiftEnd.setHours(shiftEndHour, shiftEndMin, 0, 0);
 
-      const firstPunch = new Date(inPunches[0].timestamp);
-      const lastPunch =
-        outPunches.length > 0 ? new Date(outPunches[outPunches.length - 1].timestamp) : new Date();
+      const firstPunch = inPunches[0] ? new Date(inPunches[0].timestamp) : null;
+      const lastOutPunch = outPunches.length > 0 ? outPunches[outPunches.length - 1] : null;
+      const lastPunch = lastOutPunch ? new Date(lastOutPunch.timestamp) : new Date();
 
       // Check for late arrival
-      if (firstPunch.getTime() > shiftStart.getTime() + 5 * 60 * 1000) {
+      if (firstPunch && firstPunch.getTime() > shiftStart.getTime() + 5 * 60 * 1000) {
         exceptions.push({
           type: 'late_arrival',
           reason: `Employee clocked in ${Math.round((firstPunch.getTime() - shiftStart.getTime()) / 60000)} minutes late`,
@@ -237,7 +237,7 @@ export class PunchValidator {
       }
 
       // Check for early departure
-      if (outPunches.length > 0 && lastPunch.getTime() < shiftEnd.getTime() - 5 * 60 * 1000) {
+      if (lastOutPunch && lastPunch.getTime() < shiftEnd.getTime() - 5 * 60 * 1000) {
         exceptions.push({
           type: 'early_departure',
           reason: `Employee clocked out ${Math.round((shiftEnd.getTime() - lastPunch.getTime()) / 60000)} minutes early`,

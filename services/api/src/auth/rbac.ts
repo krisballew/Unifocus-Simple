@@ -6,6 +6,8 @@ export type Permission = string;
 
 export interface AuthorizationContext {
   userId: string;
+  email?: string;
+  username?: string;
   tenantId?: string;
   roles: string[];
   scopes: string[];
@@ -19,6 +21,8 @@ export function getAuthContext(request: FastifyRequest): AuthorizationContext {
   if (!user) {
     return {
       userId: '',
+      email: undefined,
+      username: undefined,
       tenantId: undefined,
       roles: [],
       scopes: [],
@@ -27,6 +31,8 @@ export function getAuthContext(request: FastifyRequest): AuthorizationContext {
 
   return {
     userId: user.userId,
+    email: user.email,
+    username: user.username,
     tenantId: user.tenantId,
     roles: user.roles,
     scopes: user.scopes,
@@ -139,13 +145,28 @@ export function requireScope(context: AuthorizationContext, scope: string): void
 }
 
 /**
+ * Check if user has a tenant scope
+ */
+export function hasTenantScope(
+  context: AuthorizationContext
+): context is AuthorizationContext & { tenantId: string } {
+  return Boolean(context.tenantId);
+}
+
+/**
  * Require tenant scoping - ensure user has tenantId
  */
-export function requireTenantScope(context: AuthorizationContext): string {
+export async function requireTenantScope(
+  request: FastifyRequest,
+  reply: FastifyReply
+): Promise<void> {
+  const context = getAuthContext(request);
   if (!context.tenantId) {
-    throw new Error('Forbidden: Tenant scope required');
+    return reply.status(403).send({
+      code: 'FORBIDDEN',
+      message: 'Tenant scope required',
+    });
   }
-  return context.tenantId;
 }
 
 /**

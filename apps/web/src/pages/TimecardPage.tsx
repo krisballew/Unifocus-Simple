@@ -51,8 +51,11 @@ export function TimecardPage(): React.ReactElement {
     let breakMs = 0;
 
     for (let i = 0; i < inPunches.length; i++) {
-      const inTime = new Date(inPunches[i].timestamp).getTime();
-      const outTime = new Date(outPunches[i]?.timestamp ?? Date.now()).getTime();
+      const inPunch = inPunches[i];
+      if (!inPunch) continue;
+      const inTime = new Date(inPunch.timestamp).getTime();
+      const outPunch = outPunches[i];
+      const outTime = outPunch ? new Date(outPunch.timestamp).getTime() : Date.now();
       totalMs += outTime - inTime;
     }
 

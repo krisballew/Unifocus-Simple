@@ -203,7 +203,8 @@ export function formatList(items: string[], locale: SupportedLocale): string {
  */
 export function getLocaleName(locale: SupportedLocale, inLocale?: SupportedLocale): string {
   const displayNames = new Intl.DisplayNames(inLocale || locale, { type: 'language' });
-  return displayNames.of(locale.split('-')[0]) || locale;
+  const languageCode = locale.split('-')[0] ?? locale;
+  return displayNames.of(languageCode) || locale;
 }
 
 /**

@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
-import { requireTenantScope, getAuthContext, hasAnyRole } from '../auth/rbac';
+import { requireTenantScope, getAuthContext, hasAnyRole, hasTenantScope } from '../auth/rbac';
 import { AuditLogger } from '../services/audit-logger';
 import { IdempotencyService } from '../services/idempotency';
 import { PunchValidator } from '../services/punch-validator';
@@ -54,9 +54,16 @@ export async function taRoutes(server: FastifyInstance) {
    */
   server.get('/api/schedules', { onRequest: requireTenantScope }, async (request, reply) => {
     const context = getAuthContext(request);
+    if (!hasTenantScope(context)) {
+      return reply.status(403).send({
+        code: 'FORBIDDEN',
+        message: 'Tenant scope required',
+      });
+    }
+    const tenantId = context.tenantId;
 
     const schedules = await prisma.schedule.findMany({
-      where: { tenantId: context.tenantId },
+      where: { tenantId },
       include: {
         employee: true,
         shifts: true,
@@ -73,6 +80,13 @@ export async function taRoutes(server: FastifyInstance) {
    */
   server.post('/api/schedules', { onRequest: requireTenantScope }, async (request, reply) => {
     const context = getAuthContext(request);
+    if (!hasTenantScope(context)) {
+      return reply.status(403).send({
+        code: 'FORBIDDEN',
+        message: 'Tenant scope required',
+      });
+    }
+    const tenantId = context.tenantId;
     const data = CreateScheduleSchema.parse(request.body);
 
     // Verify employee belongs to tenant
@@ -80,13 +94,13 @@ export async function taRoutes(server: FastifyInstance) {
       where: { id: data.employeeId },
     });
 
-    if (!employee || employee.tenantId !== context.tenantId) {
+    if (!employee || employee.tenantId !== tenantId) {
       return reply.status(404).send({ message: 'Employee not found' });
     }
 
     const schedule = await prisma.schedule.create({
       data: {
-        tenantId: context.tenantId,
+        tenantId,
         propertyId: employee.propertyId,
         employeeId: data.employeeId,
         startDate: data.startDate,
@@ -97,7 +111,7 @@ export async function taRoutes(server: FastifyInstance) {
     });
 
     await AuditLogger.log(prisma, {
-      tenantId: context.tenantId,
+      tenantId,
       userId: context.userId,
       action: 'created',
       entity: 'Schedule',
@@ -118,13 +132,20 @@ export async function taRoutes(server: FastifyInstance) {
     { onRequest: requireTenantScope },
     async (request, reply) => {
       const context = getAuthContext(request);
+      if (!hasTenantScope(context)) {
+        return reply.status(403).send({
+          code: 'FORBIDDEN',
+          message: 'Tenant scope required',
+        });
+      }
+      const tenantId = context.tenantId;
       const { scheduleId } = request.params as { scheduleId: string };
 
       const schedule = await prisma.schedule.findUnique({
         where: { id: scheduleId },
       });
 
-      if (!schedule || schedule.tenantId !== context.tenantId) {
+      if (!schedule || schedule.tenantId !== tenantId) {
         return reply.status(404).send({ message: 'Schedule not found' });
       }
 
@@ -145,6 +166,13 @@ export async function taRoutes(server: FastifyInstance) {
     { onRequest: requireTenantScope },
     async (request, reply) => {
       const context = getAuthContext(request);
+      if (!hasTenantScope(context)) {
+        return reply.status(403).send({
+          code: 'FORBIDDEN',
+          message: 'Tenant scope required',
+        });
+      }
+      const tenantId = context.tenantId;
       const { scheduleId } = request.params as { scheduleId: string };
       const data = CreateShiftSchema.parse(request.body);
 
@@ -152,13 +180,13 @@ export async function taRoutes(server: FastifyInstance) {
         where: { id: scheduleId },
       });
 
-      if (!schedule || schedule.tenantId !== context.tenantId) {
+      if (!schedule || schedule.tenantId !== tenantId) {
         return reply.status(404).send({ message: 'Schedule not found' });
       }
 
       const shift = await prisma.shift.create({
         data: {
-          tenantId: context.tenantId,
+          tenantId,
           scheduleId,
           dayOfWeek: data.dayOfWeek,
           startTime: data.startTime,
@@ -168,7 +196,7 @@ export async function taRoutes(server: FastifyInstance) {
       });
 
       await AuditLogger.log(prisma, {
-        tenantId: context.tenantId,
+        tenantId,
         userId: context.userId,
         action: 'created',
         entity: 'Shift',
@@ -245,11 +273,24 @@ export async function taRoutes(server: FastifyInstance) {
               message: { type: 'string' },
             },
           },
+          403: {
+            type: 'object',
+            description: 'Forbidden',
+            properties: {
+              message: { type: 'string' },
+            },
+          },
         },
       },
     },
     async (request, reply) => {
       const context = getAuthContext(request);
+      if (!hasTenantScope(context)) {
+        return reply.status(403).send({
+          message: 'Tenant scope required',
+        });
+      }
+      const tenantId = context.tenantId;
       const data = CreatePunchSchema.parse(request.body);
 
       // Check for idempotency key in header
@@ -258,7 +299,7 @@ export async function taRoutes(server: FastifyInstance) {
       if (idempotencyKey) {
         // Check if this request was already processed
         const stored = await IdempotencyService.getStoredResponse(prisma, {
-          tenantId: context.tenantId,
+          tenantId,
           userId: context.userId,
           idempotencyKey,
           endpoint: 'POST /api/punches',
@@ -276,7 +317,7 @@ export async function taRoutes(server: FastifyInstance) {
         where: { id: data.employeeId },
       });
 
-      if (!employee || employee.tenantId !== context.tenantId) {
+      if (!employee || employee.tenantId !== tenantId) {
         return reply.status(404).send({ message: 'Employee not found' });
       }
 
@@ -285,7 +326,7 @@ export async function taRoutes(server: FastifyInstance) {
       const recentPunches = await prisma.punch.findMany({
         where: {
           employeeId: data.employeeId,
-          tenantId: context.tenantId,
+          tenantId,
           timestamp: { gte: yesterday },
         },
         orderBy: { timestamp: 'desc' },
@@ -300,7 +341,7 @@ export async function taRoutes(server: FastifyInstance) {
         });
 
         // Validate shift belongs to tenant
-        if (shift && shift.tenantId !== context.tenantId) {
+        if (shift && shift.tenantId !== tenantId) {
           return reply.status(403).send({
             message: 'Shift does not belong to your tenant',
           });
@@ -310,7 +351,7 @@ export async function taRoutes(server: FastifyInstance) {
       // Validate punch
       const validationErrors = PunchValidator.validate({
         employeeId: data.employeeId,
-        tenantId: context.tenantId,
+        tenantId,
         punchType: data.type,
         timestamp: new Date(),
         shift: shift ?? undefined,
@@ -327,7 +368,7 @@ export async function taRoutes(server: FastifyInstance) {
       // Create punch
       const punch = await prisma.punch.create({
         data: {
-          tenantId: context.tenantId,
+          tenantId,
           employeeId: data.employeeId,
           shiftId: data.shiftId,
           type: data.type,
@@ -346,14 +387,14 @@ export async function taRoutes(server: FastifyInstance) {
         const todayPunches = await prisma.punch.findMany({
           where: {
             employeeId: data.employeeId,
-            tenantId: context.tenantId,
+            tenantId,
             timestamp: { gte: today },
           },
         });
 
         const exceptions = PunchValidator.generateExceptions(
           data.employeeId,
-          context.tenantId,
+          tenantId,
           today,
           todayPunches,
           shift
@@ -362,7 +403,7 @@ export async function taRoutes(server: FastifyInstance) {
         for (const exc of exceptions) {
           await prisma.exception.create({
             data: {
-              tenantId: context.tenantId,
+              tenantId,
               employeeId: data.employeeId,
               type: exc.type,
               reason: exc.reason,
@@ -374,7 +415,7 @@ export async function taRoutes(server: FastifyInstance) {
       }
 
       await AuditLogger.log(prisma, {
-        tenantId: context.tenantId,
+        tenantId,
         userId: context.userId,
         action: 'created',
         entity: 'Punch',
@@ -391,7 +432,7 @@ export async function taRoutes(server: FastifyInstance) {
         await IdempotencyService.storeResponse(
           prisma,
           {
-            tenantId: context.tenantId,
+            tenantId,
             userId: context.userId,
             idempotencyKey,
             endpoint: 'POST /api/punches',
@@ -410,6 +451,13 @@ export async function taRoutes(server: FastifyInstance) {
    */
   server.get('/api/punches', { onRequest: requireTenantScope }, async (request, reply) => {
     const context = getAuthContext(request);
+    if (!hasTenantScope(context)) {
+      return reply.status(403).send({
+        code: 'FORBIDDEN',
+        message: 'Tenant scope required',
+      });
+    }
+    const tenantId = context.tenantId;
     const { employeeId, startDate, endDate } = request.query as {
       employeeId?: string;
       startDate?: string;
@@ -422,7 +470,7 @@ export async function taRoutes(server: FastifyInstance) {
       timestamp?: { gte?: Date; lte?: Date };
     }
 
-    const where: PunchWhere = { tenantId: context.tenantId };
+    const where: PunchWhere = { tenantId };
 
     if (employeeId) {
       where.employeeId = employeeId;
@@ -454,6 +502,13 @@ export async function taRoutes(server: FastifyInstance) {
    */
   server.get('/api/exceptions', { onRequest: requireTenantScope }, async (request, reply) => {
     const context = getAuthContext(request);
+    if (!hasTenantScope(context)) {
+      return reply.status(403).send({
+        code: 'FORBIDDEN',
+        message: 'Tenant scope required',
+      });
+    }
+    const tenantId = context.tenantId;
     const { status, employeeId } = request.query as {
       status?: string;
       employeeId?: string;
@@ -465,7 +520,7 @@ export async function taRoutes(server: FastifyInstance) {
       employeeId?: string;
     }
 
-    const where: ExceptionWhere = { tenantId: context.tenantId };
+    const where: ExceptionWhere = { tenantId };
     if (status) where.status = status;
     if (employeeId) where.employeeId = employeeId;
 
@@ -487,6 +542,10 @@ export async function taRoutes(server: FastifyInstance) {
     { onRequest: requireTenantScope },
     async (request, reply) => {
       const context = getAuthContext(request);
+      if (!hasTenantScope(context)) {
+        return reply.status(403).send({ code: 'FORBIDDEN', message: 'Tenant scope required' });
+      }
+      const tenantId = context.tenantId;
       const { exceptionId } = request.params as { exceptionId: string };
 
       const exception = await prisma.exception.findUnique({
@@ -494,7 +553,7 @@ export async function taRoutes(server: FastifyInstance) {
         include: { employee: true },
       });
 
-      if (!exception || exception.tenantId !== context.tenantId) {
+      if (!exception || exception.tenantId !== tenantId) {
         return reply.status(404).send({ message: 'Exception not found' });
       }
 
@@ -510,6 +569,10 @@ export async function taRoutes(server: FastifyInstance) {
     { onRequest: requireTenantScope },
     async (request, reply) => {
       const context = getAuthContext(request);
+      if (!hasTenantScope(context)) {
+        return reply.status(403).send({ code: 'FORBIDDEN', message: 'Tenant scope required' });
+      }
+      const tenantId = context.tenantId;
       const { exceptionId } = request.params as { exceptionId: string };
       const data = ResolveExceptionSchema.parse(request.body);
 
@@ -525,7 +588,7 @@ export async function taRoutes(server: FastifyInstance) {
         where: { id: exceptionId },
       });
 
-      if (!exception || exception.tenantId !== context.tenantId) {
+      if (!exception || exception.tenantId !== tenantId) {
         return reply.status(404).send({ message: 'Exception not found' });
       }
 
@@ -540,7 +603,7 @@ export async function taRoutes(server: FastifyInstance) {
       });
 
       await AuditLogger.log(prisma, {
-        tenantId: context.tenantId,
+        tenantId,
         userId: context.userId,
         action: data.status === 'approved' ? 'approved' : 'rejected',
         entity: 'Exception',

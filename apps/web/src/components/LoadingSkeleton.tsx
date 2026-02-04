@@ -1,5 +1,3 @@
-import React from 'react';
-
 export interface LoadingSkeletonProps {
   lines?: number;
   avatar?: boolean;

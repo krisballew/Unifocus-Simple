@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { useI18nContext } from '../context/I18nContext';
 import { useTranslate } from '../hooks/useI18n';
 import { formatDate, getScheduleWeekDays, getScheduleWeekStart } from '../utils/locale-formatters';

@@ -172,7 +172,8 @@ export function useLocaleName() {
   const getDisplayName = useCallback(
     (locale: SupportedLocale) => {
       const displayNames = new Intl.DisplayNames(config.locale, { type: 'language' });
-      return displayNames.of(locale.split('-')[0]) || locale;
+      const languageCode = locale.split('-')[0] ?? locale;
+      return displayNames.of(languageCode) || locale;
     },
     [config.locale]
   );
@@ -190,10 +191,13 @@ export function useSupportedLocales() {
     const displayNames = new Intl.DisplayNames(config.locale, { type: 'language' });
     const codes: SupportedLocale[] = ['en-US', 'es-ES'];
 
-    return codes.map((code) => ({
-      code,
-      name: displayNames.of(code.split('-')[0]) || code,
-    }));
+    return codes.map((code) => {
+      const languageCode = code.split('-')[0] ?? code;
+      return {
+        code,
+        name: displayNames.of(languageCode) || code,
+      };
+    });
   }, [config.locale]);
 
   return locales;

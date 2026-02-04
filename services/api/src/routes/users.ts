@@ -25,6 +25,13 @@ export async function userRoutes(server: FastifyInstance) {
               scopes: { type: 'array', items: { type: 'string' } },
             },
           },
+          401: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
         },
       },
     },
@@ -91,6 +98,13 @@ export async function userRoutes(server: FastifyInstance) {
               },
             },
           },
+          401: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
         },
       },
     },
@@ -142,6 +156,20 @@ export async function userRoutes(server: FastifyInstance) {
               weekStartDay: { type: 'number' },
               currency: { type: 'string' },
               defaultLocale: { type: 'string' },
+            },
+          },
+          401: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+          404: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
             },
           },
         },
@@ -214,6 +242,20 @@ export async function userRoutes(server: FastifyInstance) {
               locale: { type: 'string' },
               timezone: { type: 'string' },
               updated: { type: 'boolean' },
+            },
+          },
+          401: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+          404: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
             },
           },
         },

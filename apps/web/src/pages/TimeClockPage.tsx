@@ -130,3 +130,5 @@ export function TimeClockScreen(): React.ReactElement {
     </div>
   );
 }
+
+export const TimeClockPage = TimeClockScreen;
