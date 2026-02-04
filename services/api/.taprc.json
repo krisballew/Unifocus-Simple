@@ -1,0 +1,7 @@
+{
+  "node-arg": ["--loader=tsx"],
+  "ts": true,
+  "timeout": 30,
+  "files": ["tests/**/*.test.ts"],
+  "exclude": ["tests/helpers/**"]
+}

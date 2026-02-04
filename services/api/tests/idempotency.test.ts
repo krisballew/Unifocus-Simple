@@ -1,17 +1,27 @@
-import { PrismaClient } from '@prisma/client';
+import { type PrismaClient } from '@prisma/client';
 import { test } from 'tap';
 
-import { buildServer } from '../src/server';
+import { buildServer } from '../src/server.js';
 
-const prisma = new PrismaClient();
+import { setupTestDatabase, teardownTestDatabase, resetTestDatabase } from './helpers/db-setup.js';
+
+let prisma: PrismaClient;
 
 test('Punch Idempotency', async (t) => {
+  // Setup test database connection
+  prisma = await setupTestDatabase();
+
+  // Clean database before starting tests
+  await resetTestDatabase(prisma);
+
   const config = {
     port: 3001,
     host: '0.0.0.0',
     nodeEnv: 'test',
     corsOrigin: '*',
-    databaseUrl: process.env.DATABASE_URL || 'postgresql://localhost:5432/test',
+    databaseUrl:
+      process.env.DATABASE_URL ||
+      'postgresql://unifocus:unifocus_dev_password@localhost:5432/unifocus_dev',
     redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
     jwtSecret: 'test-secret',
     logLevel: 'silent',
@@ -79,7 +89,7 @@ test('Punch Idempotency', async (t) => {
     await prisma.employee.deleteMany({ where: { tenantId } });
     await prisma.property.deleteMany({ where: { tenantId } });
     await prisma.tenant.delete({ where: { id: tenantId } });
-    await prisma.$disconnect();
+    await teardownTestDatabase(prisma);
     await app.close();
   });
 
