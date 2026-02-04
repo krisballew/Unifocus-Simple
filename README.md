@@ -93,6 +93,49 @@ This will start:
 
 GitHub Actions workflow includes linting, type checking, testing, and building.
 
+## Deployment
+
+### AWS Infrastructure
+
+Deploy infrastructure using Terraform:
+
+```bash
+# Navigate to dev environment
+cd infra/terraform/environments/dev
+
+# Initialize and apply
+terraform init
+terraform apply
+```
+
+See [DEPLOYMENT_RUNBOOK_DEV.md](DEPLOYMENT_RUNBOOK_DEV.md) for complete deployment procedure.
+
+### Deployment Workflows
+
+- **API**: `.github/workflows/deploy-api-dev.yml` - Deploys to ECS on push to main
+- **Web**: `.github/workflows/deploy-web-dev.yml` - Deploys to S3/CloudFront on push to main
+
+### Pre-Deployment Validation
+
+```bash
+# Validate all configurations before deploying
+npx tsx scripts/validate-deployment.ts dev
+```
+
+### E2E Smoke Test
+
+```bash
+# Test deployed environment
+npx tsx scripts/e2e-dev-smoke.ts https://your-api-url.com
+```
+
+For detailed deployment instructions, see:
+
+- [DEPLOYMENT_RUNBOOK_DEV.md](DEPLOYMENT_RUNBOOK_DEV.md) - Step-by-step deployment guide
+- [docs/TERRAFORM_DEPLOYMENT.md](docs/TERRAFORM_DEPLOYMENT.md) - Terraform setup
+- [docs/DEPLOYMENT_DEV.md](docs/DEPLOYMENT_DEV.md) - Environment variables guide
+- [docs/COMPLETE_DEPLOYMENT_GUIDE.md](docs/COMPLETE_DEPLOYMENT_GUIDE.md) - Full deployment status
+
 ## GitHub Codespaces
 
 Fully configured for one-command development:
