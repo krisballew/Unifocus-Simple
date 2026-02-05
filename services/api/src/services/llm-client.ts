@@ -177,12 +177,12 @@ Rule: ${ruleName}
 Description: ${ruleDescription}
 ${sourceText ? `Source Text:\n${sourceText}` : ''}
 
-Provide a brief, clear explanation of how to apply this rule in a scheduling/timecard system. 
+Provide a brief, clear explanation of how to apply this rule in a scheduling/timecard system.
 Focus on practical implementation details.
 Keep to 2-3 sentences.
 `;
 
-    const systemPrompt = `You are a labor compliance expert. 
+    const systemPrompt = `You are a labor compliance expert.
 Provide clear, practical explanations for how compliance rules should be applied.
 Focus on actionable guidance for payroll and scheduling systems.`;
 

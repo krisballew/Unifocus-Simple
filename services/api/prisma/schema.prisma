@@ -42,7 +42,7 @@ model Tenant {
   punches     Punch[]
   exceptions  Exception[]
   auditLogs   AuditLog[]
-  
+
   // Labor compliance rules system
   rulePackages RulePackage[] @relation("RulePackages")
   validationResults RuleValidationResult[] @relation("ValidationResults")
@@ -273,7 +273,7 @@ model User {
   roleAssignments UserRoleAssignment[]
   managedDepartments Department[]  @relation("DepartmentManager")
   auditLogs       AuditLog[]
-  
+
   // Labor compliance rules system
   createdRulePackages RulePackage[] @relation("RulePackageCreatedBy")
   publishedRulePackages RulePackage[] @relation("RulePackagePublishedBy")
@@ -366,7 +366,7 @@ model Employee {
   punches        Punch[]
   exceptions     Exception[]
   auditLogs      AuditLog[]
-  
+
   // Labor compliance rules system
   validationResults RuleValidationResult[] @relation("ValidationResults")
 
@@ -637,24 +637,24 @@ model RulePackage {
   tenantId      String
   tenant        Tenant   @relation("RulePackages", fields: [tenantId], references: [id], onDelete: Cascade)
   propertyId    String?
-  
+
   name          String
   description   String?
   version       Int      @default(1)
   status        String   @default("DRAFT")  // "DRAFT" | "PUBLISHED"
   sourceText    String?  // Original CBA or compliance text provided by admin
-  
+
   compiledRules CompiledRule[]
   validationResults RuleValidationResult[]
-  
+
   createdBy     String   // userId
   createdByUser User?    @relation("RulePackageCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
   createdAt     DateTime @default(now())
-  
+
   publishedAt   DateTime?
   publishedBy   String?  // userId
   publishedByUser User?  @relation("RulePackagePublishedBy", fields: [publishedBy], references: [id], onDelete: SetNull)
-  
+
   @@unique([tenantId, name, version])
   @@index([tenantId])
   @@index([propertyId])
@@ -667,28 +667,28 @@ model CompiledRule {
   id              String   @id @default(cuid())
   rulePackageId   String
   rulePackage     RulePackage @relation(fields: [rulePackageId], references: [id], onDelete: Cascade)
-  
+
   ruleId          String   // e.g., "MIN_REST_BETWEEN_SHIFTS", "MEAL_BREAK_REQUIRED"
   name            String
   description     String?
   enabled         Boolean  @default(true)
   severity        String   @default("ERROR")  // "ERROR" | "WARN"
-  
+
   // Rule-specific parameters in JSON
   // Structure varies by rule type, validated by Zod schema on backend
   params          Json     @default("{}")
-  
+
   // Citations from source text (where in the CBA/policy document)
   // Array of { sourceText: string, section: string, lineNumber: number }
   citations       Json?
-  
+
   // LLM-provided clarifications or notes
   // Array of { clarification: string, context: string }
   clarifications  Json?
-  
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  
+
   @@index([rulePackageId])
   @@index([ruleId])
   @@index([enabled])
@@ -698,30 +698,30 @@ model RuleValidationResult {
   id                String   @id @default(cuid())
   tenantId          String
   tenant            Tenant   @relation("ValidationResults", fields: [tenantId], references: [id], onDelete: Cascade)
-  
+
   rulePackageId     String
   rulePackage       RulePackage @relation(fields: [rulePackageId], references: [id], onDelete: Cascade)
-  
+
   employeeId        String?  // Optional: can validate for specific employee or batch
   employee          Employee? @relation("ValidationResults", fields: [employeeId], references: [id], onDelete: SetNull)
-  
+
   dateStart         DateTime // Period covered by validation
   dateEnd           DateTime
-  
+
   // Violation data stored as JSON
   // Array of ComplianceViolation: { ruleId, ruleName, severity, violation, remediation, affectedDates[] }
   violations        Json     @default("[]")
   violationCount    Int      @default(0)
-  
+
   // Summary flags
   hasErrors         Boolean  @default(false)
   hasWarnings       Boolean  @default(false)
-  
+
   // Audit trail
   runAt             DateTime @default(now())
   runBy             String?  // userId who triggered validation
   runByUser         User?    @relation("ValidationResultsRunBy", fields: [runBy], references: [id], onDelete: SetNull)
-  
+
   @@index([tenantId])
   @@index([rulePackageId])
   @@index([employeeId])
