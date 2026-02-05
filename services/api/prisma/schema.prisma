@@ -54,6 +54,7 @@ model Property {
   updatedAt DateTime @updatedAt
 
   departments         Department[]
+  jobRoles            JobRole[]
   users               User[]
   userRoleAssignments UserRoleAssignment[]
   employees           Employee[]
@@ -99,7 +100,7 @@ model JobRole {
   name            String   // Job title (e.g., "Front Desk Associate", "Housekeeper")
   code            String?  // Code for the job role
   masterCategory  String   // Master category for benchmarking/rollup (e.g., "Front Office", "Housekeeping")
-  
+
   description     String?
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
@@ -227,11 +228,11 @@ model Employee {
 
   isActive  Boolean  @default(true)
   hireDate  DateTime?
-  
+
   // Employment Details - Comprehensive record covering 6 domains
   // Stored as JSON: Core Record, Pay & Labor, Scheduling, Compliance, Time & Attendance, Operations
   employmentDetails Json?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -273,7 +274,7 @@ model EmployeeJobAssignment {
   tenantId        String
   employeeId      String
   employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  
+
   jobRoleId       String
   jobRole         JobRole  @relation(fields: [jobRoleId], references: [id], onDelete: Cascade)
 
