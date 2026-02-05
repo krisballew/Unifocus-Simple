@@ -99,6 +99,138 @@ async function main() {
   });
   console.log(`✓ Created department: ${dept2.name}`);
 
+  // Create job roles
+  console.log('Creating job roles...');
+  const jobRole1 = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property1.id,
+      departmentId: dept1.id,
+      name: 'Software Engineer',
+      code: 'SE',
+      masterCategory: 'Engineering',
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRole1.name}`);
+
+  const jobRole2 = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property1.id,
+      departmentId: dept2.id,
+      name: 'Sales Representative',
+      code: 'SR',
+      masterCategory: 'Sales',
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRole2.name}`);
+
+  const jobRole3 = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property2.id,
+      departmentId: dept1.id,
+      name: 'Operations Coordinator',
+      code: 'OC',
+      masterCategory: 'Operations',
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRole3.name}`);
+
+  const jobRole4 = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property3.id,
+      departmentId: dept1.id,
+      name: 'Warehouse Supervisor',
+      code: 'WS',
+      masterCategory: 'Logistics',
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRole4.name}`);
+
+  const jobRole5 = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property3.id,
+      departmentId: dept1.id,
+      name: 'Inventory Specialist',
+      code: 'IS',
+      masterCategory: 'Logistics',
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRole5.name}`);
+
+  const jobRole6 = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property4.id,
+      departmentId: dept1.id,
+      name: 'Distribution Manager',
+      code: 'DM',
+      masterCategory: 'Distribution',
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRole6.name}`);
+
+  const jobRole7 = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property4.id,
+      departmentId: dept1.id,
+      name: 'Logistics Coordinator',
+      code: 'LC',
+      masterCategory: 'Distribution',
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRole7.name}`);
+
+  const jobRole8 = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property5.id,
+      departmentId: dept2.id,
+      name: 'Retail Manager',
+      code: 'RM',
+      masterCategory: 'Retail',
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRole8.name}`);
+
+  const jobRole9 = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property5.id,
+      departmentId: dept2.id,
+      name: 'Sales Associate',
+      code: 'SA',
+      masterCategory: 'Retail',
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRole9.name}`);
+
+  const jobRole10 = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property1.id,
+      departmentId: dept1.id,
+      name: 'Senior Developer',
+      code: 'SD',
+      masterCategory: 'Engineering',
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRole10.name}`);
+
   // Create roles
   console.log('Creating roles...');
   const platformAdminRole = await prisma.role.create({
@@ -171,54 +303,6 @@ async function main() {
     },
   });
   console.log(`✓ Created role: ${employeeRole.name}`);
-
-  // Create users
-  console.log('Creating users...');
-  const adminUser = await prisma.user.create({
-    data: {
-      tenantId: tenant.id,
-      email: 'admin@demo.unifocus.com',
-      name: 'Ava Developer',
-      isActive: true,
-    },
-  });
-  console.log(`✓ Created user: ${adminUser.name}`);
-
-  const managerUser = await prisma.user.create({
-    data: {
-      tenantId: tenant.id,
-      propertyId: property1.id,
-      departmentId: dept1.id,
-      email: 'manager@demo.unifocus.com',
-      name: 'John Manager',
-      isActive: true,
-    },
-  });
-  console.log(`✓ Created user: ${managerUser.name}`);
-
-  // Create user role assignments
-  console.log('Creating user role assignments...');
-  await prisma.userRoleAssignment.create({
-    data: {
-      tenantId: tenant.id,
-      userId: adminUser.id,
-      roleId: platformAdminRole.id,
-      isActive: true,
-    },
-  });
-  console.log('✓ Assigned Platform Administrator role to admin user');
-
-  await prisma.userRoleAssignment.create({
-    data: {
-      tenantId: tenant.id,
-      userId: managerUser.id,
-      roleId: departmentManagerRole.id,
-      propertyId: property1.id,
-      departmentId: dept1.id,
-      isActive: true,
-    },
-  });
-  console.log('✓ Assigned Department Manager role to manager user');
 
   // Create employees
   console.log('Creating employees...');
@@ -368,9 +452,11 @@ async function main() {
     data: {
       tenantId: tenant.id,
       employeeId: employee1.id,
-      jobTitle: 'Software Engineer',
-      department: dept1.name,
+      jobRoleId: jobRole1.id,
+      payType: 'hourly',
+      hourlyRate: 45.0,
       startDate: new Date('2023-01-15'),
+      isPrimary: true,
       isActive: true,
     },
   });
@@ -380,9 +466,11 @@ async function main() {
     data: {
       tenantId: tenant.id,
       employeeId: employee2.id,
-      jobTitle: 'Sales Representative',
-      department: dept2.name,
+      jobRoleId: jobRole2.id,
+      payType: 'hourly',
+      hourlyRate: 25.0,
       startDate: new Date('2023-03-20'),
+      isPrimary: true,
       isActive: true,
     },
   });
@@ -392,9 +480,11 @@ async function main() {
     data: {
       tenantId: tenant.id,
       employeeId: employee3.id,
-      jobTitle: 'Operations Coordinator',
-      department: 'Operations',
+      jobRoleId: jobRole3.id,
+      payType: 'hourly',
+      hourlyRate: 28.0,
       startDate: new Date('2023-06-01'),
+      isPrimary: true,
       isActive: true,
     },
   });
@@ -404,9 +494,11 @@ async function main() {
     data: {
       tenantId: tenant.id,
       employeeId: employee4.id,
-      jobTitle: 'Warehouse Supervisor',
-      department: 'Logistics',
+      jobRoleId: jobRole4.id,
+      payType: 'salary',
+      salaryAmount: 55000.0,
       startDate: new Date('2022-11-10'),
+      isPrimary: true,
       isActive: true,
     },
   });
@@ -416,9 +508,11 @@ async function main() {
     data: {
       tenantId: tenant.id,
       employeeId: employee5.id,
-      jobTitle: 'Inventory Specialist',
-      department: 'Logistics',
+      jobRoleId: jobRole5.id,
+      payType: 'hourly',
+      hourlyRate: 22.0,
       startDate: new Date('2024-01-05'),
+      isPrimary: true,
       isActive: true,
     },
   });
@@ -428,9 +522,11 @@ async function main() {
     data: {
       tenantId: tenant.id,
       employeeId: employee6.id,
-      jobTitle: 'Distribution Manager',
-      department: 'Distribution',
+      jobRoleId: jobRole6.id,
+      payType: 'salary',
+      salaryAmount: 62000.0,
       startDate: new Date('2023-08-15'),
+      isPrimary: true,
       isActive: true,
     },
   });
@@ -440,9 +536,11 @@ async function main() {
     data: {
       tenantId: tenant.id,
       employeeId: employee7.id,
-      jobTitle: 'Logistics Coordinator',
-      department: 'Distribution',
+      jobRoleId: jobRole7.id,
+      payType: 'hourly',
+      hourlyRate: 26.0,
       startDate: new Date('2023-09-20'),
+      isPrimary: true,
       isActive: true,
     },
   });
@@ -452,9 +550,11 @@ async function main() {
     data: {
       tenantId: tenant.id,
       employeeId: employee8.id,
-      jobTitle: 'Retail Manager',
-      department: 'Retail',
+      jobRoleId: jobRole8.id,
+      payType: 'salary',
+      salaryAmount: 58000.0,
       startDate: new Date('2024-02-01'),
+      isPrimary: true,
       isActive: true,
     },
   });
@@ -464,9 +564,11 @@ async function main() {
     data: {
       tenantId: tenant.id,
       employeeId: employee9.id,
-      jobTitle: 'Sales Associate',
-      department: 'Retail',
+      jobRoleId: jobRole9.id,
+      payType: 'hourly',
+      hourlyRate: 18.0,
       startDate: new Date('2023-07-10'),
+      isPrimary: true,
       isActive: true,
     },
   });
@@ -476,9 +578,11 @@ async function main() {
     data: {
       tenantId: tenant.id,
       employeeId: employee10.id,
-      jobTitle: 'Senior Developer',
-      department: dept1.name,
+      jobRoleId: jobRole10.id,
+      payType: 'salary',
+      salaryAmount: 95000.0,
       startDate: new Date('2023-04-12'),
+      isPrimary: true,
       isActive: true,
     },
   });
@@ -729,34 +833,6 @@ async function main() {
     },
   });
   console.log('✓ Created sample exception for Bob');
-
-  // Create audit log entries
-  console.log('Creating audit log entries...');
-  await prisma.auditLog.create({
-    data: {
-      tenantId: tenant.id,
-      userId: adminUser.id,
-      action: 'created',
-      entity: 'Tenant',
-      changes: JSON.stringify({ name: 'Demo Tenant', slug: 'demo-tenant' }),
-    },
-  });
-
-  await prisma.auditLog.create({
-    data: {
-      tenantId: tenant.id,
-      userId: adminUser.id,
-      action: 'created',
-      entity: 'Employee',
-      employeeId: employee1.id,
-      changes: JSON.stringify({
-        firstName: 'Alice',
-        lastName: 'Johnson',
-        email: 'alice.johnson@demo.unifocus.com',
-      }),
-    },
-  });
-  console.log('✓ Created audit log entries');
 
   console.log('✅ Database seed completed successfully!');
 }
