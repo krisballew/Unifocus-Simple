@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { z } from '@unifocus/contracts';
+import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
 
 const prisma = new PrismaClient();

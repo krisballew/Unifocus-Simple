@@ -9,8 +9,25 @@ import type { FastifyInstance } from 'fastify';
 import type { AppConfig } from '../config.js';
 
 export async function registerCors(server: FastifyInstance, config: AppConfig) {
+  // Parse configured origins
+  const configuredOrigins = config.corsOrigin.split(',').map((o) => o.trim());
+
+  // In development, also allow GitHub Codespaces URLs
+  const isDevelopment = config.nodeEnv === 'development';
+  const origins = isDevelopment
+    ? [
+        ...configuredOrigins,
+        // Allow GitHub Codespaces domain patterns
+        /^https:\/\/[a-z0-9-]+\.github\.dev$/i,
+        // Allow localhost on any port
+        /^https?:\/\/localhost(:\d+)?$/i,
+        /^https?:\/\/127\.0\.0\.1(:\d+)?$/i,
+      ]
+    : configuredOrigins;
+
+  server.log.info({ corsOrigins: origins }, 'CORS configured with origins');
   await server.register(fastifyCors, {
-    origin: config.corsOrigin.split(',').map((o) => o.trim()),
+    origin: origins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });

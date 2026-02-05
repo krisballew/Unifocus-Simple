@@ -5,6 +5,7 @@ export const queryKeys = {
   properties: (tenantId: string | undefined) => ['properties', tenantId ?? 'unknown'] as const,
   property: (tenantId: string | undefined, propertyId: string | undefined) =>
     ['property', tenantId ?? 'unknown', propertyId ?? 'unknown'] as const,
+  employees: (propertyId?: string) => ['employees', propertyId ?? 'all'] as const,
   schedules: () => ['schedules'] as const,
   punches: (employeeId: string | undefined, startDate?: string, endDate?: string) =>
     ['punches', employeeId ?? 'all', startDate, endDate] as const,

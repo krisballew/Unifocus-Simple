@@ -194,8 +194,9 @@ const webEnvVars: EnvVar[] = [
   {
     name: 'VITE_COGNITO_DOMAIN',
     required: true,
-    validator: (v) => v.includes('.auth.') && v.includes('.amazoncognito.com'),
-    description: 'Format: subdomain.auth.region.amazoncognito.com (no https://)',
+    validator: (v) =>
+      v === 'localhost' || (v.includes('.auth.') && v.includes('.amazoncognito.com')),
+    description: 'Format: subdomain.auth.region.amazoncognito.com (or localhost for dev)',
   },
   {
     name: 'VITE_API_BASE_URL',

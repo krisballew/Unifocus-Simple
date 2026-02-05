@@ -41,6 +41,11 @@ export const messageCatalogs = {
     'timecard.regularHours': 'Regular: {hours, number, #.##}h',
     'timecard.overtimeHours': 'Overtime: {hours, number, #.##}h',
 
+    // Organization Structure
+    'orgStructure.title': 'Organizational Reporting Structure',
+    'orgStructure.description':
+      'Defines how team members report to managers, powering notifications, approvals, and access to employee timecards and schedules.',
+
     // Exceptions
     'exceptions.queue': 'Exceptions Queue',
     'exceptions.pending':
@@ -132,6 +137,11 @@ export const messageCatalogs = {
     'timecard.totalHours': 'Horas Totales: {hours, number, #.##}',
     'timecard.regularHours': 'Regulares: {hours, number, #.##}h',
     'timecard.overtimeHours': 'Horas Extra: {hours, number, #.##}h',
+
+    // Organization Structure
+    'orgStructure.title': 'Estructura de Reporte Organizacional',
+    'orgStructure.description':
+      'Define cómo los miembros del equipo reportan a los gerentes, habilitando notificaciones, aprobaciones y acceso a tarjetas de tiempo y horarios.',
 
     // Exceptions
     'exceptions.queue': 'Cola de Excepciones',

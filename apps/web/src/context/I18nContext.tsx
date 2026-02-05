@@ -70,7 +70,7 @@ export function I18nProvider({ children, initialConfig }: I18nProviderProps) {
         try {
           setLoading(true);
           const apiClient = getApiClient();
-          const response = (await apiClient.get('/users/me/locale')) as LocaleResponse;
+          const response = (await apiClient.get('/api/me/locale')) as LocaleResponse;
 
           if (response && response.locale) {
             const locale = response.locale as 'en-US' | 'es-ES';

@@ -37,10 +37,14 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): React.ReactElemen
   };
 
   const handleLoginClick = () => {
+    console.log('[LoginPage] ========== LOGIN BUTTON CLICKED ==========');
+    console.log('[LoginPage] Login button clicked');
     try {
       const authService = getAuthService();
+      console.log('[LoginPage] Auth service obtained, calling redirectToLogin()');
       authService.redirectToLogin();
     } catch (err) {
+      console.error('[LoginPage] Login error:', err);
       setError(err instanceof Error ? err.message : 'Failed to initiate login');
     }
   };

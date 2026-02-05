@@ -40,9 +40,25 @@ class CognitoAuthService {
   }
 
   /**
-   * Redirect to Cognito Hosted UI for login
+   * Redirect to Cognito Hosted UI for login (or use mock login in dev mode)
    */
   redirectToLogin(): void {
+    // Development mode: use mock login instead of actual Cognito
+    if (this.config.domain === 'localhost') {
+      // In dev mode with auth skip verification, we can just redirect to home
+      // The API will accept requests without real tokens
+      this.storeTokens({
+        accessToken: 'dev-mock-token',
+        idToken: 'dev-mock-id-token',
+        refreshToken: 'dev-mock-refresh-token',
+      });
+
+      // Redirect to home page
+      window.location.href = '/';
+      return;
+    }
+
+    // Production: redirect to actual Cognito
     const params = new URLSearchParams({
       client_id: this.config.clientId,
       response_type: 'code',
@@ -55,9 +71,21 @@ class CognitoAuthService {
   }
 
   /**
-   * Handle Cognito callback after login
+   * Handle Cognito callback after login (or use mock callback in dev mode)
    */
   async handleCallback(code: string): Promise<AuthTokens> {
+    // Development mode: use mock tokens
+    if (this.config.domain === 'localhost') {
+      const mockTokens: AuthTokens = {
+        accessToken: 'dev-mock-token',
+        idToken: 'dev-mock-id-token',
+        refreshToken: 'dev-mock-refresh-token',
+      };
+      this.storeTokens(mockTokens);
+      return mockTokens;
+    }
+
+    // Production: exchange code with Cognito
     const params = new URLSearchParams({
       grant_type: 'authorization_code',
       code,
@@ -180,6 +208,11 @@ class CognitoAuthService {
     const tokens = this.getStoredTokens();
     if (!tokens) {
       return false;
+    }
+
+    // In dev mode with mock tokens, always return true
+    if (tokens.accessToken === 'dev-mock-token') {
+      return true;
     }
 
     // Check if token is expired

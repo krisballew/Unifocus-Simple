@@ -6,5 +6,31 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
+    // Proxy API requests to the backend in development
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:3001',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '/api'),
+      },
+    },
+  },
+  define: {
+    // Fix for amazon-cognito-identity-js and other Node.js packages
+    global: 'globalThis',
+  },
+  resolve: {
+    alias: {
+      // Polyfill Node.js built-ins for browser
+      buffer: 'buffer',
+      process: 'process/browser',
+    },
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      define: {
+        global: 'globalThis',
+      },
+    },
   },
 });

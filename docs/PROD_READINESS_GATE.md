@@ -117,7 +117,7 @@ All database queries on protected endpoints must include:
 - [x] Every protected endpoint validated with multi-tenant test suite _(Test coverage complete)_
 - [ ] Staging environment has ≥2 test tenants with data _(Pending deployment)_
 - [ ] Monitoring alert: Query returns unexpected tenant data _(Pending deployment)_
-- [ ] Database constraints prevent direct tenant_id field modification _(Pending deployment)_
+- [ ] Database constraints prevent direct tenant*id field modification *(Pending deployment)\_
 
 ### Code Review Requirement
 

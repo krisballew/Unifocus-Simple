@@ -20,11 +20,11 @@ async function main() {
   const property1 = await prisma.property.create({
     data: {
       tenantId: tenant.id,
-      name: 'Downtown Office',
-      address: '123 Main St',
+      name: 'Hyatt Regency Times Square',
+      address: '1633 Broadway',
       city: 'New York',
       state: 'NY',
-      zipCode: '10001',
+      zipCode: '10019',
     },
   });
   console.log(`✓ Created property: ${property1.name}`);
@@ -32,14 +32,50 @@ async function main() {
   const property2 = await prisma.property.create({
     data: {
       tenantId: tenant.id,
-      name: 'Uptown Office',
-      address: '456 Park Ave',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10022',
+      name: 'Beverly Hills Hotel',
+      address: '9641 Sunset Boulevard',
+      city: 'Beverly Hills',
+      state: 'CA',
+      zipCode: '90210',
     },
   });
   console.log(`✓ Created property: ${property2.name}`);
+
+  const property3 = await prisma.property.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'The Fairmont Chicago',
+      address: '200 North Columbus Drive',
+      city: 'Chicago',
+      state: 'IL',
+      zipCode: '60601',
+    },
+  });
+  console.log(`✓ Created property: ${property3.name}`);
+
+  const property4 = await prisma.property.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'The Plaza Hotel Miami',
+      address: '168 East Flagler Street',
+      city: 'Miami',
+      state: 'FL',
+      zipCode: '33131',
+    },
+  });
+  console.log(`✓ Created property: ${property4.name}`);
+
+  const property5 = await prisma.property.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Brown Palace Hotel',
+      address: '321 17th Street',
+      city: 'Denver',
+      state: 'CO',
+      zipCode: '80202',
+    },
+  });
+  console.log(`✓ Created property: ${property5.name}`);
 
   // Create departments
   console.log('Creating departments...');
@@ -65,36 +101,73 @@ async function main() {
 
   // Create roles
   console.log('Creating roles...');
-  const adminRole = await prisma.role.create({
+  const platformAdminRole = await prisma.role.create({
     data: {
-      name: 'Admin',
-      description: 'Full system access',
-      permissions: ['read:*', 'write:*', 'delete:*'],
+      name: 'Platform Administrator',
+      description: 'Full system access across all tenants',
+      permissions: ['*'],
     },
   });
-  console.log(`✓ Created role: ${adminRole.name}`);
+  console.log(`✓ Created role: ${platformAdminRole.name}`);
 
-  const managerRole = await prisma.role.create({
+  const propertyAdminRole = await prisma.role.create({
     data: {
-      name: 'Manager',
-      description: 'Manager access to assigned property/department',
+      name: 'Property Administrator',
+      description: 'Full property-level configuration and operations',
+      permissions: [
+        'read:*',
+        'write:*',
+        'delete:*',
+        'manage:property',
+        'manage:departments',
+        'manage:schedules',
+        'approve:timecards',
+      ],
+    },
+  });
+  console.log(`✓ Created role: ${propertyAdminRole.name}`);
+
+  const hrManagerRole = await prisma.role.create({
+    data: {
+      name: 'HR Manager',
+      description: 'Manage employee lifecycle and compliance',
+      permissions: [
+        'read:employees',
+        'write:employees',
+        'delete:employees',
+        'manage:onboarding',
+        'manage:certifications',
+        'manage:documents',
+        'read:compliance',
+        'write:compliance',
+      ],
+    },
+  });
+  console.log(`✓ Created role: ${hrManagerRole.name}`);
+
+  const departmentManagerRole = await prisma.role.create({
+    data: {
+      name: 'Department Manager',
+      description: 'Manage department schedules and timecards',
       permissions: [
         'read:employees',
         'read:schedules',
         'write:schedules',
         'read:punches',
+        'approve:timecards',
         'read:exceptions',
         'write:exceptions',
+        'approve:pto',
       ],
     },
   });
-  console.log(`✓ Created role: ${managerRole.name}`);
+  console.log(`✓ Created role: ${departmentManagerRole.name}`);
 
   const employeeRole = await prisma.role.create({
     data: {
       name: 'Employee',
-      description: 'Basic employee access',
-      permissions: ['read:own_punches', 'write:own_punches', 'read:own_schedule'],
+      description: 'Basic employee self-service access',
+      permissions: ['read:own_punches', 'write:own_punches', 'read:own_schedule', 'request:pto'],
     },
   });
   console.log(`✓ Created role: ${employeeRole.name}`);
@@ -105,7 +178,7 @@ async function main() {
     data: {
       tenantId: tenant.id,
       email: 'admin@demo.unifocus.com',
-      name: 'Admin User',
+      name: 'Ava Developer',
       isActive: true,
     },
   });
@@ -129,23 +202,23 @@ async function main() {
     data: {
       tenantId: tenant.id,
       userId: adminUser.id,
-      roleId: adminRole.id,
+      roleId: platformAdminRole.id,
       isActive: true,
     },
   });
-  console.log('✓ Assigned Admin role to admin user');
+  console.log('✓ Assigned Platform Administrator role to admin user');
 
   await prisma.userRoleAssignment.create({
     data: {
       tenantId: tenant.id,
       userId: managerUser.id,
-      roleId: managerRole.id,
+      roleId: departmentManagerRole.id,
       propertyId: property1.id,
       departmentId: dept1.id,
       isActive: true,
     },
   });
-  console.log('✓ Assigned Manager role to manager user');
+  console.log('✓ Assigned Department Manager role to manager user');
 
   // Create employees
   console.log('Creating employees...');
@@ -191,6 +264,104 @@ async function main() {
   });
   console.log(`✓ Created employee: ${employee3.firstName} ${employee3.lastName}`);
 
+  const employee4 = await prisma.employee.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property3.id,
+      firstName: 'David',
+      lastName: 'Martinez',
+      email: 'david.martinez@demo.unifocus.com',
+      phone: '555-0104',
+      hireDate: new Date('2022-11-10'),
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created employee: ${employee4.firstName} ${employee4.lastName}`);
+
+  const employee5 = await prisma.employee.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property3.id,
+      firstName: 'Emma',
+      lastName: 'Davis',
+      email: 'emma.davis@demo.unifocus.com',
+      phone: '555-0105',
+      hireDate: new Date('2024-01-05'),
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created employee: ${employee5.firstName} ${employee5.lastName}`);
+
+  const employee6 = await prisma.employee.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property4.id,
+      firstName: 'Frank',
+      lastName: 'Wilson',
+      email: 'frank.wilson@demo.unifocus.com',
+      phone: '555-0106',
+      hireDate: new Date('2023-08-15'),
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created employee: ${employee6.firstName} ${employee6.lastName}`);
+
+  const employee7 = await prisma.employee.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property4.id,
+      firstName: 'Grace',
+      lastName: 'Taylor',
+      email: 'grace.taylor@demo.unifocus.com',
+      phone: '555-0107',
+      hireDate: new Date('2023-09-20'),
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created employee: ${employee7.firstName} ${employee7.lastName}`);
+
+  const employee8 = await prisma.employee.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property5.id,
+      firstName: 'Henry',
+      lastName: 'Anderson',
+      email: 'henry.anderson@demo.unifocus.com',
+      phone: '555-0108',
+      hireDate: new Date('2024-02-01'),
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created employee: ${employee8.firstName} ${employee8.lastName}`);
+
+  const employee9 = await prisma.employee.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property5.id,
+      firstName: 'Isabel',
+      lastName: 'Thomas',
+      email: 'isabel.thomas@demo.unifocus.com',
+      phone: '555-0109',
+      hireDate: new Date('2023-07-10'),
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created employee: ${employee9.firstName} ${employee9.lastName}`);
+
+  const employee10 = await prisma.employee.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property1.id,
+      firstName: 'Jack',
+      lastName: 'Moore',
+      email: 'jack.moore@demo.unifocus.com',
+      phone: '555-0110',
+      hireDate: new Date('2023-04-12'),
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created employee: ${employee10.firstName} ${employee10.lastName}`);
+
   // Create employee job assignments
   console.log('Creating employee job assignments...');
   await prisma.employeeJobAssignment.create({
@@ -228,6 +399,90 @@ async function main() {
     },
   });
   console.log('✓ Assigned job to Carol White');
+
+  await prisma.employeeJobAssignment.create({
+    data: {
+      tenantId: tenant.id,
+      employeeId: employee4.id,
+      jobTitle: 'Warehouse Supervisor',
+      department: 'Logistics',
+      startDate: new Date('2022-11-10'),
+      isActive: true,
+    },
+  });
+  console.log('✓ Assigned job to David Martinez');
+
+  await prisma.employeeJobAssignment.create({
+    data: {
+      tenantId: tenant.id,
+      employeeId: employee5.id,
+      jobTitle: 'Inventory Specialist',
+      department: 'Logistics',
+      startDate: new Date('2024-01-05'),
+      isActive: true,
+    },
+  });
+  console.log('✓ Assigned job to Emma Davis');
+
+  await prisma.employeeJobAssignment.create({
+    data: {
+      tenantId: tenant.id,
+      employeeId: employee6.id,
+      jobTitle: 'Distribution Manager',
+      department: 'Distribution',
+      startDate: new Date('2023-08-15'),
+      isActive: true,
+    },
+  });
+  console.log('✓ Assigned job to Frank Wilson');
+
+  await prisma.employeeJobAssignment.create({
+    data: {
+      tenantId: tenant.id,
+      employeeId: employee7.id,
+      jobTitle: 'Logistics Coordinator',
+      department: 'Distribution',
+      startDate: new Date('2023-09-20'),
+      isActive: true,
+    },
+  });
+  console.log('✓ Assigned job to Grace Taylor');
+
+  await prisma.employeeJobAssignment.create({
+    data: {
+      tenantId: tenant.id,
+      employeeId: employee8.id,
+      jobTitle: 'Retail Manager',
+      department: 'Retail',
+      startDate: new Date('2024-02-01'),
+      isActive: true,
+    },
+  });
+  console.log('✓ Assigned job to Henry Anderson');
+
+  await prisma.employeeJobAssignment.create({
+    data: {
+      tenantId: tenant.id,
+      employeeId: employee9.id,
+      jobTitle: 'Sales Associate',
+      department: 'Retail',
+      startDate: new Date('2023-07-10'),
+      isActive: true,
+    },
+  });
+  console.log('✓ Assigned job to Isabel Thomas');
+
+  await prisma.employeeJobAssignment.create({
+    data: {
+      tenantId: tenant.id,
+      employeeId: employee10.id,
+      jobTitle: 'Senior Developer',
+      department: dept1.name,
+      startDate: new Date('2023-04-12'),
+      isActive: true,
+    },
+  });
+  console.log('✓ Assigned job to Jack Moore');
 
   // Create schedules
   console.log('Creating schedules...');
@@ -294,21 +549,148 @@ async function main() {
 
   // Create some sample punches
   console.log('Creating sample punches...');
-  const punchTime1 = new Date(today);
-  punchTime1.setHours(9, 0, 0);
 
-  const punchTime2 = new Date(today);
-  punchTime2.setHours(12, 30, 0);
+  // Create punches for the past 7 days for multiple employees
+  const daysAgo7 = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  const punchTime3 = new Date(today);
-  punchTime3.setHours(17, 0, 0);
+  // Alice - Full week with breaks
+  for (let d = 0; d < 5; d++) {
+    const punchDate = new Date(daysAgo7.getTime() + d * 24 * 60 * 60 * 1000);
+
+    const clockIn = new Date(punchDate);
+    clockIn.setHours(9, 0, 0);
+
+    const breakStart = new Date(punchDate);
+    breakStart.setHours(12, 30, 0);
+
+    const breakEnd = new Date(punchDate);
+    breakEnd.setHours(13, 0, 0);
+
+    const clockOut = new Date(punchDate);
+    clockOut.setHours(17, 0, 0);
+
+    await prisma.punch.create({
+      data: {
+        tenantId: tenant.id,
+        employeeId: employee1.id,
+        type: 'in',
+        timestamp: clockIn,
+        deviceId: 'device-001',
+      },
+    });
+
+    await prisma.punch.create({
+      data: {
+        tenantId: tenant.id,
+        employeeId: employee1.id,
+        type: 'break_start',
+        timestamp: breakStart,
+        deviceId: 'device-001',
+      },
+    });
+
+    await prisma.punch.create({
+      data: {
+        tenantId: tenant.id,
+        employeeId: employee1.id,
+        type: 'break_end',
+        timestamp: breakEnd,
+        deviceId: 'device-001',
+      },
+    });
+
+    await prisma.punch.create({
+      data: {
+        tenantId: tenant.id,
+        employeeId: employee1.id,
+        type: 'out',
+        timestamp: clockOut,
+        deviceId: 'device-001',
+      },
+    });
+  }
+  console.log('✓ Created 5 days of punches for Alice');
+
+  // Bob - Regular schedule
+  for (let d = 0; d < 5; d++) {
+    const punchDate = new Date(daysAgo7.getTime() + d * 24 * 60 * 60 * 1000);
+
+    const clockIn = new Date(punchDate);
+    clockIn.setHours(8, 0, 0);
+
+    const clockOut = new Date(punchDate);
+    clockOut.setHours(16, 0, 0);
+
+    await prisma.punch.create({
+      data: {
+        tenantId: tenant.id,
+        employeeId: employee2.id,
+        type: 'in',
+        timestamp: clockIn,
+        deviceId: 'device-002',
+      },
+    });
+
+    await prisma.punch.create({
+      data: {
+        tenantId: tenant.id,
+        employeeId: employee2.id,
+        type: 'out',
+        timestamp: clockOut,
+        deviceId: 'device-002',
+      },
+    });
+  }
+  console.log('✓ Created 5 days of punches for Bob');
+
+  // David - Warehouse shifts (earlier start)
+  for (let d = 0; d < 5; d++) {
+    const punchDate = new Date(daysAgo7.getTime() + d * 24 * 60 * 60 * 1000);
+
+    const clockIn = new Date(punchDate);
+    clockIn.setHours(6, 0, 0);
+
+    const clockOut = new Date(punchDate);
+    clockOut.setHours(14, 30, 0);
+
+    await prisma.punch.create({
+      data: {
+        tenantId: tenant.id,
+        employeeId: employee4.id,
+        type: 'in',
+        timestamp: clockIn,
+        deviceId: 'device-003',
+      },
+    });
+
+    await prisma.punch.create({
+      data: {
+        tenantId: tenant.id,
+        employeeId: employee4.id,
+        type: 'out',
+        timestamp: clockOut,
+        deviceId: 'device-003',
+      },
+    });
+  }
+  console.log('✓ Created 5 days of punches for David');
+
+  // Today's punches for multiple employees
+  const todayClockIn1 = new Date(today);
+  todayClockIn1.setHours(9, 5, 0); // Alice slightly late
+
+  const todayClockIn2 = new Date(today);
+  todayClockIn2.setHours(7, 55, 0); // Bob early
+
+  const todayClockIn3 = new Date(today);
+  todayClockIn3.setHours(10, 0, 0); // Henry on time
 
   await prisma.punch.create({
     data: {
       tenantId: tenant.id,
       employeeId: employee1.id,
       type: 'in',
-      timestamp: punchTime1,
+      timestamp: todayClockIn1,
       deviceId: 'device-001',
     },
   });
@@ -316,23 +698,23 @@ async function main() {
   await prisma.punch.create({
     data: {
       tenantId: tenant.id,
-      employeeId: employee1.id,
-      type: 'break_start',
-      timestamp: punchTime2,
-      deviceId: 'device-001',
+      employeeId: employee2.id,
+      type: 'in',
+      timestamp: todayClockIn2,
+      deviceId: 'device-002',
     },
   });
 
   await prisma.punch.create({
     data: {
       tenantId: tenant.id,
-      employeeId: employee1.id,
-      type: 'out',
-      timestamp: punchTime3,
-      deviceId: 'device-001',
+      employeeId: employee8.id,
+      type: 'in',
+      timestamp: todayClockIn3,
+      deviceId: 'device-005',
     },
   });
-  console.log('✓ Created sample punches for Alice');
+  console.log("✓ Created today's punches");
 
   // Create a sample exception
   console.log('Creating sample exceptions...');

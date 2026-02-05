@@ -1,27 +1,340 @@
 TAP version 14
 # Subtest: Health Routes
-    not ok 1 - Cannot read properties of undefined (reading 'issuer')
+    # Subtest: Liveness Probe: GET /health
+        not ok 1 - fastify-plugin: @fastify/rate-limit - expected '4.x' fastify version, '5.7.4' is installed
+          ---
+          stack: |
+            Object.checkVersion (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js:127:11)
+            Object.registerPlugin (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js:150:16)
+            Boot.override (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-override.js:29:57)
+            Boot._loadPlugin (../../node_modules/.pnpm/avvio@9.1.0/node_modules/avvio/boot.js:425:25)
+          at:
+            fileName: ../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js
+            lineNumber: 127
+            columnNumber: 11
+            typeName: Object
+            methodName: checkVersion
+            functionName: Object.checkVersion
+          type: FastifyError
+          code: FST_ERR_PLUGIN_VERSION_MISMATCH
+          statusCode: 500
+          tapCaught: returnedPromiseRejection
+          source: >2
+                // expects an older version of Fastify than the _current_ version, we will
+                // throw an error.
+                throw new FST_ERR_PLUGIN_VERSION_MISMATCH(meta.name, requiredVersion, this.version)
+            ----------^
+              }
+            }
+          ...
+        
+        1..1
+    not ok 1 - Liveness Probe: GET /health # time=216.598ms
       ---
-      stack: |
-        registerAuthPlugin (src/plugins/auth.ts:1:419)
-        registerPlugins (src/plugins/index.ts:1:413)
-        async buildServer (src/server.ts:1:848)
-        async Test.<anonymous> (tests/health.test.ts:1:302)
       at:
-        fileName: src/plugins/auth.ts
-        lineNumber: 1
-        columnNumber: 419
-        functionName: registerAuthPlugin
-      type: TypeError
-      tapCaught: returnedPromiseRejection
-      source: |
-        import type { FastifyInstance, FastifyRequest } from 'fastify';
-        import { jwtVerify, importSPKI } from 'jose';
-        import NodeCache from 'node-cache';
+        fileName: tests/health.test.ts
+        lineNumber: 26
+        columnNumber: 11
+        typeName: Test
+      source: |2
+          };
+      
+          await t.test('Liveness Probe: GET /health', async (t) => {
+        ----------^
+            const server = await buildServer(baseConfig);
+            t.teardown(async () => {
       ...
     
-    1..1
-not ok 1 - Health Routes # time=154.714ms
+    # Subtest: Readiness Probe: GET /ready
+        # Subtest: returns 200 when all checks pass
+            not ok 1 - fastify-plugin: @fastify/rate-limit - expected '4.x' fastify version, '5.7.4' is installed
+              ---
+              stack: |
+                Object.checkVersion (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js:127:11)
+                Object.registerPlugin (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js:150:16)
+                Boot.override (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-override.js:29:57)
+                Boot._loadPlugin (../../node_modules/.pnpm/avvio@9.1.0/node_modules/avvio/boot.js:425:25)
+              at:
+                fileName: ../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js
+                lineNumber: 127
+                columnNumber: 11
+                typeName: Object
+                methodName: checkVersion
+                functionName: Object.checkVersion
+              type: FastifyError
+              code: FST_ERR_PLUGIN_VERSION_MISMATCH
+              statusCode: 500
+              tapCaught: returnedPromiseRejection
+              source: >2
+                    // expects an older version of Fastify than the _current_ version, we will
+                    // throw an error.
+                    throw new FST_ERR_PLUGIN_VERSION_MISMATCH(meta.name, requiredVersion, this.version)
+                ----------^
+                  }
+                }
+              ...
+            
+            1..1
+        not ok 1 - returns 200 when all checks pass # time=15.875ms
+          ---
+          at:
+            fileName: tests/health.test.ts
+            lineNumber: 48
+            columnNumber: 13
+            typeName: Test
+          source: |2
+          
+              await t.test('Readiness Probe: GET /ready', async (t) => {
+                await t.test('returns 200 when all checks pass', async (t) => {
+            ------------^
+                  const server = await buildServer(baseConfig);
+                  t.teardown(async () => {
+          ...
+        
+        # Subtest: returns 503 when database is not configured
+            not ok 1 - fastify-plugin: @fastify/rate-limit - expected '4.x' fastify version, '5.7.4' is installed
+              ---
+              stack: |
+                Object.checkVersion (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js:127:11)
+                Object.registerPlugin (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js:150:16)
+                Boot.override (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-override.js:29:57)
+                Boot._loadPlugin (../../node_modules/.pnpm/avvio@9.1.0/node_modules/avvio/boot.js:425:25)
+              at:
+                fileName: ../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js
+                lineNumber: 127
+                columnNumber: 11
+                typeName: Object
+                methodName: checkVersion
+                functionName: Object.checkVersion
+              type: FastifyError
+              code: FST_ERR_PLUGIN_VERSION_MISMATCH
+              statusCode: 500
+              tapCaught: returnedPromiseRejection
+              source: >2
+                    // expects an older version of Fastify than the _current_ version, we will
+                    // throw an error.
+                    throw new FST_ERR_PLUGIN_VERSION_MISMATCH(meta.name, requiredVersion, this.version)
+                ----------^
+                  }
+                }
+              ...
+            
+            1..1
+        not ok 2 - returns 503 when database is not configured # time=21.399ms
+          ---
+          at:
+            fileName: tests/health.test.ts
+            lineNumber: 82
+            columnNumber: 13
+            typeName: Test
+          source: |2
+                });
+          
+                await t.test('returns 503 when database is not configured', async (t) => {
+            ------------^
+                  const server = await buildServer({
+                    ...baseConfig,
+          ...
+        
+        # Subtest: returns 503 when database connection fails
+            not ok 1 - fastify-plugin: @fastify/rate-limit - expected '4.x' fastify version, '5.7.4' is installed
+              ---
+              stack: |
+                Object.checkVersion (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js:127:11)
+                Object.registerPlugin (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js:150:16)
+                Boot.override (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-override.js:29:57)
+                Boot._loadPlugin (../../node_modules/.pnpm/avvio@9.1.0/node_modules/avvio/boot.js:425:25)
+              at:
+                fileName: ../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js
+                lineNumber: 127
+                columnNumber: 11
+                typeName: Object
+                methodName: checkVersion
+                functionName: Object.checkVersion
+              type: FastifyError
+              code: FST_ERR_PLUGIN_VERSION_MISMATCH
+              statusCode: 500
+              tapCaught: returnedPromiseRejection
+              source: >2
+                    // expects an older version of Fastify than the _current_ version, we will
+                    // throw an error.
+                    throw new FST_ERR_PLUGIN_VERSION_MISMATCH(meta.name, requiredVersion, this.version)
+                ----------^
+                  }
+                }
+              ...
+            
+            1..1
+        not ok 3 - returns 503 when database connection fails # time=33.708ms
+          ---
+          at:
+            fileName: tests/health.test.ts
+            lineNumber: 102
+            columnNumber: 13
+            typeName: Test
+          source: |2
+                });
+          
+                await t.test('returns 503 when database connection fails', async (t) => {
+            ------------^
+                  // Use an invalid database URL that will cause connection to fail
+                  const server = await buildServer({
+          ...
+        
+        # Subtest: returns 503 when required environment variables are missing in production
+            not ok 1 - fastify-plugin: @fastify/rate-limit - expected '4.x' fastify version, '5.7.4' is installed
+              ---
+              stack: |
+                Object.checkVersion (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js:127:11)
+                Object.registerPlugin (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js:150:16)
+                Boot.override (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-override.js:29:57)
+                Boot._loadPlugin (../../node_modules/.pnpm/avvio@9.1.0/node_modules/avvio/boot.js:425:25)
+              at:
+                fileName: ../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js
+                lineNumber: 127
+                columnNumber: 11
+                typeName: Object
+                methodName: checkVersion
+                functionName: Object.checkVersion
+              type: FastifyError
+              code: FST_ERR_PLUGIN_VERSION_MISMATCH
+              statusCode: 500
+              tapCaught: returnedPromiseRejection
+              source: >2
+                    // expects an older version of Fastify than the _current_ version, we will
+                    // throw an error.
+                    throw new FST_ERR_PLUGIN_VERSION_MISMATCH(meta.name, requiredVersion, this.version)
+                ----------^
+                  }
+                }
+              ...
+            
+            1..1
+        not ok 4 - returns 503 when required environment variables are missing in production # time=42.957ms
+          ---
+          at:
+            fileName: tests/health.test.ts
+            lineNumber: 123
+            columnNumber: 13
+            typeName: Test
+          source: >2
+                });
+          
+                await t.test(
+            ------------^
+                  'returns 503 when required environment variables are missing in production',
+                  async (t) => {
+          ...
+        
+        # Subtest: marks Redis as optional when not configured
+            not ok 1 - fastify-plugin: @fastify/rate-limit - expected '4.x' fastify version, '5.7.4' is installed
+              ---
+              stack: |
+                Object.checkVersion (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js:127:11)
+                Object.registerPlugin (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js:150:16)
+                Boot.override (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-override.js:29:57)
+                Boot._loadPlugin (../../node_modules/.pnpm/avvio@9.1.0/node_modules/avvio/boot.js:425:25)
+              at:
+                fileName: ../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js
+                lineNumber: 127
+                columnNumber: 11
+                typeName: Object
+                methodName: checkVersion
+                functionName: Object.checkVersion
+              type: FastifyError
+              code: FST_ERR_PLUGIN_VERSION_MISMATCH
+              statusCode: 500
+              tapCaught: returnedPromiseRejection
+              source: >2
+                    // expects an older version of Fastify than the _current_ version, we will
+                    // throw an error.
+                    throw new FST_ERR_PLUGIN_VERSION_MISMATCH(meta.name, requiredVersion, this.version)
+                ----------^
+                  }
+                }
+              ...
+            
+            1..1
+        not ok 5 - marks Redis as optional when not configured # time=35.474ms
+          ---
+          at:
+            fileName: tests/health.test.ts
+            lineNumber: 158
+            columnNumber: 13
+            typeName: Test
+          source: |2
+                );
+          
+                await t.test('marks Redis as optional when not configured', async (t) => {
+            ------------^
+                  const server = await buildServer({
+                    ...baseConfig,
+          ...
+        
+        # Subtest: includes check results in response
+            not ok 1 - fastify-plugin: @fastify/rate-limit - expected '4.x' fastify version, '5.7.4' is installed
+              ---
+              stack: |
+                Object.checkVersion (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js:127:11)
+                Object.registerPlugin (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js:150:16)
+                Boot.override (../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-override.js:29:57)
+                Boot._loadPlugin (../../node_modules/.pnpm/avvio@9.1.0/node_modules/avvio/boot.js:425:25)
+              at:
+                fileName: ../../node_modules/.pnpm/fastify@5.7.4/node_modules/fastify/lib/plugin-utils.js
+                lineNumber: 127
+                columnNumber: 11
+                typeName: Object
+                methodName: checkVersion
+                functionName: Object.checkVersion
+              type: FastifyError
+              code: FST_ERR_PLUGIN_VERSION_MISMATCH
+              statusCode: 500
+              tapCaught: returnedPromiseRejection
+              source: >2
+                    // expects an older version of Fastify than the _current_ version, we will
+                    // throw an error.
+                    throw new FST_ERR_PLUGIN_VERSION_MISMATCH(meta.name, requiredVersion, this.version)
+                ----------^
+                  }
+                }
+              ...
+            
+            1..1
+        not ok 6 - includes check results in response # time=22.629ms
+          ---
+          at:
+            fileName: tests/health.test.ts
+            lineNumber: 176
+            columnNumber: 13
+            typeName: Test
+          source: |2
+                });
+          
+                await t.test('includes check results in response', async (t) => {
+            ------------^
+                  const server = await buildServer(baseConfig);
+                  t.teardown(async () => {
+          ...
+        
+        1..6
+    not ok 2 - Readiness Probe: GET /ready # time=298.845ms
+      ---
+      at:
+        fileName: tests/health.test.ts
+        lineNumber: 47
+        columnNumber: 11
+        typeName: Test
+      source: |2
+          });
+      
+          await t.test('Readiness Probe: GET /ready', async (t) => {
+        ----------^
+            await t.test('returns 200 when all checks pass', async (t) => {
+              const server = await buildServer(baseConfig);
+      ...
+    
+    1..2
+not ok 1 - Health Routes # time=585.9ms
   ---
   at:
     fileName: tests/health.test.ts
@@ -33,7 +346,7 @@ not ok 1 - Health Routes # time=154.714ms
   
     test('Health Routes', async (t) => {
     ^
-      const config = {
+      const baseConfig = {
         port: 3001,
   ...
 

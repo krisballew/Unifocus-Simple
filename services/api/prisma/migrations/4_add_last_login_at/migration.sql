@@ -1,0 +1,2 @@
+-- Add last login timestamp to User
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "lastLoginAt" TIMESTAMP(3);

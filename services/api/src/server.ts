@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import type { FastifyInstance } from 'fastify';
 import Fastify from 'fastify';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
@@ -26,7 +28,7 @@ export async function buildServer(config: AppConfig): Promise<FastifyInstance> {
     requestIdHeader: 'x-correlation-id',
     requestIdLogLabel: 'correlationId',
     genReqId: (req) => {
-      return req.headers['x-correlation-id']?.toString() ?? crypto.randomUUID();
+      return req.headers['x-correlation-id']?.toString() ?? randomUUID();
     },
     // Security: Set body size limits
     bodyLimit: 1048576, // 1 MB for JSON bodies
@@ -40,7 +42,7 @@ export async function buildServer(config: AppConfig): Promise<FastifyInstance> {
   await registerPlugins(server, config);
 
   // Register routes
-  await registerRoutes(server);
+  await registerRoutes(server, config);
 
   return server;
 }

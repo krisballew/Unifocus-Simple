@@ -6,8 +6,11 @@ import { getAuthContext, hasRole } from '../auth/rbac';
 const prisma = new PrismaClient();
 
 interface UpdateUserPreferencesBody {
-  locale?: 'en-US' | 'es-ES';
+  locale?: string; // ISO 639-1 language code with region (e.g., 'en-US', 'es-ES', 'fr-FR')
   timezone?: string;
+  currency?: string; // ISO 4217 currency code (e.g., 'USD', 'EUR', 'GBP')
+  avatarUrl?: string;
+  defaultPropertyId?: string;
 }
 
 interface TenantSettingsBody {
@@ -25,21 +28,12 @@ export async function settingsRoutes(server: FastifyInstance) {
       schema: {
         description: 'Get current user preferences',
         tags: ['Settings'],
-        response: {
-          200: {
-            type: 'object',
-            properties: {
-              locale: { type: 'string' },
-              timezone: { type: 'string' },
-              weekStartDay: { type: 'number' },
-            },
-          },
-        },
       },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const userId = request.headers['x-user-id'] as string;
+        const authContext = getAuthContext(request);
+        const userId = authContext.userId || (request.headers['x-user-id'] as string | undefined);
         if (!userId) {
           return reply.status(401).send({
             code: 'UNAUTHORIZED',
@@ -53,9 +47,13 @@ export async function settingsRoutes(server: FastifyInstance) {
             id: true,
             locale: true,
             timezone: true,
+            currency: true,
+            avatarUrl: true,
+            defaultPropertyId: true,
             tenant: {
               select: {
                 weekStartDay: true,
+                defaultCurrency: true,
               },
             },
           },
@@ -71,6 +69,9 @@ export async function settingsRoutes(server: FastifyInstance) {
         return reply.send({
           locale: user.locale || 'en-US',
           timezone: user.timezone || 'UTC',
+          currency: user.currency || user.tenant?.defaultCurrency || 'USD',
+          avatarUrl: user.avatarUrl || null,
+          defaultPropertyId: user.defaultPropertyId || null,
           weekStartDay: user.tenant?.weekStartDay || 0,
         });
       } catch (error) {
@@ -86,31 +87,10 @@ export async function settingsRoutes(server: FastifyInstance) {
   // PUT /api/users/me/preferences - Update user preferences
   server.put(
     '/users/me/preferences',
-    {
-      schema: {
-        description: 'Update current user preferences',
-        tags: ['Settings'],
-        body: {
-          type: 'object',
-          properties: {
-            locale: { type: 'string', enum: ['en-US', 'es-ES'] },
-            timezone: { type: 'string' },
-          },
-        },
-        response: {
-          200: {
-            type: 'object',
-            properties: {
-              locale: { type: 'string' },
-              timezone: { type: 'string' },
-            },
-          },
-        },
-      },
-    },
     async (request: FastifyRequest<{ Body: UpdateUserPreferencesBody }>, reply: FastifyReply) => {
       try {
-        const userId = request.headers['x-user-id'] as string;
+        const authContext = getAuthContext(request);
+        const userId = authContext.userId || (request.headers['x-user-id'] as string | undefined);
         if (!userId) {
           return reply.status(401).send({
             code: 'UNAUTHORIZED',
@@ -118,23 +98,37 @@ export async function settingsRoutes(server: FastifyInstance) {
           });
         }
 
-        const { locale, timezone } = request.body;
+        const { locale, timezone, currency, avatarUrl, defaultPropertyId } = request.body;
 
         const updated = await prisma.user.update({
           where: { id: userId },
           data: {
             ...(locale && { locale }),
             ...(timezone && { timezone }),
+            ...(currency && { currency }),
+            ...(avatarUrl !== undefined && { avatarUrl }),
+            ...(defaultPropertyId !== undefined && { defaultPropertyId }),
           },
           select: {
             locale: true,
             timezone: true,
+            currency: true,
+            avatarUrl: true,
+            defaultPropertyId: true,
+            tenant: {
+              select: {
+                defaultCurrency: true,
+              },
+            },
           },
         });
 
         return reply.send({
           locale: updated.locale || 'en-US',
           timezone: updated.timezone || 'UTC',
+          currency: updated.currency || updated.tenant?.defaultCurrency || 'USD',
+          avatarUrl: updated.avatarUrl || null,
+          defaultPropertyId: updated.defaultPropertyId || null,
         });
       } catch (error) {
         server.log.error(error);

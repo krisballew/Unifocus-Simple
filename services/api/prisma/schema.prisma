@@ -29,6 +29,7 @@ model Tenant {
 
   properties  Property[]
   departments Department[]
+  jobRoles    JobRole[]
   users       User[]
   employees   Employee[]
   schedules   Schedule[]
@@ -77,11 +78,40 @@ model Department {
 
   users               User[]
   userRoleAssignments UserRoleAssignment[]
+  jobRoles            JobRole[]
   auditLogs           AuditLog[]
 
   @@unique([tenantId, propertyId, id])
   @@index([tenantId])
   @@index([propertyId])
+  @@index([createdAt])
+}
+
+model JobRole {
+  id              String   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId      String
+  property        Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  departmentId    String
+  department      Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  name            String   // Job title (e.g., "Front Desk Associate", "Housekeeper")
+  code            String?  // Code for the job role
+  masterCategory  String   // Master category for benchmarking/rollup (e.g., "Front Office", "Housekeeping")
+  
+  description     String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  employeeJobAssignments EmployeeJobAssignment[]
+
+  @@unique([tenantId, propertyId, departmentId, id])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([departmentId])
+  @@index([masterCategory])
   @@index([createdAt])
 }
 
@@ -103,9 +133,19 @@ model User {
   password  String?
   isActive  Boolean  @default(true)
 
+  // Password reset tokens
+  resetToken String?  @unique
+  resetTokenExpiry DateTime?
+  inviteToken String?  @unique // Token for completing registration via email invite
+  inviteTokenExpiry DateTime?
+
   // User locale preferences
   locale    String?  // e.g., "en-US", "es-ES" - null means use tenant default
   timezone  String?  // e.g., "America/New_York" - null means use tenant default
+  currency  String?  // e.g., "USD", "EUR" - null means use tenant default
+  avatarUrl String?  // URL to user avatar image
+  defaultPropertyId String?  // Default property for multi-property users
+  lastLoginAt DateTime? // Last login timestamp
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -174,14 +214,24 @@ model Employee {
   propertyId String
   property  Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
+  employeeId String?  // Alpha-numeric employee ID (e.g., "EMP001", "E-0042")
   firstName String
   lastName  String
   email     String?
   phone     String?
   externalId String? // For integration with other systems
 
+  // Organizational Structure - Reporting Hierarchy (multiple managers supported)
+  managerLinks EmployeeReport[] @relation("EmployeeManagers")
+  directReportLinks EmployeeReport[] @relation("ManagerReports")
+
   isActive  Boolean  @default(true)
   hireDate  DateTime?
+  
+  // Employment Details - Comprehensive record covering 6 domains
+  // Stored as JSON: Core Record, Pay & Labor, Scheduling, Compliance, Time & Attendance, Operations
+  employmentDetails Json?
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -192,33 +242,63 @@ model Employee {
   auditLogs      AuditLog[]
 
   @@unique([tenantId, propertyId, id])
+  @@unique([tenantId, employeeId])
   @@index([tenantId])
   @@index([propertyId])
+  @@index([employeeId])
   @@index([email])
   @@index([createdAt])
 }
 
-model EmployeeJobAssignment {
-  id        String   @id @default(cuid())
-  tenantId  String
+model EmployeeReport {
+  id         String   @id @default(cuid())
+  tenantId   String
   employeeId String
-  employee  Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  managerId  String
 
-  jobTitle  String
-  department String?
+  employee Employee @relation("EmployeeManagers", fields: [employeeId], references: [id], onDelete: Cascade)
+  manager  Employee @relation("ManagerReports", fields: [managerId], references: [id], onDelete: Cascade)
 
-  startDate DateTime
-  endDate   DateTime?
-
-  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  auditLogs AuditLog[]
-
-  @@unique([tenantId, employeeId, id])
+  @@unique([employeeId, managerId])
   @@index([tenantId])
   @@index([employeeId])
+  @@index([managerId])
+  @@index([createdAt])
+}
+
+model EmployeeJobAssignment {
+  id              String   @id @default(cuid())
+  tenantId        String
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  jobRoleId       String
+  jobRole         JobRole  @relation(fields: [jobRoleId], references: [id], onDelete: Cascade)
+
+  // Pay & Labor configuration for this specific job
+  payType         String   @default("hourly")  // "hourly", "salary", "tipped"
+  hourlyRate      Float?   // Hourly rate for this job
+  salaryAmount    Float?   // Annual salary if salaried
+  payrollGroup    String?  // Payroll group assignment
+  overtimeEligible Boolean @default(true)
+  tipPoolEligible Boolean @default(false)
+
+  startDate       DateTime
+  endDate         DateTime?
+  isPrimary       Boolean  @default(false)     // Primary job role for employee
+
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  auditLogs       AuditLog[]
+
+  @@unique([tenantId, employeeId, jobRoleId])
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([jobRoleId])
   @@index([startDate])
   @@index([createdAt])
 }

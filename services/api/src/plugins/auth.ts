@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { jwtVerify, importSPKI } from 'jose';
 import NodeCache from 'node-cache';
+import { PrismaClient } from '@prisma/client';
 
 import type { AppConfig } from '../config.js';
 
@@ -18,12 +19,167 @@ export interface AuthenticatedRequest extends FastifyRequest {
 // JWKS cache
 const jwksCache = new NodeCache({ stdTTL: 3600 }); // 1 hour TTL
 
+// Cache for dev tenant/user
+let devTenantId: string | null = null;
+let devUserId: string | null = null;
+
+async function getOrCreateDevUser(prisma: PrismaClient) {
+  // Return cached values if available
+  if (devTenantId && devUserId) {
+    return { tenantId: devTenantId, userId: devUserId };
+  }
+
+  try {
+    // Get the first tenant
+    let tenant = await prisma.tenant.findFirst();
+    if (!tenant) {
+      // Create a demo tenant if none exists
+      tenant = await prisma.tenant.create({
+        data: {
+          name: 'Demo Tenant',
+          slug: 'demo-tenant',
+        },
+      });
+    }
+
+    // Get the admin user (Ava Developer) or first user with Platform Administrator role
+    let user = await prisma.user.findFirst({
+      where: {
+        tenantId: tenant.id,
+        isActive: true,
+        email: 'admin@demo.unifocus.com',
+      },
+    });
+
+    // If no admin user, try to find any user with Platform Administrator role
+    if (!user) {
+      const adminRoleAssignment = await prisma.userRoleAssignment.findFirst({
+        where: {
+          tenantId: tenant.id,
+          isActive: true,
+          role: {
+            name: 'Platform Administrator',
+          },
+        },
+        include: {
+          user: true,
+        },
+      });
+      
+      if (adminRoleAssignment) {
+        user = adminRoleAssignment.user;
+      }
+    }
+
+    // If still no user, get the first active user
+    if (!user) {
+      user = await prisma.user.findFirst({
+        where: {
+          tenantId: tenant.id,
+          isActive: true,
+        },
+      });
+    }
+
+    if (!user) {
+      // Create a demo admin user if none exists
+      user = await prisma.user.create({
+        data: {
+          tenantId: tenant.id,
+          email: 'admin@demo.unifocus.com',
+          name: 'Ava Developer',
+          isActive: true,
+        },
+      });
+
+      // Assign Platform Administrator role
+      const adminRole = await prisma.role.findFirst({
+        where: { name: 'Platform Administrator' },
+      });
+      
+      if (adminRole) {
+        await prisma.userRoleAssignment.create({
+          data: {
+            tenantId: tenant.id,
+            userId: user.id,
+            roleId: adminRole.id,
+            isActive: true,
+          },
+        });
+      }
+    }
+
+    // Cache the IDs
+    devTenantId = tenant.id;
+    devUserId = user.id;
+
+    return { tenantId: tenant.id, userId: user.id };
+  } catch (error) {
+    console.error('Failed to get dev user:', error);
+    // Return dummy values if database fails
+    return { tenantId: 'dev-tenant-fallback', userId: 'dev-user-fallback' };
+  }
+}
+
 export async function registerAuthPlugin(
   server: FastifyInstance,
   config: AppConfig
 ): Promise<void> {
+  const prisma = new PrismaClient();
   if (config.authSkipVerification) {
     server.log.warn('⚠️  Auth verification is DISABLED for development');
+
+    // In development mode without auth, inject a dev user from the database
+    server.addHook('preHandler', async (request) => {
+      if (
+        request.url === '/health' ||
+        request.url === '/ready' ||
+        request.url === '/docs' ||
+        request.url.startsWith('/docs/')
+      ) {
+        return;
+      }
+
+      // Try to get user from headers first
+      let tenantId = request.headers['x-tenant-id'] as string | undefined;
+      let userId = request.headers['x-user-id'] as string | undefined;
+
+      // If no headers provided, get dev user from database
+      if (!userId || !tenantId) {
+        const devUser = await getOrCreateDevUser(prisma);
+        userId = devUser.userId;
+        tenantId = devUser.tenantId;
+      }
+
+      // Fetch user's actual roles from database
+      const userRoles = await prisma.userRoleAssignment.findMany({
+        where: {
+          userId: userId,
+          isActive: true,
+        },
+        include: {
+          role: true,
+        },
+      });
+
+      const roleNames = userRoles.map((ra) => ra.role.name);
+
+      // Set user object
+      (request as AuthenticatedRequest).user = {
+        userId: userId,
+        email: 'dev@unifocus.local',
+        username: 'dev-user',
+        tenantId: tenantId,
+        roles: roleNames.length > 0 ? roleNames : ['Employee'], // Default to Employee if no roles
+        scopes: ['read:all', 'write:all'],
+      };
+    });
+
+    // Cleanup on server close
+    server.addHook('onClose', async () => {
+      await prisma.$disconnect();
+    });
+
     return;
   }
 

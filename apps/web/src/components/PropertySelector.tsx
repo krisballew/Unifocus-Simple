@@ -9,9 +9,10 @@ import { LoadingSkeleton } from './LoadingSkeleton';
 
 export interface PropertySelectorProps {
   userId?: string;
+  onPropertySelect?: (propertyId: string | null) => void;
 }
 
-export function PropertySelector({ userId }: PropertySelectorProps): React.ReactElement {
+export function PropertySelector({ userId, onPropertySelect }: PropertySelectorProps): React.ReactElement {
   const { selectedTenantId, selectedPropertyId, setSelectedTenantId, setSelectedPropertyId } =
     useSelection();
 
@@ -40,16 +41,29 @@ export function PropertySelector({ userId }: PropertySelectorProps): React.React
     if (!propertiesQuery.data) return;
     if (propertiesQuery.data.length === 0) {
       setSelectedPropertyId(null);
+      onPropertySelect?.(null);
       return;
     }
 
-    const propertyExists = propertiesQuery.data.some(
-      (property) => property.id === selectedPropertyId
-    );
-    if (!propertyExists) {
-      setSelectedPropertyId(propertiesQuery.data[0]?.id ?? null);
+    // Only auto-select first property if no property is currently selected
+    // This allows external sources (like user preferences) to set the property
+    if (selectedPropertyId === null) {
+      const newId = propertiesQuery.data[0]?.id ?? null;
+      setSelectedPropertyId(newId);
+      onPropertySelect?.(newId);
+    } else {
+      // If a property is selected, verify it exists in the list
+      const propertyExists = propertiesQuery.data.some(
+        (property) => property.id === selectedPropertyId
+      );
+      // If it doesn't exist, reset to first property
+      if (!propertyExists) {
+        const newId = propertiesQuery.data[0]?.id ?? null;
+        setSelectedPropertyId(newId);
+        onPropertySelect?.(newId);
+      }
     }
-  }, [propertiesQuery.data, selectedPropertyId, setSelectedPropertyId]);
+  }, [propertiesQuery.data, selectedPropertyId, setSelectedPropertyId, onPropertySelect]);
 
   if (tenantsQuery.isLoading) {
     return <LoadingSkeleton lines={2} />;
@@ -64,7 +78,7 @@ export function PropertySelector({ userId }: PropertySelectorProps): React.React
   return (
     <div className="property-selector">
       <div className="selector-group">
-        <label htmlFor="tenant-select">Tenant</label>
+        <label htmlFor="tenant-select">Company</label>
         <select
           id="tenant-select"
           value={tenantId ?? ''}
@@ -89,7 +103,11 @@ export function PropertySelector({ userId }: PropertySelectorProps): React.React
           <select
             id="property-select"
             value={selectedPropertyId ?? ''}
-            onChange={(event) => setSelectedPropertyId(event.target.value || null)}
+            onChange={(event) => {
+              const newId = event.target.value || null;
+              setSelectedPropertyId(newId);
+              onPropertySelect?.(newId);
+            }}
           >
             {(propertiesQuery.data ?? []).map((property) => (
               <option key={property.id} value={property.id}>

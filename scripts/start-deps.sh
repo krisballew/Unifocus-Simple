@@ -2,13 +2,13 @@
 # Start Docker Compose services
 
 echo "Starting development dependencies..."
-docker-compose up -d
+docker compose up -d
 
 echo "Waiting for services to be healthy..."
 sleep 5
 
 # Check if services are running
-if docker-compose ps | grep -q "Up"; then
+if docker compose ps | grep -q "Up"; then
   echo "✅ Services started successfully!"
   echo ""
   echo "📦 Available services:"
