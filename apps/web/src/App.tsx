@@ -4,17 +4,17 @@ import { Route, Routes } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
 import { LoadingSkeleton } from './components/LoadingSkeleton';
 import { LoginPage } from './components/LoginPage';
-import { NewLoginPage } from './pages/NewLoginPage';
-import { RegisterPage } from './pages/RegisterPage';
 import { I18nProvider } from './context/I18nContext';
+import { EmployeesPage } from './pages/EmployeesPage';
 import { ExceptionsQueuePage } from './pages/ExceptionsQueuePage';
 import { HomePage } from './pages/HomePage';
-import { EmployeesPage } from './pages/EmployeesPage';
 import { HrManagementPage } from './pages/HrManagementPage';
+import { NewLoginPage } from './pages/NewLoginPage';
 import { NotFound } from './pages/NotFound';
 import { OrgStructurePage } from './pages/OrgStructurePage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { PropertiesPage } from './pages/PropertiesPage';
+import { RegisterPage } from './pages/RegisterPage';
 import { TimecardPage } from './pages/TimecardPage';
 import { TimeClockPage } from './pages/TimeClockPage';
 import { UserAdministrationPage } from './pages/UserAdministrationPage';
@@ -89,10 +89,15 @@ export function App() {
 
         for (const url of apiUrls) {
           try {
+            const controller = new AbortController();
+            const timeoutId = window.setTimeout(() => controller.abort(), 2000);
+
             const response = await fetch(`${url}/health`, {
               method: 'HEAD',
-              timeout: 2000,
+              signal: controller.signal,
             }).catch(() => null);
+
+            window.clearTimeout(timeoutId);
 
             if (response && response.ok) {
               finalUrl = url;
