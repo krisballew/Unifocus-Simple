@@ -471,7 +471,7 @@ export async function employeeRoutes(server: FastifyInstance) {
     '/employees/:employeeId/employment-details',
     async (request, reply) => {
       const { employeeId } = request.params;
-      const employmentDetailsPayload = request.body;
+      const employmentDetailsPayload = request.body as Prisma.InputJsonValue;
       const context = getAuthContext(request);
 
       if (!hasTenantScope(context)) {
