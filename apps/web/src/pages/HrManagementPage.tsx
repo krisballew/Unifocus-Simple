@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import { EmploymentDetailsModal } from '../components/EmploymentDetailsModal';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
@@ -37,6 +37,17 @@ export function HrManagementPage(): React.ReactElement {
   const [formState, setFormState] = useState<EmployeeFormState>(emptyForm);
   const [showForm, setShowForm] = useState(false);
   const [showEmploymentDetails, setShowEmploymentDetails] = useState(false);
+  const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timeoutId = window.setTimeout(() => setToast(null), 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [toast]);
+
+  const showToast = (message: string, tone: 'success' | 'error' = 'success') => {
+    setToast({ message, tone });
+  };
 
   const employeesQuery = useQuery({
     queryKey: queryKeys.employees(selectedPropertyId ?? undefined),
@@ -172,6 +183,11 @@ export function HrManagementPage(): React.ReactElement {
 
   return (
     <div className="page-container">
+      {toast && (
+        <div className={`toast toast--${toast.tone}`} role="status">
+          {toast.message}
+        </div>
+      )}
       <div className="page-header">
         <h1>HR Management</h1>
         <p className="page-description">
@@ -208,11 +224,14 @@ export function HrManagementPage(): React.ReactElement {
           </button>
         </div>
         <button
-          className="link-button hr-employment-link"
+          className={`link-button hr-employment-link${!selectedEmployee ? ' is-disabled' : ''}`}
           type="button"
-          disabled={!selectedEmployee}
+          aria-disabled={!selectedEmployee}
           onClick={() => {
-            if (!selectedEmployee) return;
+            if (!selectedEmployee) {
+              showToast('Please select an employee first.', 'error');
+              return;
+            }
             setShowEmploymentDetails(true);
           }}
         >

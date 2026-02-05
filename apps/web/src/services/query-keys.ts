@@ -11,4 +11,6 @@ export const queryKeys = {
     ['punches', employeeId ?? 'all', startDate, endDate] as const,
   exceptions: (status?: string) => ['exceptions', status ?? 'all'] as const,
   exception: (exceptionId: string | undefined) => ['exception', exceptionId ?? 'unknown'] as const,
+  jobStructure: (propertyId: string | undefined) =>
+    ['jobStructure', propertyId ?? 'unknown'] as const,
 };

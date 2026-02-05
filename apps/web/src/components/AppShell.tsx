@@ -84,11 +84,11 @@ const NAV_ITEMS: NavItem[] = [
     fullLabel: 'User Administration',
   },
   {
-    label: 'System Settings',
+    label: 'Settings',
     path: '/settings',
-    roles: ['Admin', 'Manager'],
+    roles: ['Platform Administrator', 'Property Administrator'],
     icon: 'cog',
-    fullLabel: 'System Settings',
+    fullLabel: 'Settings',
   },
 ];
 
@@ -235,29 +235,31 @@ function AppShellContent(): React.ReactElement {
       setOpenTabs((currentTabs) => {
         const remaining = currentTabs.filter((t) => t.id !== tabId);
 
-        // If we're closing the active tab, we need to switch to another
-        setActiveTabId((currentActiveId) => {
-          if (currentActiveId === tabId) {
-            if (remaining.length > 0) {
-              // Find the index of the closed tab to determine next tab
-              const closedIndex = currentTabs.findIndex((t) => t.id === tabId);
-              // Prefer left neighbor, else take the first remaining tab
-              const nextTab = remaining[Math.max(0, closedIndex - 1)] || remaining[0];
+        // If we're closing the active tab, determine next tab and navigate
+        if (activeTabId === tabId) {
+          if (remaining.length > 0) {
+            // Find the index of the closed tab to determine next tab
+            const closedIndex = currentTabs.findIndex((t) => t.id === tabId);
+            // Prefer left neighbor, else take the first remaining tab
+            const nextTab = remaining[Math.max(0, closedIndex - 1)] || remaining[0];
+            // Use setTimeout to defer navigation until after state update completes
+            setTimeout(() => {
+              setActiveTabId(nextTab.id);
               navigate(nextTab.path);
-              return nextTab.id;
-            } else {
-              // No more tabs, go home
+            }, 0);
+          } else {
+            // No more tabs, go home
+            setTimeout(() => {
+              setActiveTabId('home');
               navigate('/');
-              return 'home';
-            }
+            }, 0);
           }
-          return currentActiveId;
-        });
+        }
 
         return remaining;
       });
     },
-    [navigate]
+    [navigate, activeTabId]
   );
 
   const handleTabClick = useCallback(

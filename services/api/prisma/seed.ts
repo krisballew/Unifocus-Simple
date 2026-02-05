@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import bcryptjs from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -77,159 +78,657 @@ async function main() {
   });
   console.log(`✓ Created property: ${property5.name}`);
 
-  // Create departments
-  console.log('Creating departments...');
-  const dept1 = await prisma.department.create({
+  // Create master categories
+  console.log('Creating master categories...');
+
+  // Hotel Department Categories
+  const departmentCategoryFrontOffice = await prisma.departmentCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Front Office',
+      code: 'FO',
+      description: 'Reception, concierge, and guest communications',
+    },
+  });
+  const departmentCategoryHousekeeping = await prisma.departmentCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Housekeeping',
+      code: 'HK',
+      description: 'Guest rooms, laundry, and facility cleaning',
+    },
+  });
+  const departmentCategoryFoodBeverage = await prisma.departmentCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Food & Beverage',
+      code: 'FB',
+      description: 'Restaurants, bars, room service, and banquets',
+    },
+  });
+  const departmentCategoryMaintenance = await prisma.departmentCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Maintenance & Engineering',
+      code: 'ME',
+      description: 'Building maintenance, repairs, and operations',
+    },
+  });
+  const departmentCategoryHR = await prisma.departmentCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Human Resources',
+      code: 'HR',
+      description: 'Recruitment, payroll, training, and compliance',
+    },
+  });
+  const _departmentCategorySalesMarketing = await prisma.departmentCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Sales & Marketing',
+      code: 'SM',
+      description: 'Guest acquisition, events, and promotions',
+    },
+  });
+  const _departmentCategoryFinance = await prisma.departmentCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Finance & Accounting',
+      code: 'FA',
+      description: 'Accounting, billing, and financial management',
+    },
+  });
+  const departmentCategoryGuestServices = await prisma.departmentCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Guest Services',
+      code: 'GS',
+      description: 'Bellhop, valet, concierge, and guest relations',
+    },
+  });
+  const departmentCategorySecurity = await prisma.departmentCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Security',
+      code: 'SEC',
+      description: 'Security, safety, and loss prevention',
+    },
+  });
+
+  // Hotel Job Categories
+  const jobCategoryFrontDesk = await prisma.jobCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Front Desk',
+      code: 'FD',
+      description: 'Reception and check-in roles',
+    },
+  });
+  const jobCategoryHousekeeping = await prisma.jobCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Housekeeping',
+      code: 'HK',
+      description: 'Room and facility cleaning roles',
+    },
+  });
+  const jobCategoryKitchen = await prisma.jobCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Kitchen & Culinary',
+      code: 'KC',
+      description: 'Chef, cook, and food preparation roles',
+    },
+  });
+  const jobCategoryFoodService = await prisma.jobCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Food Service',
+      code: 'FS',
+      description: 'Server, busser, and dining service roles',
+    },
+  });
+  const jobCategoryBeverageService = await prisma.jobCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Beverage Service',
+      code: 'BS',
+      description: 'Bartender and beverage service roles',
+    },
+  });
+  const jobCategoryMaintenance = await prisma.jobCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Maintenance',
+      code: 'MNT',
+      description: 'Maintenance technician and engineering roles',
+    },
+  });
+  const jobCategorySupervisory = await prisma.jobCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Supervisory',
+      code: 'SUP',
+      description: 'Supervisor and team lead roles',
+    },
+  });
+  const jobCategoryManagement = await prisma.jobCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Management',
+      code: 'MGT',
+      description: 'Manager and director level roles',
+    },
+  });
+  const jobCategoryGuestServices = await prisma.jobCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Guest Services',
+      code: 'GS',
+      description: 'Concierge, bellhop, and guest services roles',
+    },
+  });
+  const jobCategorySecurity = await prisma.jobCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Security',
+      code: 'SEC',
+      description: 'Security and loss prevention roles',
+    },
+  });
+
+  // Create divisions
+  console.log('Creating divisions...');
+  const divisionOps1 = await prisma.division.create({
     data: {
       tenantId: tenant.id,
       propertyId: property1.id,
-      name: 'Engineering',
-      code: 'ENG',
+      name: 'Operations',
+      code: 'OPS',
     },
   });
-  console.log(`✓ Created department: ${dept1.name}`);
-
-  const dept2 = await prisma.department.create({
-    data: {
-      tenantId: tenant.id,
-      propertyId: property1.id,
-      name: 'Sales',
-      code: 'SALES',
-    },
-  });
-  console.log(`✓ Created department: ${dept2.name}`);
-
-  // Create job roles
-  console.log('Creating job roles...');
-  const jobRole1 = await prisma.jobRole.create({
-    data: {
-      tenantId: tenant.id,
-      propertyId: property1.id,
-      departmentId: dept1.id,
-      name: 'Software Engineer',
-      code: 'SE',
-      masterCategory: 'Engineering',
-      isActive: true,
-    },
-  });
-  console.log(`✓ Created job role: ${jobRole1.name}`);
-
-  const jobRole2 = await prisma.jobRole.create({
-    data: {
-      tenantId: tenant.id,
-      propertyId: property1.id,
-      departmentId: dept2.id,
-      name: 'Sales Representative',
-      code: 'SR',
-      masterCategory: 'Sales',
-      isActive: true,
-    },
-  });
-  console.log(`✓ Created job role: ${jobRole2.name}`);
-
-  const jobRole3 = await prisma.jobRole.create({
+  const divisionOps2 = await prisma.division.create({
     data: {
       tenantId: tenant.id,
       propertyId: property2.id,
-      departmentId: dept1.id,
-      name: 'Operations Coordinator',
-      code: 'OC',
-      masterCategory: 'Operations',
-      isActive: true,
+      name: 'Operations',
+      code: 'OPS',
     },
   });
-  console.log(`✓ Created job role: ${jobRole3.name}`);
-
-  const jobRole4 = await prisma.jobRole.create({
+  const divisionSupplyChain = await prisma.division.create({
     data: {
       tenantId: tenant.id,
       propertyId: property3.id,
-      departmentId: dept1.id,
-      name: 'Warehouse Supervisor',
-      code: 'WS',
-      masterCategory: 'Logistics',
-      isActive: true,
+      name: 'Supply Chain',
+      code: 'SCM',
     },
   });
-  console.log(`✓ Created job role: ${jobRole4.name}`);
-
-  const jobRole5 = await prisma.jobRole.create({
-    data: {
-      tenantId: tenant.id,
-      propertyId: property3.id,
-      departmentId: dept1.id,
-      name: 'Inventory Specialist',
-      code: 'IS',
-      masterCategory: 'Logistics',
-      isActive: true,
-    },
-  });
-  console.log(`✓ Created job role: ${jobRole5.name}`);
-
-  const jobRole6 = await prisma.jobRole.create({
+  const divisionDistribution = await prisma.division.create({
     data: {
       tenantId: tenant.id,
       propertyId: property4.id,
-      departmentId: dept1.id,
-      name: 'Distribution Manager',
-      code: 'DM',
-      masterCategory: 'Distribution',
-      isActive: true,
+      name: 'Distribution',
+      code: 'DST',
     },
   });
-  console.log(`✓ Created job role: ${jobRole6.name}`);
-
-  const jobRole7 = await prisma.jobRole.create({
-    data: {
-      tenantId: tenant.id,
-      propertyId: property4.id,
-      departmentId: dept1.id,
-      name: 'Logistics Coordinator',
-      code: 'LC',
-      masterCategory: 'Distribution',
-      isActive: true,
-    },
-  });
-  console.log(`✓ Created job role: ${jobRole7.name}`);
-
-  const jobRole8 = await prisma.jobRole.create({
+  const divisionRetail = await prisma.division.create({
     data: {
       tenantId: tenant.id,
       propertyId: property5.id,
-      departmentId: dept2.id,
-      name: 'Retail Manager',
-      code: 'RM',
-      masterCategory: 'Retail',
-      isActive: true,
+      name: 'Retail',
+      code: 'RTL',
     },
   });
-  console.log(`✓ Created job role: ${jobRole8.name}`);
 
-  const jobRole9 = await prisma.jobRole.create({
-    data: {
-      tenantId: tenant.id,
-      propertyId: property5.id,
-      departmentId: dept2.id,
-      name: 'Sales Associate',
-      code: 'SA',
-      masterCategory: 'Retail',
-      isActive: true,
-    },
-  });
-  console.log(`✓ Created job role: ${jobRole9.name}`);
+  // Create departments
+  console.log('Creating departments...');
 
-  const jobRole10 = await prisma.jobRole.create({
+  // Property 1 (Hyatt Regency Times Square) - Front Office
+  const deptFrontOffice = await prisma.department.create({
     data: {
       tenantId: tenant.id,
       propertyId: property1.id,
-      departmentId: dept1.id,
-      name: 'Senior Developer',
-      code: 'SD',
-      masterCategory: 'Engineering',
+      divisionId: divisionOps1.id,
+      departmentCategoryId: departmentCategoryFrontOffice.id,
+      name: 'Front Office',
+      code: 'FO',
+      costCenter: 'CC-1001',
+      laborBudget: 150000,
+      location: 'Building A - Ground Floor',
+      reportingGroupId: 'RG-OPERATIONS',
+    },
+  });
+  console.log(`✓ Created department: ${deptFrontOffice.name}`);
+
+  // Property 1 - Housekeeping
+  const deptHousekeeping = await prisma.department.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property1.id,
+      divisionId: divisionOps1.id,
+      departmentCategoryId: departmentCategoryHousekeeping.id,
+      name: 'Housekeeping',
+      code: 'HK',
+      costCenter: 'CC-1002',
+      laborBudget: 200000,
+      location: 'Building A - Basement',
+      reportingGroupId: 'RG-OPERATIONS',
+    },
+  });
+  console.log(`✓ Created department: ${deptHousekeeping.name}`);
+
+  // Property 2 (Beverly Hills Hotel) - Food & Beverage
+  const deptFoodBeverage = await prisma.department.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property2.id,
+      divisionId: divisionOps2.id,
+      departmentCategoryId: departmentCategoryFoodBeverage.id,
+      name: 'Food & Beverage',
+      code: 'FB',
+      costCenter: 'CC-2001',
+      laborBudget: 350000,
+      location: 'Building B - Kitchen & Dining',
+      reportingGroupId: 'RG-OPERATIONS',
+    },
+  });
+  console.log(`✓ Created department: ${deptFoodBeverage.name}`);
+
+  // Property 2 - Guest Services
+  const deptGuestServices = await prisma.department.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property2.id,
+      divisionId: divisionOps2.id,
+      departmentCategoryId: departmentCategoryGuestServices.id,
+      name: 'Guest Services',
+      code: 'GS',
+      costCenter: 'CC-2002',
+      laborBudget: 125000,
+      location: 'Building B - Lobby & Bellhop',
+      reportingGroupId: 'RG-OPERATIONS',
+    },
+  });
+  console.log(`✓ Created department: ${deptGuestServices.name}`);
+
+  // Property 3 (Fairmont Chicago) - Maintenance & Engineering
+  const deptMaintenance = await prisma.department.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property3.id,
+      divisionId: divisionSupplyChain.id,
+      departmentCategoryId: departmentCategoryMaintenance.id,
+      name: 'Maintenance & Engineering',
+      code: 'ME',
+      costCenter: 'CC-3001',
+      laborBudget: 180000,
+      location: 'Building C - Mechanical Room',
+      reportingGroupId: 'RG-FACILITIES',
+    },
+  });
+  console.log(`✓ Created department: ${deptMaintenance.name}`);
+
+  // Property 4 (Plaza Hotel Miami) - Security
+  const deptSecurity = await prisma.department.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property4.id,
+      divisionId: divisionDistribution.id,
+      departmentCategoryId: departmentCategorySecurity.id,
+      name: 'Security',
+      code: 'SEC',
+      costCenter: 'CC-4001',
+      laborBudget: 140000,
+      location: 'Building D - Security Office',
+      reportingGroupId: 'RG-FACILITIES',
+    },
+  });
+  console.log(`✓ Created department: ${deptSecurity.name}`);
+
+  // Property 5 (Brown Palace) - Human Resources
+  const deptHR = await prisma.department.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property5.id,
+      divisionId: divisionRetail.id,
+      departmentCategoryId: departmentCategoryHR.id,
+      name: 'Human Resources',
+      code: 'HR',
+      costCenter: 'CC-5001',
+      laborBudget: 100000,
+      location: 'Building E - Human Resources',
+      reportingGroupId: 'RG-CORPORATE',
+    },
+  });
+  console.log(`✓ Created department: ${deptHR.name}`);
+
+  // Create job roles
+  console.log('Creating job roles...');
+
+  // Front Office job roles
+  const jobRoleFrontDeskAgent = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property1.id,
+      departmentId: deptFrontOffice.id,
+      jobCategoryId: jobCategoryFrontDesk.id,
+      name: 'Front Desk Agent',
+      code: 'FDA',
+      payCode: 'PC-1010',
+      skillClassification: 'Entry Level',
+      flsaStatus: 'NON_EXEMPT',
+      unionClassification: 'Non-Union',
+      certificationRequirements: ['Customer Service Certification'],
       isActive: true,
     },
   });
-  console.log(`✓ Created job role: ${jobRole10.name}`);
+  console.log(`✓ Created job role: ${jobRoleFrontDeskAgent.name}`);
+
+  const jobRoleNightAuditor = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property1.id,
+      departmentId: deptFrontOffice.id,
+      jobCategoryId: jobCategoryFrontDesk.id,
+      name: 'Night Auditor',
+      code: 'NA',
+      payCode: 'PC-1011',
+      skillClassification: 'Intermediate',
+      flsaStatus: 'NON_EXEMPT',
+      unionClassification: 'Non-Union',
+      certificationRequirements: ['Night Operations', 'PMS System'],
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRoleNightAuditor.name}`);
+
+  // Housekeeping job roles
+  const jobRoleHousekeepingAttendant = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property1.id,
+      departmentId: deptHousekeeping.id,
+      jobCategoryId: jobCategoryHousekeeping.id,
+      name: 'Housekeeping Attendant',
+      code: 'HA',
+      payCode: 'PC-2010',
+      skillClassification: 'Entry Level',
+      flsaStatus: 'NON_EXEMPT',
+      unionClassification: 'UNITE HERE',
+      certificationRequirements: ['Safety Training', 'Chemical Handling'],
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRoleHousekeepingAttendant.name}`);
+
+  const jobRoleHousekeepingSupervisor = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property1.id,
+      departmentId: deptHousekeeping.id,
+      jobCategoryId: jobCategorySupervisory.id,
+      name: 'Housekeeping Supervisor',
+      code: 'HS',
+      payCode: 'PC-2020',
+      skillClassification: 'Advanced',
+      flsaStatus: 'SALARIED',
+      unionClassification: 'UNITE HERE',
+      certificationRequirements: ['Leadership Training', 'Supervisory Skills'],
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRoleHousekeepingSupervisor.name}`);
+
+  // Food & Beverage job roles
+  const jobRoleChef = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property2.id,
+      departmentId: deptFoodBeverage.id,
+      jobCategoryId: jobCategoryKitchen.id,
+      name: 'Executive Chef',
+      code: 'EC',
+      payCode: 'PC-3010',
+      skillClassification: 'Advanced',
+      flsaStatus: 'SALARIED',
+      unionClassification: 'ACF (American Culinary Federation)',
+      certificationRequirements: ['Food Handler', 'ServSafe', 'HACCP Certification'],
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRoleChef.name}`);
+
+  const jobRoleServer = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property2.id,
+      departmentId: deptFoodBeverage.id,
+      jobCategoryId: jobCategoryFoodService.id,
+      name: 'Server',
+      code: 'SRV',
+      payCode: 'PC-3020',
+      skillClassification: 'Entry Level',
+      flsaStatus: 'NON_EXEMPT',
+      unionClassification: 'UNITE HERE',
+      certificationRequirements: ['Food Handler', 'Alcohol Service'],
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRoleServer.name}`);
+
+  const jobRoleBartender = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property2.id,
+      departmentId: deptFoodBeverage.id,
+      jobCategoryId: jobCategoryBeverageService.id,
+      name: 'Bartender',
+      code: 'BAR',
+      payCode: 'PC-3025',
+      skillClassification: 'Intermediate',
+      flsaStatus: 'NON_EXEMPT',
+      unionClassification: 'UNITE HERE',
+      certificationRequirements: ['Mixology', 'Alcohol Certification', 'Food Handler'],
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRoleBartender.name}`);
+
+  // Guest Services job roles
+  const jobRoleConcierge = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property2.id,
+      departmentId: deptGuestServices.id,
+      jobCategoryId: jobCategoryGuestServices.id,
+      name: 'Concierge',
+      code: 'CON',
+      payCode: 'PC-4010',
+      skillClassification: 'Intermediate',
+      flsaStatus: 'NON_EXEMPT',
+      unionClassification: 'Non-Union',
+      certificationRequirements: ['Guest Relations', 'City Knowledge'],
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRoleConcierge.name}`);
+
+  const jobRoleBellhop = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property2.id,
+      departmentId: deptGuestServices.id,
+      jobCategoryId: jobCategoryGuestServices.id,
+      name: 'Bellhop',
+      code: 'BH',
+      payCode: 'PC-4020',
+      skillClassification: 'Entry Level',
+      flsaStatus: 'NON_EXEMPT',
+      unionClassification: 'Non-Union',
+      certificationRequirements: ['Customer Service', 'Safety Training'],
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRoleBellhop.name}`);
+
+  // Maintenance & Engineering job roles
+  const jobRoleMaintenanceTech = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property3.id,
+      departmentId: deptMaintenance.id,
+      jobCategoryId: jobCategoryMaintenance.id,
+      name: 'Maintenance Technician',
+      code: 'MT',
+      payCode: 'PC-5010',
+      skillClassification: 'Intermediate',
+      flsaStatus: 'HOURLY',
+      unionClassification: 'International Union of Operating Engineers',
+      certificationRequirements: ['HVAC Certification', 'Electrical License', 'Plumbing'],
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRoleMaintenanceTech.name}`);
+
+  const jobRoleEngineer = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property3.id,
+      departmentId: deptMaintenance.id,
+      jobCategoryId: jobCategoryMaintenance.id,
+      name: 'Chief Engineer',
+      code: 'CE',
+      payCode: 'PC-5030',
+      skillClassification: 'Advanced',
+      flsaStatus: 'SALARIED',
+      unionClassification: 'International Union of Operating Engineers',
+      certificationRequirements: ['Engineering Degree', 'HVAC', 'Electrical', 'Plumbing'],
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRoleEngineer.name}`);
+
+  // Security job roles
+  const jobRoleSecurityOfficer = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property4.id,
+      departmentId: deptSecurity.id,
+      jobCategoryId: jobCategorySecurity.id,
+      name: 'Security Officer',
+      code: 'SO',
+      payCode: 'PC-6010',
+      skillClassification: 'Intermediate',
+      flsaStatus: 'NON_EXEMPT',
+      unionClassification: 'Allied Security Services',
+      certificationRequirements: ['Security License', 'First Aid', 'Crisis Management'],
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRoleSecurityOfficer.name}`);
+
+  const jobRoleSecuritySupervisor = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property4.id,
+      departmentId: deptSecurity.id,
+      jobCategoryId: jobCategorySecurity.id,
+      name: 'Security Supervisor',
+      code: 'SS',
+      payCode: 'PC-6020',
+      skillClassification: 'Advanced',
+      flsaStatus: 'SALARIED',
+      unionClassification: 'Allied Security Services',
+      certificationRequirements: ['Security License', 'Leadership Training', 'Emergency Response'],
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRoleSecuritySupervisor.name}`);
+
+  // HR job roles (management level)
+  const jobRoleHRManager = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property5.id,
+      departmentId: deptHR.id,
+      jobCategoryId: jobCategoryManagement.id,
+      name: 'HR Manager',
+      code: 'HRM',
+      payCode: 'PC-7010',
+      skillClassification: 'Advanced',
+      flsaStatus: 'SALARIED',
+      unionClassification: 'Non-Union',
+      certificationRequirements: ['HR Certification (SHRM)', 'Legal Compliance Training'],
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created job role: ${jobRoleHRManager.name}`);
+
+  await prisma.jobAssignment.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property1.id,
+      jobRoleId: jobRoleFrontDeskAgent.id,
+      name: 'Day Shift Agent',
+      code: 'DSA',
+      description: 'Front desk coverage during day shift.',
+    },
+  });
+
+  await prisma.jobAssignment.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property1.id,
+      jobRoleId: jobRoleHousekeepingAttendant.id,
+      name: 'Room Cleaning Attendant',
+      code: 'RCA',
+      description: 'Responsible for daily guest room cleaning and maintenance.',
+    },
+  });
+
+  await prisma.jobAssignment.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property2.id,
+      jobRoleId: jobRoleServer.id,
+      name: 'Fine Dining Server',
+      code: 'FDS',
+      description: 'Server specializing in fine dining experience.',
+    },
+  });
+
+  await prisma.jobAssignment.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property2.id,
+      jobRoleId: jobRoleBellhop.id,
+      name: 'Guest Transport Specialist',
+      code: 'GTS',
+      description: 'Handle guest luggage and transportation services.',
+    },
+  });
+
+  await prisma.jobAssignment.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property3.id,
+      jobRoleId: jobRoleMaintenanceTech.id,
+      name: 'HVAC Technician',
+      code: 'HVA',
+      description: 'Maintain and repair HVAC systems throughout the property.',
+    },
+  });
+
+  await prisma.jobAssignment.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property4.id,
+      jobRoleId: jobRoleSecurityOfficer.id,
+      name: 'Night Shift Security',
+      code: 'NSS',
+      description: 'Provide security coverage during night hours.',
+    },
+  });
 
   // Create roles
   console.log('Creating roles...');
@@ -303,6 +802,31 @@ async function main() {
     },
   });
   console.log(`✓ Created role: ${employeeRole.name}`);
+
+  // Create master admin user
+  console.log('Creating master admin user...');
+  const hashedPassword = await bcryptjs.hash('password123', 10);
+  const masterAdmin = await prisma.user.create({
+    data: {
+      tenantId: tenant.id,
+      email: 'kballew@unifocus.com',
+      name: 'Kris Ballew',
+      password: hashedPassword,
+      isActive: true,
+    },
+  });
+  console.log(`✓ Created master admin user: ${masterAdmin.email} (password: password123)`);
+
+  // Assign Platform Administrator role to master admin
+  await prisma.userRoleAssignment.create({
+    data: {
+      tenantId: tenant.id,
+      userId: masterAdmin.id,
+      roleId: platformAdminRole.id,
+      isActive: true,
+    },
+  });
+  console.log(`✓ Assigned Platform Administrator role to ${masterAdmin.email}`);
 
   // Create employees
   console.log('Creating employees...');
@@ -452,9 +976,9 @@ async function main() {
     data: {
       tenantId: tenant.id,
       employeeId: employee1.id,
-      jobRoleId: jobRole1.id,
+      jobRoleId: jobRoleFrontDeskAgent.id,
       payType: 'hourly',
-      hourlyRate: 45.0,
+      hourlyRate: 18.0,
       startDate: new Date('2023-01-15'),
       isPrimary: true,
       isActive: true,
@@ -466,9 +990,9 @@ async function main() {
     data: {
       tenantId: tenant.id,
       employeeId: employee2.id,
-      jobRoleId: jobRole2.id,
+      jobRoleId: jobRoleHousekeepingAttendant.id,
       payType: 'hourly',
-      hourlyRate: 25.0,
+      hourlyRate: 16.0,
       startDate: new Date('2023-03-20'),
       isPrimary: true,
       isActive: true,
@@ -480,9 +1004,9 @@ async function main() {
     data: {
       tenantId: tenant.id,
       employeeId: employee3.id,
-      jobRoleId: jobRole3.id,
+      jobRoleId: jobRoleServer.id,
       payType: 'hourly',
-      hourlyRate: 28.0,
+      hourlyRate: 15.0,
       startDate: new Date('2023-06-01'),
       isPrimary: true,
       isActive: true,
@@ -494,7 +1018,7 @@ async function main() {
     data: {
       tenantId: tenant.id,
       employeeId: employee4.id,
-      jobRoleId: jobRole4.id,
+      jobRoleId: jobRoleChef.id,
       payType: 'salary',
       salaryAmount: 55000.0,
       startDate: new Date('2022-11-10'),
@@ -508,9 +1032,9 @@ async function main() {
     data: {
       tenantId: tenant.id,
       employeeId: employee5.id,
-      jobRoleId: jobRole5.id,
+      jobRoleId: jobRoleBartender.id,
       payType: 'hourly',
-      hourlyRate: 22.0,
+      hourlyRate: 16.0,
       startDate: new Date('2024-01-05'),
       isPrimary: true,
       isActive: true,
@@ -522,71 +1046,15 @@ async function main() {
     data: {
       tenantId: tenant.id,
       employeeId: employee6.id,
-      jobRoleId: jobRole6.id,
+      jobRoleId: jobRoleMaintenanceTech.id,
       payType: 'salary',
-      salaryAmount: 62000.0,
+      salaryAmount: 48000.0,
       startDate: new Date('2023-08-15'),
       isPrimary: true,
       isActive: true,
     },
   });
   console.log('✓ Assigned job to Frank Wilson');
-
-  await prisma.employeeJobAssignment.create({
-    data: {
-      tenantId: tenant.id,
-      employeeId: employee7.id,
-      jobRoleId: jobRole7.id,
-      payType: 'hourly',
-      hourlyRate: 26.0,
-      startDate: new Date('2023-09-20'),
-      isPrimary: true,
-      isActive: true,
-    },
-  });
-  console.log('✓ Assigned job to Grace Taylor');
-
-  await prisma.employeeJobAssignment.create({
-    data: {
-      tenantId: tenant.id,
-      employeeId: employee8.id,
-      jobRoleId: jobRole8.id,
-      payType: 'salary',
-      salaryAmount: 58000.0,
-      startDate: new Date('2024-02-01'),
-      isPrimary: true,
-      isActive: true,
-    },
-  });
-  console.log('✓ Assigned job to Henry Anderson');
-
-  await prisma.employeeJobAssignment.create({
-    data: {
-      tenantId: tenant.id,
-      employeeId: employee9.id,
-      jobRoleId: jobRole9.id,
-      payType: 'hourly',
-      hourlyRate: 18.0,
-      startDate: new Date('2023-07-10'),
-      isPrimary: true,
-      isActive: true,
-    },
-  });
-  console.log('✓ Assigned job to Isabel Thomas');
-
-  await prisma.employeeJobAssignment.create({
-    data: {
-      tenantId: tenant.id,
-      employeeId: employee10.id,
-      jobRoleId: jobRole10.id,
-      payType: 'salary',
-      salaryAmount: 95000.0,
-      startDate: new Date('2023-04-12'),
-      isPrimary: true,
-      isActive: true,
-    },
-  });
-  console.log('✓ Assigned job to Jack Moore');
 
   // Create schedules
   console.log('Creating schedules...');

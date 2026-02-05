@@ -29,8 +29,12 @@ model Tenant {
   defaultCurrency String @default("USD")
 
   properties  Property[]
+  divisions   Division[]
+  departmentCategories DepartmentCategory[]
+  jobCategories JobCategory[]
   departments Department[]
   jobRoles    JobRole[]
+  jobAssignments JobAssignment[]
   users       User[]
   employees   Employee[]
   schedules   Schedule[]
@@ -38,6 +42,10 @@ model Tenant {
   punches     Punch[]
   exceptions  Exception[]
   auditLogs   AuditLog[]
+  
+  // Labor compliance rules system
+  rulePackages RulePackage[] @relation("RulePackages")
+  validationResults RuleValidationResult[] @relation("ValidationResults")
 
   @@index([createdAt])
 }
@@ -54,8 +62,10 @@ model Property {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  divisions           Division[]
   departments         Department[]
   jobRoles            JobRole[]
+  jobAssignments      JobAssignment[]
   users               User[]
   userRoleAssignments UserRoleAssignment[]
   employees           Employee[]
@@ -67,7 +77,7 @@ model Property {
   @@index([createdAt])
 }
 
-model Department {
+model Division {
   id        String   @id @default(cuid())
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -78,7 +88,75 @@ model Department {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users               User[]
+  departments Department[]
+
+  @@unique([tenantId, propertyId, id])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([createdAt])
+}
+
+model DepartmentCategory {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  code        String?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  departments Department[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([createdAt])
+}
+
+model JobCategory {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  code        String?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  jobRoles JobRole[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([createdAt])
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId String
+  property  Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  divisionId String
+  division  Division @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  departmentCategoryId String
+  departmentCategory DepartmentCategory @relation(fields: [departmentCategoryId], references: [id], onDelete: Restrict)
+  name      String
+  code      String?
+
+  // Department operational attributes
+  costCenter String?        // Cost center code for accounting
+  laborBudget Decimal?      // Annual labor budget allocation
+  managerId   String?       // Department manager user ID
+  location    String?       // Physical location or office location
+  reportingGroupId String?  // For hierarchical reporting relationships
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  manager             User?               @relation("DepartmentManager", fields: [managerId], references: [id], onDelete: SetNull)
+  users               User[]              @relation("DepartmentUsers")
   userRoleAssignments UserRoleAssignment[]
   jobRoles            JobRole[]
   auditLogs           AuditLog[]
@@ -86,6 +164,11 @@ model Department {
   @@unique([tenantId, propertyId, id])
   @@index([tenantId])
   @@index([propertyId])
+  @@index([divisionId])
+  @@index([departmentCategoryId])
+  @@index([managerId])
+  @@index([costCenter])
+  @@index([location])
   @@index([createdAt])
 }
 
@@ -100,20 +183,55 @@ model JobRole {
 
   name            String   // Job title (e.g., "Front Desk Associate", "Housekeeper")
   code            String?  // Code for the job role
-  masterCategory  String   // Master category for benchmarking/rollup (e.g., "Front Office", "Housekeeping")
+  jobCategoryId   String
+  jobCategory     JobCategory @relation(fields: [jobCategoryId], references: [id], onDelete: Restrict)
 
   description     String?
+
+  // Job compensation and classification attributes
+  payCode          String?       // Pay code for payroll systems
+  skillClassification String?    // Skill level (e.g., "Entry Level", "Intermediate", "Advanced")
+  unionClassification String?    // Union affiliation if applicable
+  flsaStatus       String?       // EXEMPT, NON_EXEMPT, SALARIED, or HOURLY
+  certificationRequirements String[]  // JSON array of required certifications
+
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  jobAssignments  JobAssignment[]
   employeeJobAssignments EmployeeJobAssignment[]
 
   @@unique([tenantId, propertyId, departmentId, id])
   @@index([tenantId])
   @@index([propertyId])
   @@index([departmentId])
-  @@index([masterCategory])
+  @@index([jobCategoryId])
+  @@index([payCode])
+  @@index([skillClassification])
+  @@index([flsaStatus])
+  @@index([createdAt])
+}
+
+model JobAssignment {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId String
+  property  Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  jobRoleId String
+  jobRole   JobRole  @relation(fields: [jobRoleId], references: [id], onDelete: Cascade)
+  name      String
+  code      String?
+  description String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, propertyId, jobRoleId, id])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([jobRoleId])
   @@index([createdAt])
 }
 
@@ -128,7 +246,7 @@ model User {
   propertyId String?
   property  Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   departmentId String?
-  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  department Department? @relation("DepartmentUsers", fields: [departmentId], references: [id], onDelete: SetNull)
 
   email     String
   name      String
@@ -153,7 +271,13 @@ model User {
   updatedAt DateTime @updatedAt
 
   roleAssignments UserRoleAssignment[]
+  managedDepartments Department[]  @relation("DepartmentManager")
   auditLogs       AuditLog[]
+  
+  // Labor compliance rules system
+  createdRulePackages RulePackage[] @relation("RulePackageCreatedBy")
+  publishedRulePackages RulePackage[] @relation("RulePackagePublishedBy")
+  validationResults RuleValidationResult[] @relation("ValidationResultsRunBy")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -242,6 +366,9 @@ model Employee {
   punches        Punch[]
   exceptions     Exception[]
   auditLogs      AuditLog[]
+  
+  // Labor compliance rules system
+  validationResults RuleValidationResult[] @relation("ValidationResults")
 
   @@unique([tenantId, propertyId, id])
   @@unique([tenantId, employeeId])
@@ -499,4 +626,108 @@ model AuditLog {
   @@index([action])
   @@index([entity])
   @@index([createdAt])
+}
+
+// ============================================================================
+// LABOR COMPLIANCE RULES SYSTEM
+// ============================================================================
+
+model RulePackage {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation("RulePackages", fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId    String?
+  
+  name          String
+  description   String?
+  version       Int      @default(1)
+  status        String   @default("DRAFT")  // "DRAFT" | "PUBLISHED"
+  sourceText    String?  // Original CBA or compliance text provided by admin
+  
+  compiledRules CompiledRule[]
+  validationResults RuleValidationResult[]
+  
+  createdBy     String   // userId
+  createdByUser User?    @relation("RulePackageCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  createdAt     DateTime @default(now())
+  
+  publishedAt   DateTime?
+  publishedBy   String?  // userId
+  publishedByUser User?  @relation("RulePackagePublishedBy", fields: [publishedBy], references: [id], onDelete: SetNull)
+  
+  @@unique([tenantId, name, version])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([publishedAt])
+}
+
+model CompiledRule {
+  id              String   @id @default(cuid())
+  rulePackageId   String
+  rulePackage     RulePackage @relation(fields: [rulePackageId], references: [id], onDelete: Cascade)
+  
+  ruleId          String   // e.g., "MIN_REST_BETWEEN_SHIFTS", "MEAL_BREAK_REQUIRED"
+  name            String
+  description     String?
+  enabled         Boolean  @default(true)
+  severity        String   @default("ERROR")  // "ERROR" | "WARN"
+  
+  // Rule-specific parameters in JSON
+  // Structure varies by rule type, validated by Zod schema on backend
+  params          Json     @default("{}")
+  
+  // Citations from source text (where in the CBA/policy document)
+  // Array of { sourceText: string, section: string, lineNumber: number }
+  citations       Json?
+  
+  // LLM-provided clarifications or notes
+  // Array of { clarification: string, context: string }
+  clarifications  Json?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([rulePackageId])
+  @@index([ruleId])
+  @@index([enabled])
+}
+
+model RuleValidationResult {
+  id                String   @id @default(cuid())
+  tenantId          String
+  tenant            Tenant   @relation("ValidationResults", fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  rulePackageId     String
+  rulePackage       RulePackage @relation(fields: [rulePackageId], references: [id], onDelete: Cascade)
+  
+  employeeId        String?  // Optional: can validate for specific employee or batch
+  employee          Employee? @relation("ValidationResults", fields: [employeeId], references: [id], onDelete: SetNull)
+  
+  dateStart         DateTime // Period covered by validation
+  dateEnd           DateTime
+  
+  // Violation data stored as JSON
+  // Array of ComplianceViolation: { ruleId, ruleName, severity, violation, remediation, affectedDates[] }
+  violations        Json     @default("[]")
+  violationCount    Int      @default(0)
+  
+  // Summary flags
+  hasErrors         Boolean  @default(false)
+  hasWarnings       Boolean  @default(false)
+  
+  // Audit trail
+  runAt             DateTime @default(now())
+  runBy             String?  // userId who triggered validation
+  runByUser         User?    @relation("ValidationResultsRunBy", fields: [runBy], references: [id], onDelete: SetNull)
+  
+  @@index([tenantId])
+  @@index([rulePackageId])
+  @@index([employeeId])
+  @@index([dateStart])
+  @@index([dateEnd])
+  @@index([runAt])
+  @@index([violationCount])
+  @@index([hasErrors])
 }

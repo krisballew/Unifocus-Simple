@@ -15,6 +15,7 @@ import { OrgStructurePage } from './pages/OrgStructurePage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { PropertiesPage } from './pages/PropertiesPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { TimecardPage } from './pages/TimecardPage';
 import { TimeClockPage } from './pages/TimeClockPage';
 import { UserAdministrationPage } from './pages/UserAdministrationPage';
@@ -46,7 +47,7 @@ function AppRoutes() {
         <Route path="schedules" element={<PlaceholderPage title="Schedules" />} />
         <Route path="tasks" element={<PlaceholderPage title="Tasks" />} />
         <Route path="profile" element={<UserAdministrationPage />} />
-        <Route path="settings" element={<PlaceholderPage title="System Settings" />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

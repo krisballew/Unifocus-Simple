@@ -223,6 +223,87 @@ export interface Exception {
   updatedAt: string;
 }
 
+export interface JobCategory {
+  id: string;
+  tenantId: string;
+  name: string;
+  code?: string;
+  description?: string;
+  isActive: boolean;
+}
+
+export interface DepartmentCategory {
+  id: string;
+  tenantId: string;
+  name: string;
+  code?: string;
+  description?: string;
+  isActive: boolean;
+}
+
+export interface JobRole {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  departmentId: string;
+  jobCategoryId: string;
+  name: string;
+  code?: string;
+  description?: string;
+  isActive: boolean;
+  jobCategory?: JobCategory;
+  payCode?: string;
+  skillClassification?: string;
+  unionClassification?: string;
+  flsaStatus?: string;
+  certificationRequirements?: string[];
+  jobAssignments: JobAssignment[];
+}
+
+export interface JobAssignment {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  jobRoleId: string;
+  name: string;
+  code?: string;
+  description?: string;
+  isActive: boolean;
+}
+
+export interface Department {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  divisionId: string;
+  departmentCategoryId: string;
+  name: string;
+  code?: string;
+  departmentCategory?: DepartmentCategory;
+  costCenter?: string;
+  laborBudget?: string | number;
+  location?: string;
+  reportingGroupId?: string;
+  managerId?: string;
+  jobRoles: JobRole[];
+}
+
+export interface Division {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  name: string;
+  code?: string;
+  departments: Department[];
+}
+
+export interface JobStructure {
+  propertyId: string;
+  divisions: Division[];
+  departmentCategories: DepartmentCategory[];
+  jobCategories: JobCategory[];
+}
+
 export async function getCurrentUser(): Promise<User> {
   const client = getApiClient();
   return client.get<User>('/api/me');
@@ -372,6 +453,106 @@ export async function saveEmploymentDetails(
 export async function getProperty(propertyId: string): Promise<Property> {
   const client = getApiClient();
   return client.get<Property>(`/api/properties/${propertyId}`);
+}
+
+// ========== JOB STRUCTURE ==========
+
+export async function getJobStructure(propertyId: string): Promise<JobStructure> {
+  const client = getApiClient();
+  const query = new URLSearchParams({ propertyId }).toString();
+  return client.get<JobStructure>(`/api/settings/job-structure?${query}`);
+}
+
+export async function createDivision(payload: {
+  propertyId: string;
+  name: string;
+  code?: string;
+}): Promise<Division> {
+  const client = getApiClient();
+  return client.post<Division>('/api/settings/job-structure/divisions', payload);
+}
+
+export async function createDepartment(payload: {
+  propertyId: string;
+  divisionId: string;
+  departmentCategoryId: string;
+  name: string;
+  code?: string;
+}): Promise<Department> {
+  const client = getApiClient();
+  return client.post<Department>('/api/settings/job-structure/departments', payload);
+}
+
+export async function createJobRole(payload: {
+  propertyId: string;
+  departmentId: string;
+  jobCategoryId: string;
+  name: string;
+  code?: string;
+}): Promise<JobRole> {
+  const client = getApiClient();
+  return client.post<JobRole>('/api/settings/job-structure/jobs', payload);
+}
+
+export async function createJobAssignment(payload: {
+  propertyId: string;
+  jobRoleId: string;
+  name: string;
+  code?: string;
+}): Promise<JobAssignment> {
+  const client = getApiClient();
+  return client.post<JobAssignment>('/api/settings/job-structure/assignments', payload);
+}
+
+export async function updateDivision(
+  divisionId: string,
+  payload: Partial<{ name: string; code?: string }>
+): Promise<Division> {
+  const client = getApiClient();
+  return client.put<Division>(`/api/settings/job-structure/divisions/${divisionId}`, payload);
+}
+
+export async function updateDepartment(
+  departmentId: string,
+  payload: Partial<{
+    name: string;
+    code?: string;
+    costCenter?: string;
+    laborBudget?: number;
+    location?: string;
+    reportingGroupId?: string;
+    managerId?: string;
+  }>
+): Promise<Department> {
+  const client = getApiClient();
+  return client.put<Department>(`/api/settings/job-structure/departments/${departmentId}`, payload);
+}
+
+export async function updateJobRole(
+  jobRoleId: string,
+  payload: Partial<{
+    name: string;
+    code?: string;
+    payCode?: string;
+    skillClassification?: string;
+    unionClassification?: string;
+    flsaStatus?: string;
+    certificationRequirements?: string[];
+  }>
+): Promise<JobRole> {
+  const client = getApiClient();
+  return client.put<JobRole>(`/api/settings/job-structure/jobs/${jobRoleId}`, payload);
+}
+
+export async function updateJobAssignment(
+  assignmentId: string,
+  payload: Partial<{ name: string; code?: string; description?: string }>
+): Promise<JobAssignment> {
+  const client = getApiClient();
+  return client.put<JobAssignment>(
+    `/api/settings/job-structure/assignments/${assignmentId}`,
+    payload
+  );
 }
 
 // ========== TIME & ATTENDANCE ==========
