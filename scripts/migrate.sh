@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run database migrations
+# Run database migrations and ensure master admin user exists
 
 echo "Running database migrations..."
 
@@ -9,29 +9,26 @@ if [ -z "$DATABASE_URL" ]; then
   export $(grep -v '^#' .env.example | xargs)
 fi
 
-# Placeholder for actual migration tool (e.g., Prisma, TypeORM, node-pg-migrate)
-# For now, just run SQL files in order
+# Run Prisma migrations
+cd services/api || exit 1
 
-MIGRATIONS_DIR="./infra/db/migrations"
+echo "📝 Running Prisma migrations..."
+pnpm prisma migrate deploy
 
-if [ ! -d "$MIGRATIONS_DIR" ]; then
-  echo "📁 No migrations directory found at $MIGRATIONS_DIR"
-  exit 0
+if [ $? -ne 0 ]; then
+  echo "❌ Migration failed"
+  exit 1
 fi
 
-# Count migration files
-MIGRATION_COUNT=$(find "$MIGRATIONS_DIR" -name "*.sql" | wc -l)
+echo "✅ Migrations completed"
 
-if [ "$MIGRATION_COUNT" -eq 0 ]; then
-  echo "📝 No migration files found"
-  exit 0
+# CRITICAL: Always run seed to ensure master admin user exists
+echo "🌱 Running database seed to ensure master admin user exists..."
+pnpm db:seed
+
+if [ $? -ne 0 ]; then
+  echo "⚠️  Seed failed, but migrations completed"
+  exit 1
 fi
 
-echo "📝 Found $MIGRATION_COUNT migration(s)"
-
-# This is a placeholder. In a real project, you'd use a migration tool like:
-# - Prisma: pnpm prisma migrate deploy
-# - TypeORM: pnpm typeorm migration:run
-# - node-pg-migrate: pnpm migrate up
-
-echo "✅ Migrations completed (placeholder - integrate with your migration tool)"
+echo "✅ Database migrations and seed completed successfully"

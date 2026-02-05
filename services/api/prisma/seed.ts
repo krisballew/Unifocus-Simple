@@ -3,18 +3,29 @@ import bcryptjs from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+/**
+ * Database Seed Script
+ *
+ * CRITICAL: This script ensures the master admin user (kballew@unifocus.com)
+ * is ALWAYS present with Platform Administrator role, even after migrations.
+ *
+ * The script uses upsert operations to be idempotent and safe to run multiple times.
+ */
+
 async function main() {
   console.log('🌱 Starting database seed...');
 
-  // Create a demo tenant
-  console.log('Creating demo tenant...');
-  const tenant = await prisma.tenant.create({
-    data: {
+  // Ensure demo tenant exists (upsert for idempotency)
+  console.log('Ensuring demo tenant exists...');
+  const tenant = await prisma.tenant.upsert({
+    where: { slug: 'demo-tenant' },
+    update: {},
+    create: {
       name: 'Demo Tenant',
       slug: 'demo-tenant',
     },
   });
-  console.log(`✓ Created tenant: ${tenant.name} (${tenant.id})`);
+  console.log(`✓ Tenant exists: ${tenant.name} (${tenant.id})`);
 
   // Create properties
   console.log('Creating properties...');
@@ -732,14 +743,19 @@ async function main() {
 
   // Create roles
   console.log('Creating roles...');
-  const platformAdminRole = await prisma.role.create({
-    data: {
+  const platformAdminRole = await prisma.role.upsert({
+    where: { name: 'Platform Administrator' },
+    update: {
+      description: 'Full system access across all tenants',
+      permissions: ['*'],
+    },
+    create: {
       name: 'Platform Administrator',
       description: 'Full system access across all tenants',
       permissions: ['*'],
     },
   });
-  console.log(`✓ Created role: ${platformAdminRole.name}`);
+  console.log(`✓ Role exists: ${platformAdminRole.name}`);
 
   const propertyAdminRole = await prisma.role.create({
     data: {
@@ -803,11 +819,22 @@ async function main() {
   });
   console.log(`✓ Created role: ${employeeRole.name}`);
 
-  // Create master admin user
-  console.log('Creating master admin user...');
+  // Ensure master admin user exists (CRITICAL: Always maintain this user)
+  console.log('Ensuring master admin user exists...');
   const hashedPassword = await bcryptjs.hash('password123', 10);
-  const masterAdmin = await prisma.user.create({
-    data: {
+  const masterAdmin = await prisma.user.upsert({
+    where: {
+      tenantId_email: {
+        tenantId: tenant.id,
+        email: 'kballew@unifocus.com',
+      },
+    },
+    update: {
+      name: 'Kris Ballew',
+      password: hashedPassword,
+      isActive: true,
+    },
+    create: {
       tenantId: tenant.id,
       email: 'kballew@unifocus.com',
       name: 'Kris Ballew',
@@ -815,18 +842,34 @@ async function main() {
       isActive: true,
     },
   });
-  console.log(`✓ Created master admin user: ${masterAdmin.email} (password: password123)`);
+  console.log(`✓ Master admin user exists: ${masterAdmin.email} (password: password123)`);
 
-  // Assign Platform Administrator role to master admin
-  await prisma.userRoleAssignment.create({
-    data: {
-      tenantId: tenant.id,
+  // Ensure Platform Administrator role assignment
+  const existingRoleAssignment = await prisma.userRoleAssignment.findFirst({
+    where: {
       userId: masterAdmin.id,
       roleId: platformAdminRole.id,
-      isActive: true,
     },
   });
-  console.log(`✓ Assigned Platform Administrator role to ${masterAdmin.email}`);
+
+  if (!existingRoleAssignment) {
+    await prisma.userRoleAssignment.create({
+      data: {
+        tenantId: tenant.id,
+        userId: masterAdmin.id,
+        roleId: platformAdminRole.id,
+        isActive: true,
+      },
+    });
+    console.log(`✓ Assigned Platform Administrator role to ${masterAdmin.email}`);
+  } else {
+    // Update to ensure it's active
+    await prisma.userRoleAssignment.update({
+      where: { id: existingRoleAssignment.id },
+      data: { isActive: true },
+    });
+    console.log(`✓ Platform Administrator role already assigned to ${masterAdmin.email}`);
+  }
 
   // Create employees
   console.log('Creating employees...');
