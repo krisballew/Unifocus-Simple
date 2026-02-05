@@ -15,6 +15,8 @@ import { buildCanonicalWorkedDays } from '../compliance/shift-adapter';
 import { type RuleContext, type CompiledRuleWithParams } from '../compliance/types';
 import { getConfig } from '../config';
 
+const prisma = new PrismaClient();
+
 // Input validation schemas
 const CompileComplianceTextSchema = z.object({
   complianceText: z.string().min(10).max(10000).describe('CBA or compliance document text'),
@@ -46,9 +48,15 @@ const ClarifyRuleSchema = z.object({
  * Register compliance routes
  */
 export async function complianceRoutes(fastify: FastifyInstance) {
-  const prisma = fastify.getHooks().get('prisma') || new PrismaClient();
-  const compiler = createComplianceCompiler();
   const rulesEngine = createRulesEngine();
+
+  const getCompiler = () => {
+    const config = getConfig();
+    if (!config.openai?.apiKey) {
+      throw new Error('OPENAI_API_KEY is required. Set it in environment variables.');
+    }
+    return createComplianceCompiler();
+  };
 
   // Register builtin rules with the engine
   rulesEngine.registerRules(getBuiltinRules());
@@ -100,7 +108,7 @@ export async function complianceRoutes(fastify: FastifyInstance) {
         const { complianceText, context: textContext, name } = request.body;
 
         // Compile the compliance text
-        const compilationResult = await compiler.compileComplianceText({
+        const compilationResult = await getCompiler().compileComplianceText({
           complianceText,
           context: textContext,
           includeReview: true,
@@ -560,7 +568,11 @@ export async function complianceRoutes(fastify: FastifyInstance) {
         const { ruleName, ruleDescription, sourceText } = request.body;
 
         // Get clarification from compiler
-        const clarification = await compiler.clarifyRule(ruleName, ruleDescription, sourceText);
+        const clarification = await getCompiler().clarifyRule(
+          ruleName,
+          ruleDescription,
+          sourceText
+        );
 
         reply.send({
           success: true,

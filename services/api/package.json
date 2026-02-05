@@ -14,9 +14,10 @@
     "test:setup": "./scripts/setup-test-db.sh",
     "verify:security": "node ../../scripts/verify-security.js",
     "clean": "rm -rf dist .turbo node_modules",
-    "db:migrate": "prisma migrate deploy && tsx prisma/seed.ts",
+    "db:migrate": "prisma migrate deploy && pnpm db:ensure-admin",
     "db:migrate:dev": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
+    "db:ensure-admin": "tsx prisma/ensure-master-admin.ts",
     "db:reset": "prisma migrate reset --force",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio"

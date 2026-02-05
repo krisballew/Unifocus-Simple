@@ -22,13 +22,13 @@ fi
 
 echo "✅ Migrations completed"
 
-# CRITICAL: Always run seed to ensure master admin user exists
-echo "🌱 Running database seed to ensure master admin user exists..."
-pnpm db:seed
+# CRITICAL: Always ensure master admin user exists
+echo "🔐 Ensuring master admin user exists..."
+pnpm db:ensure-admin
 
 if [ $? -ne 0 ]; then
-  echo "⚠️  Seed failed, but migrations completed"
+  echo "⚠️  Master admin ensure failed, but migrations completed"
   exit 1
 fi
 
-echo "✅ Database migrations and seed completed successfully"
+echo "✅ Database migrations completed and master admin ensured"
