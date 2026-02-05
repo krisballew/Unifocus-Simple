@@ -1,7 +1,7 @@
+import { PrismaClient } from '@prisma/client';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { jwtVerify, importSPKI } from 'jose';
 import NodeCache from 'node-cache';
-import { PrismaClient } from '@prisma/client';
 
 import type { AppConfig } from '../config.js';
 
@@ -42,33 +42,34 @@ async function getOrCreateDevUser(prisma: PrismaClient) {
       });
     }
 
-    // Get the admin user (Ava Developer) or first user with Platform Administrator role
-    let user = await prisma.user.findFirst({
+    // PRIORITIZE: First find any user with Platform Administrator role
+    let user: typeof adminRoleAssignment extends { user: infer U } ? U : null = null;
+    const adminRoleAssignment = await prisma.userRoleAssignment.findFirst({
       where: {
         tenantId: tenant.id,
         isActive: true,
-        email: 'admin@demo.unifocus.com',
+        role: {
+          name: 'Platform Administrator',
+        },
+      },
+      include: {
+        user: true,
       },
     });
 
-    // If no admin user, try to find any user with Platform Administrator role
+    if (adminRoleAssignment) {
+      user = adminRoleAssignment.user;
+    }
+
+    // If no Platform Administrator, try the demo admin user
     if (!user) {
-      const adminRoleAssignment = await prisma.userRoleAssignment.findFirst({
+      user = await prisma.user.findFirst({
         where: {
           tenantId: tenant.id,
           isActive: true,
-          role: {
-            name: 'Platform Administrator',
-          },
-        },
-        include: {
-          user: true,
+          email: 'admin@demo.unifocus.com',
         },
       });
-      
-      if (adminRoleAssignment) {
-        user = adminRoleAssignment.user;
-      }
     }
 
     // If still no user, get the first active user
@@ -96,7 +97,7 @@ async function getOrCreateDevUser(prisma: PrismaClient) {
       const adminRole = await prisma.role.findFirst({
         where: { name: 'Platform Administrator' },
       });
-      
+
       if (adminRole) {
         await prisma.userRoleAssignment.create({
           data: {
