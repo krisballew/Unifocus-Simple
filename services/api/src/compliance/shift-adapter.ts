@@ -188,67 +188,6 @@ export function extractTimeFromTimestamp(timestamp: Date): string {
 }
 
 /**
- * Checks if a worked day had any actual punches
- */
-export function hadPunches(day: CanonicalWorkedDay): boolean {
-  return day.punches && day.punches.length > 0;
-}
-
-/**
- * Calculates actual start and end times from punches
- * Returns null if insufficient punch data
- */
-export function getActualShiftTimes(day: CanonicalWorkedDay): {
-  startTime: string;
-  endTime: string;
-} | null {
-  if (!day.punches || day.punches.length === 0) {
-    return null;
-  }
-
-  // Find the first IN punch (actual start)
-  const firstIn = day.punches.find((p) => p.type === 'in');
-  // Find the last OUT punch (actual end)
-  const lastOut = [...day.punches].reverse().find((p) => p.type === 'out');
-
-  if (!firstIn || !lastOut) {
-    return null;
-  }
-
-  return {
-    startTime: extractTimeFromTimestamp(firstIn.timestamp),
-    endTime: extractTimeFromTimestamp(lastOut.timestamp),
-  };
-}
-
-/**
- * Calculates actual break time taken from punches
- * Sum of all break_start to break_end pairs
- */
-export function getActualBreakMinutes(day: CanonicalWorkedDay): number {
-  const breaks: Array<{ start: Date; end: Date }> = [];
-
-  let breakStart: Date | null = null;
-  for (const punch of day.punches) {
-    if (punch.type === 'break_start') {
-      breakStart = punch.timestamp;
-    } else if (punch.type === 'break_end' && breakStart) {
-      breaks.push({
-        start: breakStart,
-        end: punch.timestamp,
-      });
-      breakStart = null;
-    }
-  }
-
-  // Calculate total break minutes
-  return breaks.reduce((total, b) => {
-    const minutes = (b.end.getTime() - b.start.getTime()) / (1000 * 60);
-    return total + minutes;
-  }, 0);
-}
-
-/**
  * Helper to check if a day is a weekend (Saturday or Sunday)
  */
 export function isWeekend(date: Date): boolean {

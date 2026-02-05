@@ -193,8 +193,71 @@ export function formatTimeRange(startTime: string, endTime: string): string {
 }
 
 /**
- * Helper to format violation for display
+ * Helper to extract the time portion from a timestamp in HH:MM format
  */
-export function formatViolation(violation: ComplianceViolation): string {
-  return `[${violation.severity}] ${violation.ruleName}: ${violation.violation}`;
+function extractTimeFromTimestamp(timestamp: Date): string {
+  const hours = String(timestamp.getHours()).padStart(2, '0');
+  const minutes = String(timestamp.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+/**
+ * Helper to check if a worked day had any actual punches
+ */
+export function hadPunches(day: CanonicalWorkedDay): boolean {
+  return day.punches && day.punches.length > 0;
+}
+
+/**
+ * Calculates actual start and end times from punches
+ * Returns null if insufficient punch data
+ */
+export function getActualShiftTimes(day: CanonicalWorkedDay): {
+  startTime: string;
+  endTime: string;
+} | null {
+  if (!day.punches || day.punches.length === 0) {
+    return null;
+  }
+
+  // Find the first IN punch (actual start)
+  const firstIn = day.punches.find((p) => p.type === 'in');
+  // Find the last OUT punch (actual end)
+  const lastOut = [...day.punches].reverse().find((p) => p.type === 'out');
+
+  if (!firstIn || !lastOut) {
+    return null;
+  }
+
+  return {
+    startTime: extractTimeFromTimestamp(firstIn.timestamp),
+    endTime: extractTimeFromTimestamp(lastOut.timestamp),
+  };
+}
+
+/**
+ * Calculates actual break time taken from punches
+ * Sum of all break_start to break_end pairs
+ */
+export function getActualBreakMinutes(day: CanonicalWorkedDay): number {
+  const breaks: Array<{ start: Date; end: Date }> = [];
+
+  let breakStart: Date | null = null;
+  for (const punch of day.punches) {
+    if (punch.type === 'break_start') {
+      breakStart = punch.timestamp;
+    } else if (punch.type === 'break_end' && breakStart) {
+      breaks.push({
+        start: breakStart,
+        end: punch.timestamp,
+      });
+      breakStart = null;
+    }
+  }
+
+  // Calculate total break minutes
+  return breaks.reduce((total, b) => {
+    const minutes = (b.end.getTime() - b.start.getTime()) / (1000 * 60);
+    return total + minutes;
+  }, 0);
 }
