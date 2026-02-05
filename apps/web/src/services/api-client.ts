@@ -615,3 +615,100 @@ export async function resolveException(
     notes,
   });
 }
+
+// ========== LABOR COMPLIANCE ==========
+
+export interface RulePackage {
+  id: string;
+  tenantId: string;
+  propertyId?: string;
+  name: string;
+  description?: string;
+  version: number;
+  status: 'DRAFT' | 'PUBLISHED';
+  sourceText?: string;
+  compiledRules: CompiledRule[];
+  createdBy: string;
+  createdAt: string;
+  publishedAt?: string;
+  publishedBy?: string;
+}
+
+export interface CompiledRule {
+  id: string;
+  rulePackageId: string;
+  ruleId: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+  severity: 'ERROR' | 'WARN';
+  params: Record<string, unknown>;
+  citations?: Array<{
+    sourceText: string;
+    section?: string;
+    lineNumber?: number;
+  }>;
+  clarifications?: Array<{
+    clarification: string;
+    context?: string;
+  }>;
+}
+
+export async function compileComplianceText(params: {
+  complianceText: string;
+  context?: string;
+  name?: string;
+}): Promise<{ success: boolean; rulePackageId?: string; rules?: CompiledRule[]; message: string }> {
+  const client = getApiClient();
+  return client.post('/api/compliance/compile', params);
+}
+
+export async function publishRulePackage(
+  rulePackageId: string,
+  message?: string
+): Promise<{ success: boolean; rulePackageId: string; version: number; message: string }> {
+  const client = getApiClient();
+  return client.post(`/api/compliance/publish/${rulePackageId}`, { message });
+}
+
+export async function listRulePackages(): Promise<{ packages: RulePackage[]; total: number }> {
+  const client = getApiClient();
+  return client.get('/api/compliance/packages');
+}
+
+export async function getRulePackage(rulePackageId: string): Promise<RulePackage> {
+  const client = getApiClient();
+  return client.get<RulePackage>(`/api/compliance/packages/${rulePackageId}`);
+}
+
+export async function validateRulePackage(params: {
+  rulePackageId: string;
+  employeeId?: string;
+  dateStart: string;
+  dateEnd: string;
+}): Promise<{
+  success: boolean;
+  rulePackageId: string;
+  dateRange: { start: string; end: string };
+  results: Array<{
+    employeeId: string;
+    violationCount: number;
+    hasErrors: boolean;
+    hasWarnings: boolean;
+    violations: unknown[];
+    validationResultId: string;
+  }>;
+  totalViolations: number;
+}> {
+  const client = getApiClient();
+  return client.post('/api/compliance/validate', params);
+}
+
+export async function clarifyRule(params: {
+  ruleName: string;
+  ruleDescription: string;
+  sourceText?: string;
+}): Promise<{ success: boolean; ruleName: string; clarification: string }> {
+  const client = getApiClient();
+  return client.post('/api/compliance/clarify', params);
+}
