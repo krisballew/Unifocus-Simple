@@ -9,9 +9,11 @@ import { z } from 'zod';
 
 import { getAuthContext, hasAnyRole } from '../auth/rbac';
 import { getBuiltinRules } from '../compliance/builtin-rules';
+import { createComplianceCompiler } from '../compliance/llm-compiler';
 import { createRulesEngine } from '../compliance/rules-engine';
 import { buildCanonicalWorkedDays } from '../compliance/shift-adapter';
 import { type RuleContext, type CompiledRuleWithParams } from '../compliance/types';
+import { getConfig } from '../config';
 
 // Input validation schemas
 const CompileComplianceTextSchema = z.object({
@@ -84,6 +86,15 @@ export async function complianceRoutes(fastify: FastifyInstance) {
         // Check authorization
         if (!hasAnyRole(context, ['Platform Administrator', 'Property Administrator'])) {
           return reply.code(403).send({ success: false, message: 'Forbidden' });
+        }
+
+        // Check if compliance rules feature is enabled
+        const config = getConfig();
+        if (!config.complianceRulesEnabled) {
+          return reply.code(403).send({
+            success: false,
+            message: 'Labor compliance rules feature is not enabled',
+          });
         }
 
         const { complianceText, context: textContext, name } = request.body;

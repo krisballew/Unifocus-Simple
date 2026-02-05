@@ -15,6 +15,12 @@ export interface AppConfig {
     jwksUri: string;
   };
   authSkipVerification: boolean;
+  // Labor compliance configuration
+  complianceRulesEnabled: boolean;
+  openai: {
+    apiKey?: string;
+    model: string;
+  };
 }
 
 export function getConfig(): AppConfig {
@@ -35,5 +41,10 @@ export function getConfig(): AppConfig {
       jwksUri: process.env['COGNITO_JWKS_URI'] ?? '',
     },
     authSkipVerification: (process.env['AUTH_SKIP_VERIFICATION'] ?? 'false') === 'true',
+    complianceRulesEnabled: (process.env['COMPLIANCE_RULES_ENABLED'] ?? 'false') === 'true',
+    openai: {
+      apiKey: process.env['OPENAI_API_KEY'],
+      model: process.env['OPENAI_MODEL'] ?? 'gpt-4-turbo',
+    },
   };
 }

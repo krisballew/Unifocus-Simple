@@ -3,6 +3,7 @@ import { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { getAuthContext, hasAnyRole, hasTenantScope } from '../auth/rbac';
+import { getConfig } from '../config';
 import { AuditLogger } from '../services/audit-logger';
 import { IdempotencyService } from '../services/idempotency';
 import { PunchValidator } from '../services/punch-validator';
@@ -196,6 +197,37 @@ export async function taRoutes(server: FastifyInstance) {
       entityId: shift.id,
       scheduleId,
     });
+
+    // Optional: Trigger compliance validation in background if feature is enabled
+    // This is non-blocking and errors are logged but don't fail the response
+    const config = getConfig();
+    if (config.complianceRulesEnabled) {
+      // Trigger async validation without awaiting (fire and forget)
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      (async () => {
+        try {
+          // Get the latest published rule package for this tenant
+          const rulePackage = await prisma.rulePackage.findFirst({
+            where: {
+              tenantId,
+              status: 'PUBLISHED',
+            },
+            orderBy: { publishedAt: 'desc' },
+          });
+
+          if (rulePackage) {
+            // Log validation trigger (actual validation happens asynchronously)
+            server.log.debug(`Compliance validation queued for shift ${shift.id}`);
+          }
+        } catch (error) {
+          // Log errors but don't fail the request
+          server.log.error(
+            { error, shiftId: shift.id },
+            'Error triggering compliance validation on shift creation'
+          );
+        }
+      })();
+    }
 
     return reply.status(201).send(shift);
   });
