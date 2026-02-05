@@ -1,5 +1,6 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PrismaClient } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 import { getAuthContext, hasTenantScope } from '../auth/rbac';
 
@@ -406,7 +407,7 @@ export async function employeeRoutes(server: FastifyInstance) {
   );
 
   // PUT /api/employees/:employeeId/managers - Update employee's managers
-  server.put<{ Params: { employeeId: string } }>(
+  server.put<{ Params: { employeeId: string }; Body: Prisma.InputJsonValue }>(
     '/employees/:employeeId/managers',
     async (request, reply) => {
       const { employeeId } = request.params;
