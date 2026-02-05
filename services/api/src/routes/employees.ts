@@ -417,7 +417,7 @@ export async function employeeRoutes(server: FastifyInstance) {
   );
 
   // PUT /employees/:employeeId/manager - Backward-compatible single manager update
-  server.put<{ Params: { employeeId: string } }>(
+  server.put<{ Params: { employeeId: string }; Body: Prisma.InputJsonValue }>(
     '/employees/:employeeId/manager',
     async (request, reply) => {
       const { managerId } = request.body as { managerId?: string | null };
