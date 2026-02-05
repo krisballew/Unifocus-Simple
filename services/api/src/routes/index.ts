@@ -1,7 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 
 import type { AppConfig } from '../config.js';
+
 import { authRoutes } from './auth.js';
+import { complianceRoutes } from './compliance.js';
 import { employeeRoutes } from './employees.js';
 import { geocodingRoutes } from './geocoding.js';
 import { healthRoutes } from './health.js';
@@ -22,10 +24,10 @@ export async function registerRoutes(server: FastifyInstance, config: AppConfig)
   await server.register(settingsRoutes, { prefix: '/api' });
   await server.register(userAdminRoutes, { prefix: '/api' });
   await server.register(employeeRoutes, { prefix: '/api' });
+  await server.register(complianceRoutes, { prefix: '/api/compliance' });
   await server.register(async (srv) => tenantRoutes(srv, config));
   await server.register(taRoutes);
 
   // TODO: Add more route modules as needed:
-  // - employees
   // - housekeeping
 }
