@@ -14,6 +14,21 @@
  *   1 - Missing or invalid environment variables
  */
 
+// Load environment variables from .env files for web validation
+if (process.env['WEB_ENV'] === 'true') {
+  // Prefer .env.local, then .env, then .env.example
+  const dotenv = require('dotenv');
+  const fs = require('fs');
+  const path = require('path');
+  const envDir = path.resolve(__dirname, '../apps/web');
+  const envFiles = ['.env.local', '.env', '.env.example'];
+  for (const file of envFiles) {
+    const filePath = path.join(envDir, file);
+    if (fs.existsSync(filePath)) {
+      dotenv.config({ path: filePath, override: true });
+    }
+  }
+}
 interface EnvVar {
   name: string;
   required: boolean;

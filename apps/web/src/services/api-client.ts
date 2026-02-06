@@ -153,6 +153,7 @@ export interface Employee {
   id: string;
   tenantId: string;
   propertyId: string;
+  employeeId?: string | null;
   firstName: string;
   lastName: string;
   email?: string | null;

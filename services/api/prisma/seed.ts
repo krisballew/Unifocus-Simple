@@ -871,18 +871,88 @@ async function main() {
     console.log(`✓ Platform Administrator role already assigned to ${masterAdmin.email}`);
   }
 
+  type SeedJobInput = {
+    jobRole: { id: string; name: string; code?: string | null };
+    department: { id: string; name: string; location?: string | null };
+    payType: 'hourly' | 'salary';
+    rate: string;
+    jobStatus: 'active' | 'inactive' | 'on-leave';
+    payGroup: string;
+    isPrimary: boolean;
+    subOnly?: boolean;
+    annualAmount?: string;
+    hours?: string;
+    notes?: string;
+  };
+
+  const buildJobRecord = (job: SeedJobInput, startDate: string) => ({
+    jobRoleId: job.jobRole.id,
+    departmentId: job.department.id,
+    jobCode: job.jobRole.code ?? '',
+    jobTitle: job.jobRole.name,
+    department: job.department.name,
+    location: job.department.location ?? '',
+    payType: job.payType,
+    rate: job.rate,
+    jobDate: startDate,
+    jobStatus: job.jobStatus,
+    payGroup: job.payGroup,
+    isPrimary: job.isPrimary,
+    subOnly: job.subOnly ?? false,
+    annualAmount: job.annualAmount,
+    hours: job.hours,
+    notes: job.notes,
+  });
+
+  const buildEmploymentDetails = (startDate: string, jobs: SeedJobInput[]) => ({
+    jobCompensationRecords: [
+      {
+        effectiveStartDate: startDate,
+        effectiveEndDate: 'Present',
+        jobs: jobs.map((job) => buildJobRecord(job, startDate)),
+      },
+    ],
+    selectedEffectiveRangeIndex: 0,
+  });
+
   // Create employees
   console.log('Creating employees...');
   const employee1 = await prisma.employee.create({
     data: {
       tenantId: tenant.id,
       propertyId: property1.id,
+      employeeId: 'EMP1001',
       firstName: 'Alice',
       lastName: 'Johnson',
       email: 'alice.johnson@demo.unifocus.com',
       phone: '555-0101',
       hireDate: new Date('2023-01-15'),
       isActive: true,
+      employmentDetails: buildEmploymentDetails('2023-01-15', [
+        {
+          jobRole: jobRoleFrontDeskAgent,
+          department: deptFrontOffice,
+          payType: 'hourly',
+          rate: '18.50',
+          jobStatus: 'active',
+          payGroup: 'Weekly',
+          isPrimary: true,
+          annualAmount: '38480',
+          hours: '40',
+        },
+        {
+          jobRole: jobRoleNightAuditor,
+          department: deptFrontOffice,
+          payType: 'hourly',
+          rate: '20.50',
+          jobStatus: 'active',
+          payGroup: 'Weekly',
+          isPrimary: false,
+          subOnly: true,
+          annualAmount: '42640',
+          hours: '16',
+        },
+      ]),
     },
   });
   console.log(`✓ Created employee: ${employee1.firstName} ${employee1.lastName}`);
@@ -891,12 +961,26 @@ async function main() {
     data: {
       tenantId: tenant.id,
       propertyId: property1.id,
+      employeeId: 'EMP1002',
       firstName: 'Bob',
       lastName: 'Smith',
       email: 'bob.smith@demo.unifocus.com',
       phone: '555-0102',
       hireDate: new Date('2023-03-20'),
       isActive: true,
+      employmentDetails: buildEmploymentDetails('2023-03-20', [
+        {
+          jobRole: jobRoleHousekeepingAttendant,
+          department: deptHousekeeping,
+          payType: 'hourly',
+          rate: '17.00',
+          jobStatus: 'active',
+          payGroup: 'Weekly',
+          isPrimary: true,
+          annualAmount: '35360',
+          hours: '40',
+        },
+      ]),
     },
   });
   console.log(`✓ Created employee: ${employee2.firstName} ${employee2.lastName}`);
@@ -905,12 +989,38 @@ async function main() {
     data: {
       tenantId: tenant.id,
       propertyId: property2.id,
+      employeeId: 'EMP2001',
       firstName: 'Carol',
       lastName: 'White',
       email: 'carol.white@demo.unifocus.com',
       phone: '555-0103',
       hireDate: new Date('2023-06-01'),
       isActive: true,
+      employmentDetails: buildEmploymentDetails('2023-06-01', [
+        {
+          jobRole: jobRoleChef,
+          department: deptFoodBeverage,
+          payType: 'salary',
+          rate: '78000',
+          jobStatus: 'active',
+          payGroup: 'Biweekly',
+          isPrimary: true,
+          annualAmount: '78000',
+          hours: '40',
+        },
+        {
+          jobRole: jobRoleServer,
+          department: deptFoodBeverage,
+          payType: 'hourly',
+          rate: '16.50',
+          jobStatus: 'active',
+          payGroup: 'Weekly',
+          isPrimary: false,
+          subOnly: true,
+          annualAmount: '34320',
+          hours: '12',
+        },
+      ]),
     },
   });
   console.log(`✓ Created employee: ${employee3.firstName} ${employee3.lastName}`);
@@ -919,12 +1029,26 @@ async function main() {
     data: {
       tenantId: tenant.id,
       propertyId: property3.id,
+      employeeId: 'EMP3001',
       firstName: 'David',
       lastName: 'Martinez',
       email: 'david.martinez@demo.unifocus.com',
       phone: '555-0104',
       hireDate: new Date('2022-11-10'),
       isActive: true,
+      employmentDetails: buildEmploymentDetails('2022-11-10', [
+        {
+          jobRole: jobRoleEngineer,
+          department: deptMaintenance,
+          payType: 'salary',
+          rate: '90000',
+          jobStatus: 'active',
+          payGroup: 'Biweekly',
+          isPrimary: true,
+          annualAmount: '90000',
+          hours: '40',
+        },
+      ]),
     },
   });
   console.log(`✓ Created employee: ${employee4.firstName} ${employee4.lastName}`);
@@ -933,12 +1057,26 @@ async function main() {
     data: {
       tenantId: tenant.id,
       propertyId: property3.id,
+      employeeId: 'EMP3002',
       firstName: 'Emma',
       lastName: 'Davis',
       email: 'emma.davis@demo.unifocus.com',
       phone: '555-0105',
       hireDate: new Date('2024-01-05'),
       isActive: true,
+      employmentDetails: buildEmploymentDetails('2024-01-05', [
+        {
+          jobRole: jobRoleMaintenanceTech,
+          department: deptMaintenance,
+          payType: 'hourly',
+          rate: '24.50',
+          jobStatus: 'active',
+          payGroup: 'Weekly',
+          isPrimary: true,
+          annualAmount: '50960',
+          hours: '40',
+        },
+      ]),
     },
   });
   console.log(`✓ Created employee: ${employee5.firstName} ${employee5.lastName}`);
@@ -947,12 +1085,26 @@ async function main() {
     data: {
       tenantId: tenant.id,
       propertyId: property4.id,
+      employeeId: 'EMP4001',
       firstName: 'Frank',
       lastName: 'Wilson',
       email: 'frank.wilson@demo.unifocus.com',
       phone: '555-0106',
       hireDate: new Date('2023-08-15'),
       isActive: true,
+      employmentDetails: buildEmploymentDetails('2023-08-15', [
+        {
+          jobRole: jobRoleSecurityOfficer,
+          department: deptSecurity,
+          payType: 'hourly',
+          rate: '22.00',
+          jobStatus: 'active',
+          payGroup: 'Weekly',
+          isPrimary: true,
+          annualAmount: '45760',
+          hours: '40',
+        },
+      ]),
     },
   });
   console.log(`✓ Created employee: ${employee6.firstName} ${employee6.lastName}`);
@@ -961,12 +1113,38 @@ async function main() {
     data: {
       tenantId: tenant.id,
       propertyId: property4.id,
+      employeeId: 'EMP4002',
       firstName: 'Grace',
       lastName: 'Taylor',
       email: 'grace.taylor@demo.unifocus.com',
       phone: '555-0107',
       hireDate: new Date('2023-09-20'),
       isActive: true,
+      employmentDetails: buildEmploymentDetails('2023-09-20', [
+        {
+          jobRole: jobRoleSecuritySupervisor,
+          department: deptSecurity,
+          payType: 'salary',
+          rate: '65000',
+          jobStatus: 'active',
+          payGroup: 'Biweekly',
+          isPrimary: true,
+          annualAmount: '65000',
+          hours: '40',
+        },
+        {
+          jobRole: jobRoleSecurityOfficer,
+          department: deptSecurity,
+          payType: 'hourly',
+          rate: '21.00',
+          jobStatus: 'on-leave',
+          payGroup: 'Weekly',
+          isPrimary: false,
+          subOnly: true,
+          annualAmount: '43680',
+          hours: '12',
+        },
+      ]),
     },
   });
   console.log(`✓ Created employee: ${employee7.firstName} ${employee7.lastName}`);
@@ -975,12 +1153,26 @@ async function main() {
     data: {
       tenantId: tenant.id,
       propertyId: property5.id,
+      employeeId: 'EMP5001',
       firstName: 'Henry',
       lastName: 'Anderson',
       email: 'henry.anderson@demo.unifocus.com',
       phone: '555-0108',
       hireDate: new Date('2024-02-01'),
       isActive: true,
+      employmentDetails: buildEmploymentDetails('2024-02-01', [
+        {
+          jobRole: jobRoleHRManager,
+          department: deptHR,
+          payType: 'salary',
+          rate: '72000',
+          jobStatus: 'active',
+          payGroup: 'Biweekly',
+          isPrimary: true,
+          annualAmount: '72000',
+          hours: '40',
+        },
+      ]),
     },
   });
   console.log(`✓ Created employee: ${employee8.firstName} ${employee8.lastName}`);
@@ -989,12 +1181,26 @@ async function main() {
     data: {
       tenantId: tenant.id,
       propertyId: property5.id,
+      employeeId: 'EMP5002',
       firstName: 'Isabel',
       lastName: 'Thomas',
       email: 'isabel.thomas@demo.unifocus.com',
       phone: '555-0109',
       hireDate: new Date('2023-07-10'),
       isActive: true,
+      employmentDetails: buildEmploymentDetails('2023-07-10', [
+        {
+          jobRole: jobRoleHRManager,
+          department: deptHR,
+          payType: 'salary',
+          rate: '68000',
+          jobStatus: 'active',
+          payGroup: 'Monthly',
+          isPrimary: true,
+          annualAmount: '68000',
+          hours: '40',
+        },
+      ]),
     },
   });
   console.log(`✓ Created employee: ${employee9.firstName} ${employee9.lastName}`);
@@ -1003,12 +1209,26 @@ async function main() {
     data: {
       tenantId: tenant.id,
       propertyId: property1.id,
+      employeeId: 'EMP1003',
       firstName: 'Jack',
       lastName: 'Moore',
       email: 'jack.moore@demo.unifocus.com',
       phone: '555-0110',
       hireDate: new Date('2023-04-12'),
       isActive: true,
+      employmentDetails: buildEmploymentDetails('2023-04-12', [
+        {
+          jobRole: jobRoleNightAuditor,
+          department: deptFrontOffice,
+          payType: 'hourly',
+          rate: '19.25',
+          jobStatus: 'active',
+          payGroup: 'Weekly',
+          isPrimary: true,
+          annualAmount: '40040',
+          hours: '40',
+        },
+      ]),
     },
   });
   console.log(`✓ Created employee: ${employee10.firstName} ${employee10.lastName}`);

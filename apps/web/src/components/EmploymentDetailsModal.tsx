@@ -1,25 +1,101 @@
-import React, { useState, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { getApiClient, type Employee, saveEmploymentDetails } from '../services/api-client';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { getApiClient, type Employee, saveEmploymentDetails, getJobStructure } from '../services/api-client';
 import { queryKeys } from '../services/query-keys';
+import { JobAddForm } from './JobAddForm';
+import { JobEditForm } from './JobEditForm';
+import { JobDeleteForm } from './JobDeleteForm';
 
 interface EmploymentDetailsState {
-  // Core Employment Record - Basic Information ONLY
+  // Core Employment Record - Comprehensive Identity & Employment Relationship
+  // Identifiers
+  externalEmployeeId: string;
+  legacyId: string;
+  badgeCardId: string;
+  biometricIdReference: string;
+
+  // Employment Relationship
+  employmentStatus: 'active' | 'leave' | 'terminated' | 'suspended';
+  employmentType: 'full-time' | 'part-time' | 'seasonal' | 'temporary' | 'contractor';
+  workerClassification: 'exempt' | 'non-exempt';
+  flsaStatus: string;
+  unionStatus: 'union' | 'non-union';
+  bargainingUnit: string;
+  employmentCategory: 'hourly' | 'salaried' | 'tipped' | 'commission';
+
+  // Dates
+  originalHireDate: string;
+  mostRecentHireDate: string;
+  seniorityDate: string;
+  probationEndDate: string;
+  terminationDate: string;
+  terminationReason: string;
+  rehireEligible: boolean;
+
+  // Organizational Placement
+  company: string;
+  property: string;
+  division: string;
+  department: string;
+  costCenter: string;
+  workSiteLocation: string;
+
+  // Reporting Structure
+  managerId: string;
+  managerName: string;
+  secondaryManagerId: string;
+  secondaryManagerName: string;
+  hrBusinessPartner: string;
+  timeApproverId: string;
+  timeApproverName: string;
+
+  // System Governance
+  employmentRecordStatus: 'draft' | 'active' | 'archived';
+  effectiveDate: string;
+  recordVersion: string;
+
+  // Legacy fields (to be removed or reorganized later)
   preferredName: string;
-  manager: string;  // Populated from org structure mapping
-  employmentStatus: 'active' | 'leave' | 'terminated';
-  workAuthorizationVerified: boolean;
   contactInfo: string;
   emergencyContact: string;
+
+  // Job & Compensation - Date-range-effective job management
+  jobCompensationRecords: Array<{
+    id?: string;
+    effectiveStartDate: string;
+    effectiveEndDate: string; // 'Present' for current
+    jobs: Array<{
+      id?: string;
+      jobRoleId?: string; // Reference to job structure job role
+      departmentId?: string; // Reference to job structure department
+      jobCode: string;
+      jobTitle: string;
+      department: string;
+      location: string;
+      payType: 'hourly' | 'salary';
+      rate: string;
+      jobDate: string;
+      endDate?: string;
+      jobStatus: 'active' | 'inactive' | 'on-leave';
+      payGroup: string;
+      isPrimary: boolean;
+      subOnly: boolean;
+      annualAmount?: string;
+      salaryDistribution?: string;
+      hours?: string;
+      notes?: string;
+    }>;
+  }>;
+  selectedEffectiveRangeIndex: number;
 
   // Pay & Labor Setup - WITH Department & Job Role per job
   payType: 'hourly' | 'salary' | 'tipped';
   hourlyRate: string;
   salaryAmount: string;
   payrollGroup: string;
-  overtimeEligible: boolean;
   tipPoolParticipation: boolean;
-  
+  overtimeEligible: boolean;
+
   // Job Roles (multiple per employee with per-job pay configuration)
   jobRoles: Array<{
     jobRoleId?: string;
@@ -77,18 +153,74 @@ interface EmploymentDetailsModalProps {
 }
 
 const emptyDetails: EmploymentDetailsState = {
-  preferredName: '',
-  manager: '',
+  // Core Employment Record - Identifiers
+  externalEmployeeId: '',
+  legacyId: '',
+  badgeCardId: '',
+  biometricIdReference: '',
+
+  // Employment Relationship
   employmentStatus: 'active',
-  workAuthorizationVerified: false,
+  employmentType: 'full-time',
+  workerClassification: 'non-exempt',
+  flsaStatus: '',
+  unionStatus: 'non-union',
+  bargainingUnit: '',
+  employmentCategory: 'hourly',
+
+  // Dates
+  originalHireDate: '',
+  mostRecentHireDate: '',
+  seniorityDate: '',
+  probationEndDate: '',
+  terminationDate: '',
+  terminationReason: '',
+  rehireEligible: true,
+
+  // Organizational Placement
+  company: '',
+  property: '',
+  division: '',
+  department: '',
+  costCenter: '',
+  workSiteLocation: '',
+
+  // Reporting Structure
+  managerId: '',
+  managerName: '',
+  secondaryManagerId: '',
+  secondaryManagerName: '',
+  hrBusinessPartner: '',
+  timeApproverId: '',
+  timeApproverName: '',
+
+  // System Governance
+  employmentRecordStatus: 'active',
+  effectiveDate: '',
+  recordVersion: '1.0',
+
+  // Legacy fields
+  preferredName: '',
   contactInfo: '',
   emergencyContact: '',
+
+  // Job & Compensation - Date-range-effective job management
+  jobCompensationRecords: [
+    {
+      effectiveStartDate: new Date().toISOString().split('T')[0],
+      effectiveEndDate: 'Present',
+      jobs: [],
+    },
+  ],
+  selectedEffectiveRangeIndex: 0,
+
+  // Pay & Labor fields
   payType: 'hourly',
   hourlyRate: '',
   salaryAmount: '',
   payrollGroup: '',
-  overtimeEligible: false,
   tipPoolParticipation: false,
+  overtimeEligible: false,
   jobRoles: [],
   primaryRole: '',
   secondaryRoles: '',
@@ -127,9 +259,102 @@ export function EmploymentDetailsModal({
   const queryClient = useQueryClient();
   const apiClient = getApiClient();
   const [details, setDetails] = useState<EmploymentDetailsState>(emptyDetails);
-  const [activeTab, setActiveTab] = useState<'core' | 'pay' | 'scheduling' | 'compliance' | 'attendance' | 'hotel'>(
+  const [activeTab, setActiveTab] = useState<'core' | 'jobpay' | 'pay' | 'scheduling' | 'compliance' | 'attendance' | 'hotel'>(
     'core'
   );
+
+  // Trigger refresh when jobs are added
+  const [jobsRefreshKey, setJobsRefreshKey] = useState(0);
+
+  // Re-fetch employment details when jobsRefreshKey changes
+  useEffect(() => {
+    if (employee && isOpen && jobsRefreshKey > 0) {
+      const fetchDetails = async () => {
+        try {
+          const response = await getApiClient().get<{ data: { employmentDetails: Record<string, any> } }>(
+            `/api/employees/${employee.id}/employment-details`
+          );
+          const employmentDetails = response.data?.employmentDetails || {};
+          if (Object.keys(employmentDetails).length > 0 && employmentDetails.jobCompensationRecords) {
+            setDetails((prev) => ({
+              ...prev,
+              jobCompensationRecords: employmentDetails.jobCompensationRecords,
+            }));
+          }
+        } catch (error) {
+          console.warn('Failed to refresh employment details:', error);
+        }
+      };
+      fetchDetails();
+    }
+  }, [jobsRefreshKey, employee, isOpen]);
+
+  const jobStructureQuery = useQuery({
+    queryKey: queryKeys.jobStructure(selectedPropertyId ?? undefined),
+    queryFn: () => getJobStructure(selectedPropertyId!),
+    enabled: Boolean(selectedPropertyId),
+  });
+
+  const formatCurrency = (value?: string) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return '–';
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(parsed);
+  };
+
+  const getPayRateDisplay = (
+    job: EmploymentDetailsState['jobCompensationRecords'][number]['jobs'][number]
+  ) => {
+    if (job.payType === 'salary') {
+      const annualComp = Number(job.annualAmount);
+      if (!Number.isFinite(annualComp)) return formatCurrency(job.rate);
+      // Convert annual salary to hourly rate: 2,080 hours = 52 weeks × 5 days × 8 hours
+      const hourlyRate = annualComp / 2080;
+      return formatCurrency(String(hourlyRate));
+    }
+    return formatCurrency(job.rate);
+  };
+
+  const departmentNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    jobStructureQuery.data?.divisions.forEach((division) => {
+      division.departments.forEach((department) => {
+        map.set(department.id, department.name);
+      });
+    });
+    return map;
+  }, [jobStructureQuery.data]);
+
+  const jobRoleById = useMemo(() => {
+    const map = new Map<string, { name: string; code?: string | null; departmentId: string }>();
+    jobStructureQuery.data?.divisions.forEach((division) => {
+      division.departments.forEach((department) => {
+        department.jobRoles.forEach((jobRole) => {
+          map.set(jobRole.id, { name: jobRole.name, code: jobRole.code, departmentId: department.id });
+        });
+      });
+    });
+    return map;
+  }, [jobStructureQuery.data]);
+
+  // Get all departments for dropdown
+  const allDepartments = useMemo(() => {
+    const depts: Array<{ id: string; name: string; divisionName: string }> = [];
+    jobStructureQuery.data?.divisions.forEach((division) => {
+      division.departments.forEach((department) => {
+        depts.push({
+          id: department.id,
+          name: department.name,
+          divisionName: division.name,
+        });
+      });
+    });
+    return depts;
+  }, [jobStructureQuery.data]);
 
   // Initialize form with employee data and fetch existing employment details
   useEffect(() => {
@@ -139,7 +364,7 @@ export function EmploymentDetailsModal({
         ...prev,
         employmentStatus: employee.isActive ? 'active' : 'terminated',
       }));
-      
+
       // Fetch existing employment details from API
       const fetchDetails = async () => {
         try {
@@ -147,27 +372,80 @@ export function EmploymentDetailsModal({
             `/api/employees/${employee.id}/employment-details`
           );
           const employmentDetails = response.data?.employmentDetails || {};
-          
+
           // Populate form with saved details if available
           if (Object.keys(employmentDetails).length > 0) {
             setDetails((prev) => ({
               ...prev,
-              // Core Record - no hireDate
+              // Core Record - Identifiers
+              externalEmployeeId: employmentDetails.externalEmployeeId || '',
+              legacyId: employmentDetails.legacyId || '',
+              badgeCardId: employmentDetails.badgeCardId || '',
+              biometricIdReference: employmentDetails.biometricIdReference || '',
+
+              // Employment Relationship
+              employmentType: employmentDetails.employmentType || 'full-time',
+              workerClassification: employmentDetails.workerClassification || 'non-exempt',
+              flsaStatus: employmentDetails.flsaStatus || '',
+              unionStatus: employmentDetails.unionStatus || 'non-union',
+              bargainingUnit: employmentDetails.bargainingUnit || '',
+              employmentCategory: employmentDetails.employmentCategory || 'hourly',
+
+              // Dates
+              originalHireDate: employmentDetails.originalHireDate || '',
+              mostRecentHireDate: employmentDetails.mostRecentHireDate || '',
+              seniorityDate: employmentDetails.seniorityDate || '',
+              probationEndDate: employmentDetails.probationEndDate || '',
+              terminationDate: employmentDetails.terminationDate || '',
+              terminationReason: employmentDetails.terminationReason || '',
+              rehireEligible: employmentDetails.rehireEligible ?? true,
+
+              // Organizational Placement
+              company: employmentDetails.company || '',
+              property: employmentDetails.property || '',
+              division: employmentDetails.division || '',
+              department: employmentDetails.department || '',
+              costCenter: employmentDetails.costCenter || '',
+              workSiteLocation: employmentDetails.workSiteLocation || '',
+
+              // Reporting Structure
+              managerId: employmentDetails.managerId || '',
+              managerName: employmentDetails.managerName || '',
+              secondaryManagerId: employmentDetails.secondaryManagerId || '',
+              secondaryManagerName: employmentDetails.secondaryManagerName || '',
+              hrBusinessPartner: employmentDetails.hrBusinessPartner || '',
+              timeApproverId: employmentDetails.timeApproverId || '',
+              timeApproverName: employmentDetails.timeApproverName || '',
+
+              // System Governance
+              employmentRecordStatus: employmentDetails.employmentRecordStatus || 'active',
+              effectiveDate: employmentDetails.effectiveDate || '',
+              recordVersion: employmentDetails.recordVersion || '1.0',
+
+              // Legacy fields
               preferredName: employmentDetails.preferredName || '',
-              manager: employmentDetails.manager || '',
-              workAuthorizationVerified: employmentDetails.workAuthorizationVerified || false,
               contactInfo: employmentDetails.contactInfo || '',
               emergencyContact: employmentDetails.emergencyContact || '',
-              
+
+              // Job & Compensation - Date-range-effective job management
+              jobCompensationRecords: employmentDetails.jobCompensationRecords || [
+                {
+                  effectiveStartDate: new Date().toISOString().split('T')[0],
+                  effectiveEndDate: 'Present',
+                  jobs: [],
+                },
+              ],
+              selectedEffectiveRangeIndex: employmentDetails.selectedEffectiveRangeIndex ?? 0,
+
               // Pay & Labor
               payType: employmentDetails.payType || 'hourly',
               hourlyRate: employmentDetails.hourlyRate || '',
               salaryAmount: employmentDetails.salaryAmount || '',
               payrollGroup: employmentDetails.payrollGroup || '',
-              overtimeEligible: employmentDetails.overtimeEligible || false,
               tipPoolParticipation: employmentDetails.tipPoolParticipation || false,
+              overtimeEligible: employmentDetails.overtimeEligible || false,
               jobRoles: employmentDetails.jobRoles || [],
-              
+
               // Scheduling
               primaryRole: employmentDetails.primaryRole || '',
               secondaryRoles: employmentDetails.secondaryRoles || '',
@@ -175,7 +453,7 @@ export function EmploymentDetailsModal({
               maxWeeklyHours: employmentDetails.maxWeeklyHours || '',
               overtimePreference: employmentDetails.overtimePreference || 'allow',
               shiftPreference: employmentDetails.shiftPreference || 'flexible',
-              
+
               // Compliance
               foodHandlerCertification: employmentDetails.foodHandlerCertified || false,
               foodHandlerExpiry: employmentDetails.foodHandlerExpiry || '',
@@ -183,14 +461,14 @@ export function EmploymentDetailsModal({
               alcoholExpiry: employmentDetails.alcoholExpiry || '',
               safetyTrainingCompleted: employmentDetails.safetyTrainingCertified || false,
               safetyTrainingExpiry: employmentDetails.safetyTrainingExpiry || '',
-              
+
               // Time & Attendance
               ptoBalance: employmentDetails.ptoBalance || '',
               sickLeaveBalance: employmentDetails.sickLeaveBalance || '',
               attendanceFlags: employmentDetails.attendanceFlags || '',
               leaveOfAbsenceStatus: employmentDetails.leaveOfAbsenceStatus || 'none',
               clockPermissions: employmentDetails.clockPermissions || 'full',
-              
+
               // Hotel Operations
               uniformSize: employmentDetails.uniformSize || '',
               languagesSpoken: employmentDetails.languagesSpoken || '',
@@ -206,34 +484,81 @@ export function EmploymentDetailsModal({
           // Continue with defaults if fetch fails
         }
       };
-      
+
       fetchDetails();
     }
-  }, [employee, isOpen, apiClient]);
+  }, [employee?.id, isOpen]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!employee?.id) throw new Error('Employee ID is required');
-      
+
       // Convert form state to API payload format
       const payload = {
-        // Core Record - basic info only, no hireDate
-        preferredName: details.preferredName,
-        manager: details.manager,
+        // Core Record - Identifiers
+        externalEmployeeId: details.externalEmployeeId,
+        legacyId: details.legacyId,
+        badgeCardId: details.badgeCardId,
+        biometricIdReference: details.biometricIdReference,
+
+        // Employment Relationship
         employmentStatus: details.employmentStatus,
-        workAuthorizationVerified: details.workAuthorizationVerified,
+        employmentType: details.employmentType,
+        workerClassification: details.workerClassification,
+        flsaStatus: details.flsaStatus,
+        unionStatus: details.unionStatus,
+        bargainingUnit: details.bargainingUnit,
+        employmentCategory: details.employmentCategory,
+
+        // Dates
+        originalHireDate: details.originalHireDate,
+        mostRecentHireDate: details.mostRecentHireDate,
+        seniorityDate: details.seniorityDate,
+        probationEndDate: details.probationEndDate,
+        terminationDate: details.terminationDate,
+        terminationReason: details.terminationReason,
+        rehireEligible: details.rehireEligible,
+
+        // Organizational Placement
+        company: details.company,
+        property: details.property,
+        division: details.division,
+        department: details.department,
+        costCenter: details.costCenter,
+        workSiteLocation: details.workSiteLocation,
+
+        // Reporting Structure
+        managerId: details.managerId,
+        managerName: details.managerName,
+        secondaryManagerId: details.secondaryManagerId,
+        secondaryManagerName: details.secondaryManagerName,
+        hrBusinessPartner: details.hrBusinessPartner,
+        timeApproverId: details.timeApproverId,
+        timeApproverName: details.timeApproverName,
+
+        // System Governance
+        employmentRecordStatus: details.employmentRecordStatus,
+        effectiveDate: details.effectiveDate,
+        recordVersion: details.recordVersion,
+
+        // Legacy fields
+        preferredName: details.preferredName,
         contactInfo: details.contactInfo,
         emergencyContact: details.emergencyContact,
-        
+
+        // Job & Compensation - Date-range-effective job management
+        jobCompensationRecords: details.jobCompensationRecords,
+        selectedEffectiveRangeIndex: details.selectedEffectiveRangeIndex,
+
         // Pay & Labor - with job roles
         payType: details.payType,
         hourlyRate: details.hourlyRate,
         salaryAmount: details.salaryAmount,
         payrollGroup: details.payrollGroup,
-        overtimeEligible: details.overtimeEligible,
         tipPoolParticipation: details.tipPoolParticipation,
+        overtimeEligible: details.overtimeEligible,
         jobRoles: details.jobRoles,
-        
+
         // Scheduling
         primaryRole: details.primaryRole,
         secondaryRoles: details.secondaryRoles,
@@ -241,7 +566,7 @@ export function EmploymentDetailsModal({
         maxWeeklyHours: details.maxWeeklyHours,
         overtimePreference: details.overtimePreference,
         shiftPreference: details.shiftPreference,
-        
+
         // Compliance
         foodHandlerCertified: details.foodHandlerCertification,
         foodHandlerExpiry: details.foodHandlerExpiry,
@@ -249,14 +574,14 @@ export function EmploymentDetailsModal({
         alcoholExpiry: details.alcoholExpiry,
         safetyTrainingCertified: details.safetyTrainingCompleted,
         safetyTrainingExpiry: details.safetyTrainingExpiry,
-        
+
         // Time & Attendance
         ptoBalance: details.ptoBalance,
         sickLeaveBalance: details.sickLeaveBalance,
         attendanceFlags: details.attendanceFlags,
         leaveOfAbsenceStatus: details.leaveOfAbsenceStatus,
         clockPermissions: details.clockPermissions,
-        
+
         // Hotel Operations
         uniformSize: details.uniformSize,
         languagesSpoken: details.languagesSpoken,
@@ -266,7 +591,7 @@ export function EmploymentDetailsModal({
         carAccessRequired: details.carAccessRequired,
         minorStatus: details.minorStatus,
       };
-      
+
       return await saveEmploymentDetails(employee.id, payload as any);
     },
     onSuccess: () => {
@@ -305,6 +630,12 @@ export function EmploymentDetailsModal({
             Core Record
           </button>
           <button
+            className={`modal-tab ${activeTab === 'jobpay' ? 'active' : ''}`}
+            onClick={() => setActiveTab('jobpay')}
+          >
+            Job & Compensation
+          </button>
+          <button
             className={`modal-tab ${activeTab === 'pay' ? 'active' : ''}`}
             onClick={() => setActiveTab('pay')}
           >
@@ -341,78 +672,695 @@ export function EmploymentDetailsModal({
           {activeTab === 'core' && (
             <div className="form-section-group">
               <h3>Core Employment Record</h3>
-              <p className="form-description">Basic information for internal reference. Hire Date, Employee ID, and Department are managed elsewhere.</p>
+              <p className="form-description">
+                Identity and employment relationship anchor. Every other module keys off this record.
+              </p>
 
-              <div className="form-row">
-                <div className="form-field">
-                  <label>Preferred Name</label>
-                  <input
-                    type="text"
-                    value={details.preferredName}
-                    placeholder="Preferred name for communications"
-                    onChange={(e) => setDetails((prev) => ({ ...prev, preferredName: e.target.value }))}
-                  />
-                </div>
-                <div className="form-field">
-                  <label>Manager</label>
-                  <input
-                    type="text"
-                    value={details.manager}
-                    placeholder="Populated from org structure"
-                    disabled
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-field">
-                  <label>Employment Status</label>
-                  <select
-                    value={details.employmentStatus}
-                    onChange={(e) =>
-                      setDetails((prev) => ({
-                        ...prev,
-                        employmentStatus: e.target.value as 'active' | 'leave' | 'terminated',
-                      }))
-                    }
-                  >
-                    <option value="active">Active</option>
-                    <option value="leave">Leave</option>
-                    <option value="terminated">Terminated</option>
-                  </select>
-                </div>
-                <div className="form-field">
-                  <label className="checkbox-label">
+              {/* IDENTIFIERS */}
+              <div style={{ marginTop: '24px' }}>
+                <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  Identifiers
+                </h4>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Employee ID</label>
                     <input
-                      type="checkbox"
-                      checked={details.workAuthorizationVerified}
-                      onChange={(e) =>
-                        setDetails((prev) => ({ ...prev, workAuthorizationVerified: e.target.checked }))
-                      }
+                      type="text"
+                      value={employee?.employeeId || 'Auto-generated'}
+                      disabled
+                      style={{ background: '#f8fafc', cursor: 'not-allowed' }}
                     />
-                    Work Authorization Verified
-                  </label>
+                    <small style={{ display: 'block', marginTop: '4px', color: 'var(--text-secondary)' }}>System generated, immutable</small>
+                  </div>
+                  <div className="form-field">
+                    <label>External Employee ID</label>
+                    <input
+                      type="text"
+                      value={details.externalEmployeeId}
+                      placeholder="Client/Payroll ID"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, externalEmployeeId: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Legacy ID</label>
+                    <input
+                      type="text"
+                      value={details.legacyId}
+                      placeholder="Migration reference ID"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, legacyId: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Badge/Card ID</label>
+                    <input
+                      type="text"
+                      value={details.badgeCardId}
+                      placeholder="Physical badge number"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, badgeCardId: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Biometric ID Reference</label>
+                    <input
+                      type="text"
+                      value={details.biometricIdReference}
+                      placeholder="Fingerprint or biometric system ID"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, biometricIdReference: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Preferred Name</label>
+                    <input
+                      type="text"
+                      value={details.preferredName}
+                      placeholder="Nickname or preferred name"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, preferredName: e.target.value }))}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="form-row">
-                <div className="form-field">
-                  <label>Contact Info (Personal)</label>
-                  <input
-                    type="text"
-                    value={details.contactInfo}
-                    placeholder="Phone, address, or alternate contact"
-                    onChange={(e) => setDetails((prev) => ({ ...prev, contactInfo: e.target.value }))}
-                  />
+              {/* EMPLOYMENT RELATIONSHIP */}
+              <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
+                <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  Employment Relationship
+                </h4>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Employment Status</label>
+                    <select
+                      value={details.employmentStatus}
+                      onChange={(e) =>
+                        setDetails((prev) => ({
+                          ...prev,
+                          employmentStatus: e.target.value as any,
+                        }))
+                      }
+                    >
+                      <option value="active">Active</option>
+                      <option value="leave">Leave of Absence</option>
+                      <option value="terminated">Terminated</option>
+                      <option value="suspended">Suspended</option>
+                    </select>
+                  </div>
+                  <div className="form-field">
+                    <label>Employment Type</label>
+                    <select
+                      value={details.employmentType}
+                      onChange={(e) =>
+                        setDetails((prev) => ({
+                          ...prev,
+                          employmentType: e.target.value as any,
+                        }))
+                      }
+                    >
+                      <option value="full-time">Full-time</option>
+                      <option value="part-time">Part-time</option>
+                      <option value="seasonal">Seasonal</option>
+                      <option value="temporary">Temporary</option>
+                      <option value="contractor">Contractor</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="form-field">
-                  <label>Emergency Contact</label>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Worker Classification</label>
+                    <select
+                      value={details.workerClassification}
+                      onChange={(e) =>
+                        setDetails((prev) => ({
+                          ...prev,
+                          workerClassification: e.target.value as any,
+                        }))
+                      }
+                    >
+                      <option value="exempt">Exempt</option>
+                      <option value="non-exempt">Non-exempt</option>
+                    </select>
+                  </div>
+                  <div className="form-field">
+                    <label>FLSA Status</label>
+                    <input
+                      type="text"
+                      value={details.flsaStatus}
+                      placeholder="Fair Labor Standards Act status"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, flsaStatus: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Union Status</label>
+                    <select
+                      value={details.unionStatus}
+                      onChange={(e) =>
+                        setDetails((prev) => ({
+                          ...prev,
+                          unionStatus: e.target.value as any,
+                        }))
+                      }
+                    >
+                      <option value="non-union">Non-union</option>
+                      <option value="union">Union</option>
+                    </select>
+                  </div>
+                  <div className="form-field">
+                    <label>Bargaining Unit</label>
+                    <input
+                      type="text"
+                      value={details.bargainingUnit}
+                      placeholder="Union bargaining unit"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, bargainingUnit: e.target.value }))}
+                      disabled={details.unionStatus === 'non-union'}
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Employment Category</label>
+                    <select
+                      value={details.employmentCategory}
+                      onChange={(e) =>
+                        setDetails((prev) => ({
+                          ...prev,
+                          employmentCategory: e.target.value as any,
+                        }))
+                      }
+                    >
+                      <option value="hourly">Hourly</option>
+                      <option value="salaried">Salaried</option>
+                      <option value="tipped">Tipped</option>
+                      <option value="commission">Commission</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* DATES */}
+              <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
+                <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  Dates
+                </h4>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Original Hire Date</label>
+                    <input
+                      type="date"
+                      value={details.originalHireDate}
+                      onChange={(e) => setDetails((prev) => ({ ...prev, originalHireDate: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Most Recent Hire Date</label>
+                    <input
+                      type="date"
+                      value={details.mostRecentHireDate}
+                      onChange={(e) => setDetails((prev) => ({ ...prev, mostRecentHireDate: e.target.value }))}
+                    />
+                    <small style={{ display: 'block', marginTop: '4px', color: 'var(--text-secondary)' }}>For rehires</small>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Seniority Date</label>
+                    <input
+                      type="date"
+                      value={details.seniorityDate}
+                      onChange={(e) => setDetails((prev) => ({ ...prev, seniorityDate: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Probation End Date</label>
+                    <input
+                      type="date"
+                      value={details.probationEndDate}
+                      onChange={(e) => setDetails((prev) => ({ ...prev, probationEndDate: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Termination Date</label>
+                    <input
+                      type="date"
+                      value={details.terminationDate}
+                      onChange={(e) => setDetails((prev) => ({ ...prev, terminationDate: e.target.value }))}
+                      disabled={details.employmentStatus !== 'terminated'}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Termination Reason</label>
+                    <input
+                      type="text"
+                      value={details.terminationReason}
+                      placeholder="Reason for termination"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, terminationReason: e.target.value }))}
+                      disabled={details.employmentStatus !== 'terminated'}
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={details.rehireEligible}
+                        onChange={(e) =>
+                          setDetails((prev) => ({ ...prev, rehireEligible: e.target.checked }))
+                        }
+                        disabled={details.employmentStatus !== 'terminated'}
+                      />
+                      Rehire Eligible
+                    </label>
+                  </div>
+                  <div className="form-field">
+                    {/* Spacer */}
+                  </div>
+                </div>
+              </div>
+
+              {/* ORGANIZATIONAL PLACEMENT */}
+              <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
+                <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  Organizational Placement
+                </h4>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Company / Tenant</label>
+                    <input
+                      type="text"
+                      value={details.company}
+                      placeholder="Company name"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, company: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Property / Location</label>
+                    <input
+                      type="text"
+                      value={employee?.property?.name || details.property}
+                      placeholder="Property name"
+                      disabled
+                      style={{ background: '#f8fafc', cursor: 'not-allowed' }}
+                    />
+                    <small style={{ display: 'block', marginTop: '4px', color: 'var(--text-secondary)' }}>Set from HR Management</small>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Division</label>
+                    <input
+                      type="text"
+                      value={details.division}
+                      placeholder="Division or business unit"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, division: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Department</label>
+                    <input
+                      type="text"
+                      value={details.department}
+                      placeholder="Department"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, department: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Cost Center</label>
+                    <input
+                      type="text"
+                      value={details.costCenter}
+                      placeholder="Cost center code"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, costCenter: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Work Site / Location Code</label>
+                    <input
+                      type="text"
+                      value={details.workSiteLocation}
+                      placeholder="Physical work location"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, workSiteLocation: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* REPORTING STRUCTURE */}
+              <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
+                <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  Reporting Structure
+                </h4>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Manager ID</label>
+                    <input
+                      type="text"
+                      value={details.managerId}
+                      placeholder="Manager employee ID"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, managerId: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Manager Name</label>
+                    <input
+                      type="text"
+                      value={details.managerName}
+                      placeholder="Manager full name"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, managerName: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Secondary Manager / Acting Supervisor ID</label>
+                    <input
+                      type="text"
+                      value={details.secondaryManagerId}
+                      placeholder="Secondary manager employee ID"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, secondaryManagerId: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Secondary Manager Name</label>
+                    <input
+                      type="text"
+                      value={details.secondaryManagerName}
+                      placeholder="Secondary manager full name"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, secondaryManagerName: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>HR Business Partner</label>
+                    <input
+                      type="text"
+                      value={details.hrBusinessPartner}
+                      placeholder="Assigned HR contact"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, hrBusinessPartner: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Time Approver ID</label>
+                    <input
+                      type="text"
+                      value={details.timeApproverId}
+                      placeholder="Time approver employee ID"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, timeApproverId: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Time Approver Name</label>
+                    <input
+                      type="text"
+                      value={details.timeApproverName}
+                      placeholder="Time approver full name"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, timeApproverName: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-field">
+                    {/* Spacer */}
+                  </div>
+                </div>
+              </div>
+
+              {/* SYSTEM GOVERNANCE */}
+              <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
+                <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  System Governance
+                </h4>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Employment Record Status</label>
+                    <select
+                      value={details.employmentRecordStatus}
+                      onChange={(e) =>
+                        setDetails((prev) => ({
+                          ...prev,
+                          employmentRecordStatus: e.target.value as any,
+                        }))
+                      }
+                    >
+                      <option value="draft">Draft</option>
+                      <option value="active">Active</option>
+                      <option value="archived">Archived</option>
+                    </select>
+                  </div>
+                  <div className="form-field">
+                    <label>Effective Date</label>
+                    <input
+                      type="date"
+                      value={details.effectiveDate}
+                      onChange={(e) => setDetails((prev) => ({ ...prev, effectiveDate: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Record Version</label>
+                    <input
+                      type="text"
+                      value={details.recordVersion}
+                      disabled
+                      style={{ background: '#f8fafc', cursor: 'not-allowed' }}
+                    />
+                    <small style={{ display: 'block', marginTop: '4px', color: 'var(--text-secondary)' }}>Auto-incremented on save</small>
+                  </div>
+                  <div className="form-field">
+                    {/* Spacer */}
+                  </div>
+                </div>
+              </div>
+
+              {/* LEGACY / CONTACT INFO */}
+              <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
+                <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  Additional Information
+                </h4>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Contact Info (Personal)</label>
+                    <input
+                      type="text"
+                      value={details.contactInfo}
+                      placeholder="Phone, address, or alternate contact"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, contactInfo: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Emergency Contact</label>
+                    <input
+                      type="text"
+                      value={details.emergencyContact}
+                      placeholder="Name, relationship, and phone"
+                      onChange={(e) => setDetails((prev) => ({ ...prev, emergencyContact: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Job & Compensation - Date-range-effective job management */}
+          {activeTab === 'jobpay' && (
+            <div className="form-section-group">
+              <h3>Job & Compensation</h3>
+              <p className="form-description">
+                Manage job assignments and compensation across different effective date ranges.
+              </p>
+
+              {/* EFFECTIVE DATE RANGE SELECTOR */}
+              <div style={{ marginTop: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                  <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                    Effective Date Range:
+                  </label>
+                  <input
+                    type="date"
+                    value={details.jobCompensationRecords[details.selectedEffectiveRangeIndex]?.effectiveStartDate || ''}
+                    onChange={(e) => {
+                      const records = [...details.jobCompensationRecords];
+                      if (records[details.selectedEffectiveRangeIndex]) {
+                        records[details.selectedEffectiveRangeIndex].effectiveStartDate = e.target.value;
+                        setDetails((prev) => ({ ...prev, jobCompensationRecords: records }));
+                      }
+                    }}
+                    style={{ padding: '4px 6px', fontSize: '0.85rem', border: '1px solid var(--border)', borderRadius: '4px', width: '120px' }}
+                  />
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px' }}>–</span>
                   <input
                     type="text"
-                    value={details.emergencyContact}
-                    placeholder="Name and relationship"
-                    onChange={(e) => setDetails((prev) => ({ ...prev, emergencyContact: e.target.value }))}
+                    value={details.jobCompensationRecords[details.selectedEffectiveRangeIndex]?.effectiveEndDate || 'Present'}
+                    disabled
+                    style={{ padding: '4px 6px', fontSize: '0.85rem', border: 'none', borderRadius: '4px', backgroundColor: 'transparent', width: '90px', fontWeight: 500, color: 'var(--text-secondary)' }}
                   />
+                  <button style={{ padding: '0 4px', fontSize: '0.85rem', backgroundColor: 'transparent', color: 'var(--brand-primary)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 500 }} title="View effective date range history">
+                    Show History
+                  </button>
+                </div>
+              </div>
+
+              {/* JOBS TABLE - FULL WIDTH */}
+              <div style={{ marginTop: '-30px' }}>
+                {/* ADD/EDIT/DELETE JOB FORMS */}
+                <div style={{ marginBottom: '24px', display: 'flex', gap: '24px' }}>
+                  <JobAddForm
+                    jobStructure={jobStructureQuery.data}
+                    onJobAdded={() => setJobsRefreshKey(prev => prev + 1)}
+                    selectedEffectiveRangeIndex={details.selectedEffectiveRangeIndex}
+                    jobCompensationRecords={details.jobCompensationRecords}
+                    employeeId={employee?.id || ''}
+                  />
+                  {details.jobCompensationRecords[details.selectedEffectiveRangeIndex]?.jobs &&
+                    details.jobCompensationRecords[details.selectedEffectiveRangeIndex].jobs.length > 0 && (
+                      <>
+                        <JobEditForm
+                          jobs={details.jobCompensationRecords[details.selectedEffectiveRangeIndex].jobs}
+                          onJobUpdated={() => setJobsRefreshKey(prev => prev + 1)}
+                          selectedEffectiveRangeIndex={details.selectedEffectiveRangeIndex}
+                          jobCompensationRecords={details.jobCompensationRecords}
+                          employeeId={employee?.id || ''}
+                        />
+                        <JobDeleteForm
+                          jobs={details.jobCompensationRecords[details.selectedEffectiveRangeIndex].jobs}
+                          onJobDeleted={() => setJobsRefreshKey(prev => prev + 1)}
+                          selectedEffectiveRangeIndex={details.selectedEffectiveRangeIndex}
+                          jobCompensationRecords={details.jobCompensationRecords}
+                          employeeId={employee?.id || ''}
+                        />
+                      </>
+                    )}
+                </div>
+
+                {/* JOBS FOR EFFECTIVE DATE */}
+                <div>
+                  <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Jobs for Effective Date
+                  </h4>
+                  <div style={{ overflowX: 'auto' }}>
+                    <div className="page-table" style={{ gap: '6px' }}>
+                      <div
+                        className="page-table__row page-table__header"
+                        style={{ gridTemplateColumns: '0.5fr 2fr 1fr 1fr 1fr 1fr 1fr 1.2fr 1fr' }}
+                      >
+                        <div style={{ textAlign: 'center' }}>Primary</div>
+                        <div>Department - Job</div>
+                        <div>Pay Type</div>
+                        <div>Pay Rate</div>
+                        <div>Start Date</div>
+                        <div>End Date</div>
+                        <div>Job Status</div>
+                        <div>Annual Comp.</div>
+                        <div>Pay Group</div>
+                      </div>
+                      {/* Existing Jobs - filtered */}
+                      {details.jobCompensationRecords[details.selectedEffectiveRangeIndex]?.jobs &&
+                      details.jobCompensationRecords[details.selectedEffectiveRangeIndex].jobs.length > 0 ? (
+                        details.jobCompensationRecords[details.selectedEffectiveRangeIndex].jobs
+                          .filter((job) => {
+                            // Filter out inactive jobs with end dates before the selected effective range
+                            if (job.jobStatus === 'inactive' && job.endDate) {
+                              const jobEndDate = new Date(job.endDate).getTime();
+                              const rangeStartDate = new Date(details.jobCompensationRecords[details.selectedEffectiveRangeIndex]?.effectiveStartDate || '').getTime();
+                              if (jobEndDate < rangeStartDate) {
+                                return false; // Filter out this job
+                              }
+                            }
+                            return true;
+                          })
+                          .map((job, idx) => {
+                          const jobRole = job.jobRoleId ? jobRoleById.get(job.jobRoleId) : undefined;
+                          const departmentName = job.departmentId
+                            ? departmentNameById.get(job.departmentId)
+                            : jobRole?.departmentId
+                              ? departmentNameById.get(jobRole.departmentId)
+                              : undefined;
+                          const jobTitle = jobRole?.name ?? job.jobTitle;
+                          const departmentLabel = departmentName ?? job.department;
+
+                          return (
+                          <div
+                            key={job.id || `job-${idx}`}
+                            className="page-table__row is-selectable"
+                            style={{ gridTemplateColumns: '0.5fr 2fr 1fr 1fr 1fr 1fr 1fr 1.2fr 1fr' }}
+                          >
+                            <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                              {job.isPrimary ? '◆' : '○'}
+                            </div>
+                            <div
+                              style={{
+                                fontWeight: 500,
+                                color: 'var(--text-secondary)',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                minWidth: 0,
+                              }}
+                              title={`${departmentLabel} - ${jobTitle}`}
+                            >
+                              {departmentLabel} - {jobTitle}
+                            </div>
+                            <div>{job.payType}</div>
+                            <div>{getPayRateDisplay(job)}</div>
+                            <div>{job.jobDate || '–'}</div>
+                            <div>{job.endDate || '–'}</div>
+                            <div>
+                              <span
+                                style={{
+                                  padding: '2px 8px',
+                                  borderRadius: '4px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 500,
+                                  backgroundColor:
+                                    job.jobStatus === 'active'
+                                      ? 'rgba(34, 197, 94, 0.1)'
+                                      : job.jobStatus === 'on-leave'
+                                        ? 'rgba(59, 130, 246, 0.1)'
+                                        : 'rgba(107, 114, 128, 0.1)',
+                                  color:
+                                    job.jobStatus === 'active'
+                                      ? '#22c55e'
+                                      : job.jobStatus === 'on-leave'
+                                        ? '#3b82f6'
+                                        : '#6b7280'
+                                }}
+                              >
+                                {job.jobStatus || '–'}
+                              </span>
+                            </div>
+                            <div>{job.annualAmount || '–'}</div>
+                            <div>{job.payGroup || '–'}</div>
+                          </div>
+                        );
+                        })
+                      ) : (
+                        <div
+                          className="page-table__row"
+                          style={{ gridTemplateColumns: '0.5fr 2fr 1fr 1fr 1fr 1fr 1.2fr 1fr' }}
+                        >
+                          <div
+                            style={{
+                              gridColumn: '1 / -1',
+                              textAlign: 'center',
+                              color: 'var(--text-secondary)',
+                              fontSize: '0.9rem',
+                            }}
+                          >
+                            No jobs configured for this date range.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -66,6 +66,9 @@ importers:
       amazon-cognito-identity-js:
         specifier: ^6.3.16
         version: 6.3.16
+      dotenv:
+        specifier: ^17.2.4
+        version: 17.2.4
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -3970,6 +3973,11 @@ packages:
     dependencies:
       esutils: 2.0.3
     dev: true
+
+  /dotenv@17.2.4:
+    resolution: {integrity: sha512-mudtfb4zRB4bVvdj0xRo+e6duH1csJRM8IukBqfTRvHotn9+LBXB8ynAidP9zHqoRC/fsllXgk4kCKlR21fIhw==}
+    engines: {node: '>=12'}
+    dev: false
 
   /dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}

@@ -34,6 +34,7 @@ export function HrManagementPage(): React.ReactElement {
   const queryClient = useQueryClient();
   const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [formState, setFormState] = useState<EmployeeFormState>(emptyForm);
   const [showForm, setShowForm] = useState(false);
   const [showEmploymentDetails, setShowEmploymentDetails] = useState(false);
@@ -57,12 +58,20 @@ export function HrManagementPage(): React.ReactElement {
 
   const sortedEmployees = useMemo(() => {
     const employees = employeesQuery.data ?? [];
-    return [...employees].sort((a, b) => {
+    const filtered = searchTerm
+      ? employees.filter(
+          (e) =>
+            e.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            e.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (e.email ?? '').toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      : employees;
+    return [...filtered].sort((a, b) => {
       const nameA = `${a.lastName} ${a.firstName}`.toLowerCase();
       const nameB = `${b.lastName} ${b.firstName}`.toLowerCase();
       return nameA.localeCompare(nameB);
     });
-  }, [employeesQuery.data]);
+  }, [employeesQuery.data, searchTerm]);
 
   const createMutation = useMutation({
     mutationFn: (payload: {
@@ -196,11 +205,13 @@ export function HrManagementPage(): React.ReactElement {
       </div>
 
       <div className="hr-toolbar">
-        <span className={`hr-helper ${selectedEmployee ? 'hr-selected' : ''}`}>
-          {selectedEmployee
-            ? `Selected: ${selectedEmployee.firstName} ${selectedEmployee.lastName}`
-            : 'Select an employee from the list to edit or change status.'}
-        </span>
+        <input
+          className="hr-search-input"
+          type="text"
+          placeholder="Search employees by name or email"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
         <button
           className="link-button"
           type="button"
@@ -213,16 +224,6 @@ export function HrManagementPage(): React.ReactElement {
         >
           Add
         </button>
-        <div className="hr-actions">
-          <button
-            className="link-button"
-            type="button"
-            onClick={() => selectedEmployee && handleEdit(selectedEmployee)}
-            disabled={!selectedEmployee}
-          >
-            Edit
-          </button>
-        </div>
         <button
           className={`link-button hr-employment-link${!selectedEmployee ? ' is-disabled' : ''}`}
           type="button"
@@ -318,6 +319,7 @@ export function HrManagementPage(): React.ReactElement {
 
       <div className="page-table">
         <div className="page-table__row page-table__header">
+          <div>Employee ID</div>
           <div>Name</div>
           <div>Email</div>
           <div>Property</div>
@@ -341,6 +343,7 @@ export function HrManagementPage(): React.ReactElement {
               }
             }}
           >
+            <div>{employee.employeeId ?? '—'}</div>
             <div>
               {employee.firstName} {employee.lastName}
             </div>
