@@ -342,6 +342,10 @@ export function HrManagementPage(): React.ReactElement {
                 setSelectedEmployeeId(employee.id);
               }
             }}
+            onDoubleClick={() => {
+              setSelectedEmployeeId(employee.id);
+              setShowEmploymentDetails(true);
+            }}
           >
             <div>{employee.employeeId ?? '—'}</div>
             <div>
