@@ -757,8 +757,21 @@ async function main() {
   });
   console.log(`✓ Role exists: ${platformAdminRole.name}`);
 
-  const propertyAdminRole = await prisma.role.create({
-    data: {
+  const propertyAdminRole = await prisma.role.upsert({
+    where: { name: 'Property Administrator' },
+    update: {
+      description: 'Full property-level configuration and operations',
+      permissions: [
+        'read:*',
+        'write:*',
+        'delete:*',
+        'manage:property',
+        'manage:departments',
+        'manage:schedules',
+        'approve:timecards',
+      ],
+    },
+    create: {
       name: 'Property Administrator',
       description: 'Full property-level configuration and operations',
       permissions: [
@@ -772,10 +785,24 @@ async function main() {
       ],
     },
   });
-  console.log(`✓ Created role: ${propertyAdminRole.name}`);
+  console.log(`✓ Role exists: ${propertyAdminRole.name}`);
 
-  const hrManagerRole = await prisma.role.create({
-    data: {
+  const hrManagerRole = await prisma.role.upsert({
+    where: { name: 'HR Manager' },
+    update: {
+      description: 'Manage employee lifecycle and compliance',
+      permissions: [
+        'read:employees',
+        'write:employees',
+        'delete:employees',
+        'manage:onboarding',
+        'manage:certifications',
+        'manage:documents',
+        'read:compliance',
+        'write:compliance',
+      ],
+    },
+    create: {
       name: 'HR Manager',
       description: 'Manage employee lifecycle and compliance',
       permissions: [
@@ -790,10 +817,24 @@ async function main() {
       ],
     },
   });
-  console.log(`✓ Created role: ${hrManagerRole.name}`);
+  console.log(`✓ Role exists: ${hrManagerRole.name}`);
 
-  const departmentManagerRole = await prisma.role.create({
-    data: {
+  const departmentManagerRole = await prisma.role.upsert({
+    where: { name: 'Department Manager' },
+    update: {
+      description: 'Manage department schedules and timecards',
+      permissions: [
+        'read:employees',
+        'read:schedules',
+        'write:schedules',
+        'read:punches',
+        'approve:timecards',
+        'read:exceptions',
+        'write:exceptions',
+        'approve:pto',
+      ],
+    },
+    create: {
       name: 'Department Manager',
       description: 'Manage department schedules and timecards',
       permissions: [
@@ -808,10 +849,15 @@ async function main() {
       ],
     },
   });
-  console.log(`✓ Created role: ${departmentManagerRole.name}`);
+  console.log(`✓ Role exists: ${departmentManagerRole.name}`);
 
-  const employeeRole = await prisma.role.create({
-    data: {
+  const employeeRole = await prisma.role.upsert({
+    where: { name: 'Employee' },
+    update: {
+      description: 'Basic employee self-service access',
+      permissions: ['read:own_punches', 'write:own_punches', 'read:own_schedule', 'request:pto'],
+    },
+    create: {
       name: 'Employee',
       description: 'Basic employee self-service access',
       permissions: ['read:own_punches', 'write:own_punches', 'read:own_schedule', 'request:pto'],
