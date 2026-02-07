@@ -47,6 +47,7 @@ export function hasAllPermissions(user: User | null | undefined, scopes: string[
  */
 export const SCHEDULING_PERMISSIONS = {
   EDIT_SHIFTS: 'scheduling.edit.shifts',
+  ASSIGN: 'scheduling.assign',
   PUBLISH: 'scheduling.publish',
   LOCK: 'scheduling.lock',
   VIEW: 'scheduling.view',

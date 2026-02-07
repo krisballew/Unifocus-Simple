@@ -6,7 +6,7 @@ import { LoadingSkeleton } from './components/LoadingSkeleton';
 import { LoginPage } from './components/LoginPage';
 import { I18nProvider } from './context/I18nContext';
 import { AvailabilityManagementPlaceholder } from './features/scheduleManagement/pages/AvailabilityManagementPlaceholder';
-import { ScheduleEditorPlaceholder } from './features/scheduleManagement/pages/ScheduleEditorPlaceholder';
+import { ScheduleEditorPage } from './features/scheduleManagement/pages/ScheduleEditorPage';
 import { SchedulePeriodsPage } from './features/scheduleManagement/pages/SchedulePeriodsPage';
 import { ScheduleRequestsPlaceholder } from './features/scheduleManagement/pages/ScheduleRequestsPlaceholder';
 import { EmployeesPage } from './pages/EmployeesPage';
@@ -76,7 +76,7 @@ function AppRoutes() {
           path="schedule-management/editor"
           element={
             FEATURE_SCHEDULING_V2 ? (
-              <ScheduleEditorPlaceholder />
+              <ScheduleEditorPage />
             ) : (
               <PlaceholderPage title="Schedule Editor" />
             )
