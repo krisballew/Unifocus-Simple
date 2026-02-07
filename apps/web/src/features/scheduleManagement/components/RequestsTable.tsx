@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 
 import { approveRequest, denyRequest } from '../api/requests';
 import type { SchedulingRequest } from '../api/requests';
+import { useScheduleLookups } from '../hooks/useScheduleLookups';
 
 import { DenyRequestModal } from './DenyRequestModal';
 import { RequestTypeBadge } from './RequestTypeBadge';
@@ -20,6 +21,9 @@ export function RequestsTable({
 }: RequestsTableProps): React.ReactElement {
   const queryClient = useQueryClient();
   const [denyingRequestId, setDenyingRequestId] = useState<string | null>(null);
+
+  // Fetch lookups for resolving IDs to names
+  const lookups = useScheduleLookups(propertyId);
 
   // Approve mutation
   const approveMutation = useMutation({
@@ -71,6 +75,26 @@ export function RequestsTable({
     return name;
   };
 
+  const getDepartmentName = (request: SchedulingRequest): string => {
+    if (!request.shift) return '—';
+    const deptId = request.shift.departmentId;
+    // Use looked up data first, then nested data, then ID
+    if (lookups.departmentsById[deptId]) {
+      return lookups.departmentsById[deptId].name;
+    }
+    return request.shift.department?.name || deptId || '—';
+  };
+
+  const getJobRoleName = (request: SchedulingRequest): string => {
+    if (!request.shift) return '—';
+    const roleId = request.shift.jobRoleId;
+    // Use looked up data first, then nested data, then ID
+    if (lookups.jobRolesById[roleId]) {
+      return lookups.jobRolesById[roleId].name;
+    }
+    return request.shift.jobRole?.name || roleId || '—';
+  };
+
   return (
     <>
       <div className="page-table">
@@ -107,9 +131,9 @@ export function RequestsTable({
                 )}
               </div>
 
-              <div>{request.shift?.department?.name || request.shift?.departmentId || '—'}</div>
+              <div>{getDepartmentName(request)}</div>
 
-              <div>{request.shift?.jobRole?.name || request.shift?.jobRoleId || '—'}</div>
+              <div>{getJobRoleName(request)}</div>
 
               <div>{formatRequestor(request)}</div>
 

@@ -1,9 +1,11 @@
 import React from 'react';
 
 import type { Shift } from '../api/shifts';
+import { useScheduleLookups } from '../hooks/useScheduleLookups';
 
 export interface ShiftListProps {
   shifts: Shift[];
+  propertyId: string;
   onEdit: (shift: Shift) => void;
   onDelete: (shiftId: string) => void;
   onAssign: (shift: Shift) => void;
@@ -15,6 +17,7 @@ export interface ShiftListProps {
 
 export function ShiftList({
   shifts,
+  propertyId,
   onEdit,
   onDelete,
   onAssign,
@@ -23,6 +26,8 @@ export function ShiftList({
   canEdit = false,
   canAssign = false,
 }: ShiftListProps): React.ReactElement {
+  // Fetch lookups for resolving IDs to names
+  const lookups = useScheduleLookups(propertyId);
   const formatTime = (dateTimeStr: string): string => {
     const date = new Date(dateTimeStr);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -36,6 +41,22 @@ export function ShiftList({
     const count = shift.assignments?.length || 0;
     if (count === 0) return 'Unassigned';
     return `${count} assigned`;
+  };
+
+  const getDepartmentName = (shift: Shift): string => {
+    // Use looked up data first, then nested data, then ID
+    if (lookups.departmentsById[shift.departmentId]) {
+      return lookups.departmentsById[shift.departmentId].name;
+    }
+    return shift.department?.name || shift.departmentId;
+  };
+
+  const getJobRoleName = (shift: Shift): string => {
+    // Use looked up data first, then nested data, then ID
+    if (lookups.jobRolesById[shift.jobRoleId]) {
+      return lookups.jobRolesById[shift.jobRoleId].name;
+    }
+    return shift.jobRole?.name || shift.jobRoleId;
   };
 
   if (shifts.length === 0) {
@@ -60,8 +81,8 @@ export function ShiftList({
       {shifts.map((shift) => (
         <div className="page-table__row" key={shift.id}>
           <div>{getTimeRange(shift)}</div>
-          <div>{shift.department?.name || shift.departmentId}</div>
-          <div>{shift.jobRole?.name || shift.jobRoleId}</div>
+          <div>{getDepartmentName(shift)}</div>
+          <div>{getJobRoleName(shift)}</div>
           <div>{getAssignedCount(shift)}</div>
           <div>{shift.breakMinutes || 0} min</div>
           <div>

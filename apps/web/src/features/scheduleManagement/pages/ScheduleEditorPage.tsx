@@ -471,6 +471,7 @@ export function ScheduleEditorPage(): React.ReactElement {
       ) : (
         <ShiftList
           shifts={shiftsQuery.data ?? []}
+          propertyId={selectedPropertyId!}
           onEdit={handleEditShift}
           onDelete={handleDeleteShift}
           onAssign={handleAssignClick}
