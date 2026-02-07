@@ -3,19 +3,27 @@ import React, { useState } from 'react';
 
 import { LoadingSkeleton } from '../../../components/LoadingSkeleton';
 import { useSelection } from '../../../context/SelectionContext';
+import { useAuth } from '../../../hooks/useAuth';
 import {
   createSchedulePeriod,
   getSchedulePeriods,
   lockSchedulePeriod,
   publishSchedulePeriod,
 } from '../../../services/api-client';
+import { hasPermission, SCHEDULING_PERMISSIONS } from '../../../utils/permissions';
 import { CreateSchedulePeriodModal } from '../components/CreateSchedulePeriodModal';
 import { SchedulePeriodList } from '../components/SchedulePeriodList';
 
 export function SchedulePeriodsPage(): React.ReactElement {
   const { selectedTenantId, selectedPropertyId } = useSelection();
+  const { user } = useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const queryClient = useQueryClient();
+
+  // Permission checks
+  const canCreatePeriod = hasPermission(user, SCHEDULING_PERMISSIONS.EDIT_SHIFTS);
+  const canPublish = hasPermission(user, SCHEDULING_PERMISSIONS.PUBLISH);
+  const canLock = hasPermission(user, SCHEDULING_PERMISSIONS.LOCK);
 
   const periodsQuery = useQuery({
     queryKey: ['schedulePeriods', selectedPropertyId ?? 'all'],
@@ -85,7 +93,8 @@ export function SchedulePeriodsPage(): React.ReactElement {
           type="button"
           className="button button--primary"
           onClick={() => setShowCreateModal(true)}
-          disabled={isLoading}
+          disabled={isLoading || !canCreatePeriod}
+          title={!canCreatePeriod ? 'You do not have permission to create schedule periods' : ''}
         >
           Create Period
         </button>
@@ -96,9 +105,11 @@ export function SchedulePeriodsPage(): React.ReactElement {
         onPublish={(id) => publishMutation.mutate(id)}
         onLock={(id) => lockMutation.mutate(id)}
         isLoading={isLoading}
+        canPublish={canPublish}
+        canLock={canLock}
       />
 
-      {showCreateModal && selectedPropertyId && (
+      {showCreateModal && selectedPropertyId && canCreatePeriod && (
         <CreateSchedulePeriodModal
           propertyId={selectedPropertyId}
           onClose={() => setShowCreateModal(false)}

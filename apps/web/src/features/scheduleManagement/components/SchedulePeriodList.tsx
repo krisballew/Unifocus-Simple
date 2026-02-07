@@ -9,6 +9,8 @@ export interface SchedulePeriodListProps {
   onPublish: (periodId: string) => void;
   onLock: (periodId: string) => void;
   isLoading?: boolean;
+  canPublish?: boolean;
+  canLock?: boolean;
 }
 
 export function SchedulePeriodList({
@@ -16,6 +18,8 @@ export function SchedulePeriodList({
   onPublish,
   onLock,
   isLoading = false,
+  canPublish = false,
+  canLock = false,
 }: SchedulePeriodListProps): React.ReactElement {
   const formatDate = (dateStr: string): string => {
     return new Date(dateStr).toLocaleDateString();
@@ -26,11 +30,11 @@ export function SchedulePeriodList({
     return new Date(dateStr).toLocaleString();
   };
 
-  const canPublish = (period: SchedulePeriod): boolean => {
+  const canPublishPeriod = (period: SchedulePeriod): boolean => {
     return period.status === 'DRAFT';
   };
 
-  const canLock = (period: SchedulePeriod): boolean => {
+  const canLockPeriod = (period: SchedulePeriod): boolean => {
     return period.status === 'PUBLISHED';
   };
 
@@ -56,22 +60,24 @@ export function SchedulePeriodList({
           <div>{formatDateTime(period.publishedAt)}</div>
           <div>{formatDateTime(period.lockedAt)}</div>
           <div>
-            {canPublish(period) && (
+            {canPublishPeriod(period) && (
               <button
                 type="button"
                 className="button button--small"
                 onClick={() => onPublish(period.id)}
-                disabled={isLoading}
+                disabled={isLoading || !canPublish}
+                title={!canPublish ? 'You do not have permission to publish schedule periods' : ''}
               >
                 Publish
               </button>
             )}
-            {canLock(period) && (
+            {canLockPeriod(period) && (
               <button
                 type="button"
                 className="button button--small"
                 onClick={() => onLock(period.id)}
-                disabled={isLoading}
+                disabled={isLoading || !canLock}
+                title={!canLock ? 'You do not have permission to lock schedule periods' : ''}
                 style={{ marginLeft: '0.5rem' }}
               >
                 Lock
