@@ -456,3 +456,1354 @@ test('Scheduling V2: Schedule Period Lifecycle', async (t) => {
     t.equal(finalPeriod.status, 'LOCKED', 'List shows final LOCKED status');
   });
 });
+
+/**
+ * Security Test Suite: Scheduling V2 Employee Swap Requests
+ *
+ * Tests employee-to-employee swap request functionality including:
+ * - Employee can create swap request only for their own assigned shift
+ * - Target employee eligibility and overlap checks
+ * - Employee can cancel pending request
+ * - Manager approval reassigns shift transactionally
+ * - Approval fails if requestor no longer assigned
+ */
+test('Scheduling V2: Employee Swap Requests', async (t) => {
+  const config = {
+    port: 3005,
+    host: '0.0.0.0',
+    nodeEnv: 'test',
+    corsOrigin: '*',
+    databaseUrl: process.env.DATABASE_URL || 'postgresql://localhost:5432/test',
+    redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+    jwtSecret: 'test-secret',
+    logLevel: 'silent',
+    cognito: {
+      region: 'us-east-1',
+      userPoolId: 'us-east-1_test',
+      clientId: 'test-client',
+      issuer: 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_test',
+      jwksUri: 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_test/.well-known/jwks.json',
+    },
+    authSkipVerification: true,
+    complianceRulesEnabled: false,
+    openai: {
+      apiKey: '',
+      model: 'gpt-4',
+    },
+  };
+
+  const app = await buildServer(config);
+
+  // Create tenant and property
+  const tenant = await prisma.tenant.create({
+    data: {
+      name: 'Swap Test Tenant',
+      slug: `swap-test-${Date.now()}`,
+    },
+  });
+
+  const property = await prisma.property.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Swap Test Property',
+    },
+  });
+
+  // Create division and department category
+  const division = await prisma.division.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      name: 'Operations',
+      code: 'OPS',
+    },
+  });
+
+  const departmentCategory = await prisma.departmentCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Food & Beverage',
+      code: 'FB',
+      description: 'Food and beverage services',
+    },
+  });
+
+  // Create department
+  const department = await prisma.department.create({
+    data: {
+      tenant: { connect: { id: tenant.id } },
+      property: { connect: { id: property.id } },
+      division: { connect: { id: division.id } },
+      departmentCategory: { connect: { id: departmentCategory.id } },
+      name: 'Swap Test Department',
+      code: `DEPT-${Date.now()}`,
+    },
+  });
+
+  // Create job category
+  const jobCategory = await prisma.jobCategory.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Service',
+      code: 'SVC',
+      description: 'Service positions',
+    },
+  });
+
+  // Create job role
+  const jobRole = await prisma.jobRole.create({
+    data: {
+      tenant: { connect: { id: tenant.id } },
+      property: { connect: { id: property.id } },
+      department: { connect: { id: department.id } },
+      jobCategory: { connect: { id: jobCategory.id } },
+      code: `SERVER-${Date.now()}`,
+      name: 'Server',
+    },
+  });
+
+  // Create test users
+  const employee1 = await prisma.employee.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      firstName: 'Employee',
+      lastName: 'One',
+      email: 'employee1@test.com',
+      isActive: true,
+    },
+  });
+
+  const employee2 = await prisma.employee.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      firstName: 'Employee',
+      lastName: 'Two',
+      email: 'employee2@test.com',
+      isActive: true,
+    },
+  });
+
+  const employee3 = await prisma.employee.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      firstName: 'Employee',
+      lastName: 'Three',
+      email: 'employee3@test.com',
+      isActive: true,
+    },
+  });
+
+  const manager = await prisma.user.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      email: 'manager@test.com',
+      name: 'Manager User',
+    },
+  });
+
+  const managerRole = await prisma.role.upsert({
+    where: { name: 'Swap Test Manager' },
+    update: {},
+    create: {
+      name: 'Swap Test Manager',
+      description: 'Swap request test role',
+      permissions: [],
+    },
+  });
+
+  await prisma.userRoleAssignment.create({
+    data: {
+      tenantId: tenant.id,
+      userId: manager.id,
+      roleId: managerRole.id,
+      propertyId: property.id,
+      departmentId: department.id,
+      isActive: true,
+    },
+  });
+
+  // Build auth headers
+  const employee1Headers = {
+    ...buildPersonaHeaders('employee', {
+      tenantId: tenant.id,
+      userId: employee1.id,
+    }),
+  };
+
+  const employee2Headers = {
+    ...buildPersonaHeaders('employee', {
+      tenantId: tenant.id,
+      userId: employee2.id,
+    }),
+  };
+
+  const managerHeaders = {
+    ...buildPersonaHeaders('departmentManager', {
+      tenantId: tenant.id,
+      userId: manager.id,
+    }),
+  };
+
+  // Create employee job role assignments (eligibility)
+  await prisma.employeeJobAssignment.createMany({
+    data: [
+      {
+        tenantId: tenant.id,
+        employeeId: employee1.id,
+        jobRoleId: jobRole.id,
+        startDate: new Date('2026-01-01'),
+      },
+      {
+        tenantId: tenant.id,
+        employeeId: employee2.id,
+        jobRoleId: jobRole.id,
+        startDate: new Date('2026-01-01'),
+      },
+      // Note: employee3 is NOT assigned to jobRole (ineligible)
+    ],
+  });
+
+  // Create schedule period
+  const period = await prisma.wfmSchedulePeriod.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      startDate: new Date('2026-12-01'),
+      endDate: new Date('2026-12-07'),
+      status: 'PUBLISHED',
+      version: 1,
+    },
+  });
+
+  // Create shift assigned to employee1
+  const shift1 = await prisma.wfmShiftPlan.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      schedulePeriodId: period.id,
+      departmentId: department.id,
+      jobRoleId: jobRole.id,
+      startDateTime: new Date('2026-12-02T09:00:00Z'),
+      endDateTime: new Date('2026-12-02T17:00:00Z'),
+      breakMinutes: 30,
+      isOpenShift: false,
+    },
+  });
+
+  await prisma.wfmShiftAssignment.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      shiftPlanId: shift1.id,
+      employeeId: employee1.id,
+      assignedByUserId: manager.id,
+      assignedAt: new Date(),
+    },
+  });
+
+  const ensureEmployee1Assignment = async () => {
+    const existingAssignment = await prisma.wfmShiftAssignment.findFirst({
+      where: {
+        tenantId: tenant.id,
+        shiftPlanId: shift1.id,
+        employeeId: employee1.id,
+      },
+    });
+
+    if (!existingAssignment) {
+      await prisma.wfmShiftAssignment.create({
+        data: {
+          tenantId: tenant.id,
+          propertyId: property.id,
+          shiftPlanId: shift1.id,
+          employeeId: employee1.id,
+          assignedByUserId: manager.id,
+          assignedAt: new Date(),
+        },
+      });
+    }
+  };
+
+  t.beforeEach(async () => {
+    await ensureEmployee1Assignment();
+  });
+
+  // Create a shift that will cause overlap for employee2
+  const conflictShift = await prisma.wfmShiftPlan.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      schedulePeriodId: period.id,
+      departmentId: department.id,
+      jobRoleId: jobRole.id,
+      startDateTime: new Date('2026-12-02T10:00:00Z'), // Overlaps with shift1
+      endDateTime: new Date('2026-12-02T18:00:00Z'),
+      breakMinutes: 30,
+      isOpenShift: false,
+    },
+  });
+
+  await prisma.wfmShiftAssignment.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      shiftPlanId: conflictShift.id,
+      employeeId: employee2.id,
+      assignedByUserId: manager.id,
+      assignedAt: new Date(),
+    },
+  });
+
+  // ========== Swap Request Creation Tests ==========
+
+  await t.test(
+    'POST /api/scheduling/v2/swap-requests - Employee can create swap request for their own shift',
+    async (t) => {
+      // Create a shift for employee1 to swap
+      const swapShift = await prisma.wfmShiftPlan.create({
+        data: {
+          tenantId: tenant.id,
+          propertyId: property.id,
+          schedulePeriodId: period.id,
+          departmentId: department.id,
+          jobRoleId: jobRole.id,
+          startDateTime: new Date('2026-12-03T09:00:00Z'),
+          endDateTime: new Date('2026-12-03T17:00:00Z'),
+          breakMinutes: 30,
+          isOpenShift: false,
+        },
+      });
+
+      await prisma.wfmShiftAssignment.create({
+        data: {
+          tenantId: tenant.id,
+          propertyId: property.id,
+          shiftPlanId: swapShift.id,
+          employeeId: employee1.id,
+          assignedByUserId: manager.id,
+          assignedAt: new Date(),
+        },
+      });
+
+      // Create another employee without conflict
+      const employee4 = await prisma.employee.create({
+        data: {
+          tenantId: tenant.id,
+          propertyId: property.id,
+          firstName: 'Employee',
+          lastName: 'Four',
+          email: 'employee4@test.com',
+          isActive: true,
+        },
+      });
+
+      await prisma.employeeJobAssignment.create({
+        data: {
+          tenantId: tenant.id,
+          employeeId: employee4.id,
+          jobRoleId: jobRole.id,
+          startDate: new Date('2026-01-01'),
+        },
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/scheduling/v2/swap-requests',
+        headers: employee1Headers,
+        payload: {
+          propertyId: property.id,
+          fromShiftPlanId: swapShift.id,
+          toEmployeeId: employee4.id,
+        },
+      });
+
+      t.equal(response.statusCode, 201, 'Returns 201 Created');
+      const body = getData(response);
+      t.equal(body.status, 'PENDING', 'Request is pending');
+      t.equal(body.requestorEmployeeId, employee1.id, 'Requestor is employee1');
+      t.equal(body.toEmployeeId, employee4.id, 'Target is employee4');
+      t.equal(body.fromShiftPlanId, swapShift.id, 'Correct shift ID');
+
+      // Cleanup
+      await prisma.wfmSwapRequest.deleteMany({
+        where: { fromShiftPlanId: swapShift.id },
+      });
+      await prisma.wfmShiftAssignment.deleteMany({
+        where: { shiftPlanId: swapShift.id },
+      });
+      await prisma.wfmShiftPlan.delete({ where: { id: swapShift.id } });
+      await prisma.employee.delete({ where: { id: employee4.id } });
+    }
+  );
+
+  await t.test(
+    'POST /api/scheduling/v2/swap-requests - Cannot create swap request for shift not assigned to requester',
+    async (t) => {
+      // Try to create swap request for a shift assigned to employee2
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/scheduling/v2/swap-requests',
+        headers: employee1Headers,
+        payload: {
+          propertyId: property.id,
+          fromShiftPlanId: conflictShift.id, // Assigned to employee2, not employee1
+          toEmployeeId: employee2.id,
+        },
+      });
+
+      t.equal(response.statusCode, 403, 'Returns 403 Forbidden');
+      const body = getData(response);
+      t.match(body.message, /not assigned to you/i, 'Error indicates not assigned');
+    }
+  );
+
+  await t.test(
+    'POST /api/scheduling/v2/swap-requests - Cannot create swap if target employee not eligible',
+    async (t) => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/scheduling/v2/swap-requests',
+        headers: employee1Headers,
+        payload: {
+          propertyId: property.id,
+          fromShiftPlanId: shift1.id,
+          toEmployeeId: employee3.id, // employee3 is not assigned to jobRole
+        },
+      });
+
+      t.equal(response.statusCode, 409, 'Returns 409 Conflict');
+      const body = getData(response);
+      t.match(body.message, /not eligible/i, 'Error indicates ineligibility');
+    }
+  );
+
+  await t.test(
+    'POST /api/scheduling/v2/swap-requests - Cannot create if target employee has overlap',
+    async (t) => {
+      // employee2 has conflictShift that overlaps with shift1
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/scheduling/v2/swap-requests',
+        headers: employee1Headers,
+        payload: {
+          propertyId: property.id,
+          fromShiftPlanId: shift1.id,
+          toEmployeeId: employee2.id, // employee2 has overlapping shift
+        },
+      });
+
+      t.equal(response.statusCode, 409, 'Returns 409 Conflict');
+      const body = getData(response);
+      t.match(body.message, /overlap|assigned to shift/i, 'Error indicates overlap');
+    }
+  );
+
+  await t.test(
+    'POST /api/scheduling/v2/swap-requests - Idempotent: returns existing pending request',
+    async (t) => {
+      // Create a new employee without conflicts
+      const employee5 = await prisma.employee.create({
+        data: {
+          tenantId: tenant.id,
+          propertyId: property.id,
+          firstName: 'Employee',
+          lastName: 'Five',
+          email: 'employee5@test.com',
+          isActive: true,
+        },
+      });
+
+      await prisma.employeeJobAssignment.create({
+        data: {
+          tenantId: tenant.id,
+          employeeId: employee5.id,
+          jobRoleId: jobRole.id,
+          startDate: new Date('2026-01-01'),
+        },
+      });
+
+      // First request
+      const response1 = await app.inject({
+        method: 'POST',
+        url: '/api/scheduling/v2/swap-requests',
+        headers: employee1Headers,
+        payload: {
+          propertyId: property.id,
+          fromShiftPlanId: shift1.id,
+          toEmployeeId: employee5.id,
+        },
+      });
+
+      t.equal(response1.statusCode, 201, 'First request created');
+      const request1 = getData(response1);
+
+      // Second identical request
+      const response2 = await app.inject({
+        method: 'POST',
+        url: '/api/scheduling/v2/swap-requests',
+        headers: employee1Headers,
+        payload: {
+          propertyId: property.id,
+          fromShiftPlanId: shift1.id,
+          toEmployeeId: employee5.id,
+        },
+      });
+
+      t.equal(response2.statusCode, 201, 'Second request succeeds');
+      const request2 = getData(response2);
+      t.equal(request2.id, request1.id, 'Returns same request ID (idempotent)');
+
+      // Cleanup
+      await prisma.wfmSwapRequest.deleteMany({
+        where: { id: request1.id },
+      });
+      await prisma.employee.delete({ where: { id: employee5.id } });
+    }
+  );
+
+  // ========== Swap Request Cancellation Tests ==========
+
+  await t.test(
+    'POST /api/scheduling/v2/swap-requests/:id/cancel - Employee can cancel own pending request',
+    async (t) => {
+      // Create a new employee
+      const employee6 = await prisma.employee.create({
+        data: {
+          tenantId: tenant.id,
+          propertyId: property.id,
+          firstName: 'Employee',
+          lastName: 'Six',
+          email: 'employee6@test.com',
+          isActive: true,
+        },
+      });
+
+      await prisma.employeeJobAssignment.create({
+        data: {
+          tenantId: tenant.id,
+          employeeId: employee6.id,
+          jobRoleId: jobRole.id,
+          startDate: new Date('2026-01-01'),
+        },
+      });
+
+      // Create swap request
+      const createResponse = await app.inject({
+        method: 'POST',
+        url: '/api/scheduling/v2/swap-requests',
+        headers: employee1Headers,
+        payload: {
+          propertyId: property.id,
+          fromShiftPlanId: shift1.id,
+          toEmployeeId: employee6.id,
+        },
+      });
+
+      const request = getData(createResponse);
+
+      // Cancel the request
+      const cancelResponse = await app.inject({
+        method: 'POST',
+        url: `/api/scheduling/v2/swap-requests/${request.id}/cancel`,
+        headers: employee1Headers,
+        payload: {
+          propertyId: property.id,
+        },
+      });
+
+      t.equal(cancelResponse.statusCode, 200, 'Returns 200 OK');
+      const canceled = getData(cancelResponse);
+      t.equal(canceled.status, 'CANCELED', 'Status is CANCELED');
+
+      // Cleanup
+      await prisma.wfmSwapRequest.deleteMany({
+        where: { id: request.id },
+      });
+      await prisma.employee.delete({ where: { id: employee6.id } });
+    }
+  );
+
+  await t.test(
+    'POST /api/scheduling/v2/swap-requests/:id/cancel - Cannot cancel request after approval',
+    async (t) => {
+      // Create a new employee
+      const employee7 = await prisma.employee.create({
+        data: {
+          tenantId: tenant.id,
+          propertyId: property.id,
+          firstName: 'Employee',
+          lastName: 'Seven',
+          email: 'employee7@test.com',
+          isActive: true,
+        },
+      });
+
+      await prisma.employeeJobAssignment.create({
+        data: {
+          tenantId: tenant.id,
+          employeeId: employee7.id,
+          jobRoleId: jobRole.id,
+          startDate: new Date('2026-01-01'),
+        },
+      });
+
+      // Create swap request
+      const createResponse = await app.inject({
+        method: 'POST',
+        url: '/api/scheduling/v2/swap-requests',
+        headers: employee1Headers,
+        payload: {
+          propertyId: property.id,
+          fromShiftPlanId: shift1.id,
+          toEmployeeId: employee7.id,
+        },
+      });
+
+      const request = getData(createResponse);
+
+      // Manager approves the request
+      const approveResponse = await app.inject({
+        method: 'POST',
+        url: `/api/scheduling/v2/requests/${request.id}/approve`,
+        headers: managerHeaders,
+        payload: {
+          propertyId: property.id,
+        },
+      });
+
+      t.equal(approveResponse.statusCode, 200, 'Manager approves request');
+
+      // Try to cancel after approval
+      const cancelResponse = await app.inject({
+        method: 'POST',
+        url: `/api/scheduling/v2/swap-requests/${request.id}/cancel`,
+        headers: employee1Headers,
+        payload: {
+          propertyId: property.id,
+        },
+      });
+
+      t.equal(cancelResponse.statusCode, 409, 'Returns 409 Conflict');
+      const body = getData(cancelResponse);
+      t.match(body.message, /already decided/i, 'Error indicates already decided');
+
+      // Cleanup
+      await prisma.wfmSwapRequest.deleteMany({
+        where: { id: request.id },
+      });
+      await prisma.wfmShiftAssignment.deleteMany({
+        where: { shiftPlanId: shift1.id, employeeId: employee7.id },
+      });
+      await prisma.employee.delete({ where: { id: employee7.id } });
+    }
+  );
+
+  await t.test(
+    'POST /api/scheduling/v2/swap-requests/:id/cancel - Cannot cancel another employee\'s request',
+    async (t) => {
+      // Create a new employee
+      const employee8 = await prisma.employee.create({
+        data: {
+          tenantId: tenant.id,
+          propertyId: property.id,
+          firstName: 'Employee',
+          lastName: 'Eight',
+          email: 'employee8@test.com',
+          isActive: true,
+        },
+      });
+
+      await prisma.employeeJobAssignment.create({
+        data: {
+          tenantId: tenant.id,
+          employeeId: employee8.id,
+          jobRoleId: jobRole.id,
+          startDate: new Date('2026-01-01'),
+        },
+      });
+
+      // employee1 creates swap request
+      const createResponse = await app.inject({
+        method: 'POST',
+        url: '/api/scheduling/v2/swap-requests',
+        headers: employee1Headers,
+        payload: {
+          propertyId: property.id,
+          fromShiftPlanId: shift1.id,
+          toEmployeeId: employee8.id,
+        },
+      });
+
+      const request = getData(createResponse);
+
+      // employee2 tries to cancel employee1's request
+      const cancelResponse = await app.inject({
+        method: 'POST',
+        url: `/api/scheduling/v2/swap-requests/${request.id}/cancel`,
+        headers: employee2Headers,
+        payload: {
+          propertyId: property.id,
+        },
+      });
+
+      t.equal(cancelResponse.statusCode, 403, 'Returns 403 Forbidden');
+      const body = getData(cancelResponse);
+      t.match(body.message, /only cancel your own/i, 'Error indicates ownership required');
+
+      // Cleanup
+      await prisma.wfmSwapRequest.deleteMany({
+        where: { id: request.id },
+      });
+      await prisma.employee.delete({ where: { id: employee8.id } });
+    }
+  );
+
+  // ========== Manager Approval Tests ==========
+
+  await t.test(
+    'POST /api/scheduling/v2/requests/:id/approve - Manager approval reassigns shift transactionally',
+    async (t) => {
+      // Create a new employee
+      const employee9 = await prisma.employee.create({
+        data: {
+          tenantId: tenant.id,
+          propertyId: property.id,
+          firstName: 'Employee',
+          lastName: 'Nine',
+          email: 'employee9@test.com',
+          isActive: true,
+        },
+      });
+
+      await prisma.employeeJobAssignment.create({
+        data: {
+          tenantId: tenant.id,
+          employeeId: employee9.id,
+          jobRoleId: jobRole.id,
+          startDate: new Date('2026-01-01'),
+        },
+      });
+
+      await ensureEmployee1Assignment();
+
+      // Create swap request
+      const createResponse = await app.inject({
+        method: 'POST',
+        url: '/api/scheduling/v2/swap-requests',
+        headers: employee1Headers,
+        payload: {
+          propertyId: property.id,
+          fromShiftPlanId: shift1.id,
+          toEmployeeId: employee9.id,
+        },
+      });
+
+      const request = getData(createResponse);
+
+      // Manager approves the request
+      const approveResponse = await app.inject({
+        method: 'POST',
+        url: `/api/scheduling/v2/requests/${request.id}/approve`,
+        headers: managerHeaders,
+        payload: {
+          propertyId: property.id,
+        },
+      });
+
+      t.equal(approveResponse.statusCode, 200, 'Returns 200 OK');
+      const result = getData(approveResponse);
+      t.equal(result.request.status, 'APPROVED', 'Request is approved');
+      t.equal(result.shift.assignmentEmployeeIds.length, 1, 'Shift has one assignment');
+      t.equal(result.shift.assignmentEmployeeIds[0], employee9.id, 'Shift assigned to employee9');
+
+      // Verify employee1 is no longer assigned
+      const assignmentsAfter = await prisma.wfmShiftAssignment.findMany({
+        where: {
+          shiftPlanId: shift1.id,
+          tenantId: tenant.id,
+        },
+      });
+
+      t.equal(assignmentsAfter.length, 1, 'Only one assignment exists');
+      t.equal(assignmentsAfter[0].employeeId, employee9.id, 'Assignment is to employee9');
+
+      // Cleanup
+      await prisma.wfmSwapRequest.deleteMany({
+        where: { id: request.id },
+      });
+      await prisma.wfmShiftAssignment.deleteMany({
+        where: { shiftPlanId: shift1.id, employeeId: employee9.id },
+      });
+      await prisma.employee.delete({ where: { id: employee9.id } });
+
+      // Restore original assignment
+      await prisma.wfmShiftAssignment.create({
+        data: {
+          tenantId: tenant.id,
+          propertyId: property.id,
+          shiftPlanId: shift1.id,
+          employeeId: employee1.id,
+          assignedByUserId: manager.id,
+          assignedAt: new Date(),
+        },
+      });
+    }
+  );
+
+  await t.test(
+    'POST /api/scheduling/v2/requests/:id/approve - Approval fails if requestor no longer assigned',
+    async (t) => {
+      // Create a new employee
+      const employee10 = await prisma.employee.create({
+        data: {
+          tenantId: tenant.id,
+          propertyId: property.id,
+          firstName: 'Employee',
+          lastName: 'Ten',
+          email: 'employee10@test.com',
+          isActive: true,
+        },
+      });
+
+      await prisma.employeeJobAssignment.create({
+        data: {
+          tenantId: tenant.id,
+          employeeId: employee10.id,
+          jobRoleId: jobRole.id,
+          startDate: new Date('2026-01-01'),
+        },
+      });
+
+      await ensureEmployee1Assignment();
+
+      // Create swap request
+      const createResponse = await app.inject({
+        method: 'POST',
+        url: '/api/scheduling/v2/swap-requests',
+        headers: employee1Headers,
+        payload: {
+          propertyId: property.id,
+          fromShiftPlanId: shift1.id,
+          toEmployeeId: employee10.id,
+        },
+      });
+
+      const request = getData(createResponse);
+
+      // Manually remove employee1's assignment (simulating race condition)
+      await prisma.wfmShiftAssignment.deleteMany({
+        where: {
+          shiftPlanId: shift1.id,
+          employeeId: employee1.id,
+        },
+      });
+
+      // Manager tries to approve
+      const approveResponse = await app.inject({
+        method: 'POST',
+        url: `/api/scheduling/v2/requests/${request.id}/approve`,
+        headers: managerHeaders,
+        payload: {
+          propertyId: property.id,
+        },
+      });
+
+      t.equal(approveResponse.statusCode, 409, 'Returns 409 Conflict');
+      const body = getData(approveResponse);
+      t.match(body.message, /no longer assigned/i, 'Error indicates requestor not assigned');
+
+      // Cleanup
+      await prisma.wfmSwapRequest.deleteMany({
+        where: { id: request.id },
+      });
+      await prisma.employee.delete({ where: { id: employee10.id } });
+
+      // Restore original assignment
+      await prisma.wfmShiftAssignment.create({
+        data: {
+          tenantId: tenant.id,
+          propertyId: property.id,
+          shiftPlanId: shift1.id,
+          employeeId: employee1.id,
+          assignedByUserId: manager.id,
+          assignedAt: new Date(),
+        },
+      });
+    }
+  );
+
+  // ========== Cleanup ==========
+
+  await t.teardown(async () => {
+    await app.close();
+
+    // Cleanup in reverse FK dependency order
+    await prisma.wfmSwapRequest.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.wfmShiftAssignment.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.wfmShiftPlan.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.wfmSchedulePeriod.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.employeeJobAssignment.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.employee.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.userRoleAssignment.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.user.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.jobRole.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.jobCategory.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.department.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.division.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.departmentCategory.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.property.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.role.deleteMany({
+      where: { name: 'Swap Test Manager' },
+    });
+    await prisma.tenant.delete({
+      where: { id: tenant.id },
+    });
+  });
+});
+
+/**
+ * Security Test Suite: Scheduling V2 Availability Workflows
+ *
+ * Ensures proper authorization, tenant scoping, and access control for
+ * employee self-service availability and manager-scoped visibility.
+ */
+test('Scheduling V2: Availability Workflows', async (t) => {
+  const config = {
+    port: 3005,
+    host: '0.0.0.0',
+    nodeEnv: 'test',
+    corsOrigin: '*',
+    databaseUrl: process.env.DATABASE_URL || 'postgresql://localhost:5432/test',
+    redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+    jwtSecret: 'test-secret',
+    logLevel: 'silent',
+    cognito: {
+      region: 'us-east-1',
+      userPoolId: 'us-east-1_test',
+      clientId: 'test-client',
+      issuer: 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_test',
+      jwksUri: 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_test/.well-known/jwks.json',
+    },
+    authSkipVerification: true,
+    complianceRulesEnabled: false,
+    openai: {
+      apiKey: '',
+      model: 'gpt-4',
+    },
+  };
+
+  const app = await buildServer(config);
+
+  // Create tenant and property
+  const tenant = await prisma.tenant.create({
+    data: {
+      name: 'Availability Test Tenant',
+      slug: `availability-test-${Date.now()}`,
+    },
+  });
+
+  const property = await prisma.property.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Test Property',
+    },
+  });
+
+  // Create test employees
+  const employee2 = await prisma.employee.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      firstName: 'Employee',
+      lastName: 'Two',
+      isActive: true,
+    },
+  });
+
+  // Create test users
+  const employeeUser = await createTestUser(prisma, {
+    tenantId: tenant.id,
+    propertyId: property.id,
+    email: 'availability-employee@test.com',
+    name: 'Availability Employee',
+  });
+
+  const managerUser = await createTestUser(prisma, {
+    tenantId: tenant.id,
+    propertyId: property.id,
+    email: 'availability-manager@test.com',
+    name: 'Availability Manager',
+  });
+
+  // Build auth headers for personas
+  const employeeHeaders = buildPersonaHeaders('employee', {
+    tenantId: tenant.id,
+    userId: employeeUser.id,
+  });
+
+  const managerHeaders = buildPersonaHeaders('departmentManager', {
+    tenantId: tenant.id,
+    userId: managerUser.id,
+  });
+
+  t.teardown(async () => {
+    await app.close();
+    await prisma.wfmAvailability.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.employee.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.userRoleAssignment.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.user.deleteMany({
+      where: { email: { in: ['availability-employee@test.com', 'availability-manager@test.com'] } },
+    });
+    await prisma.property.deleteMany({
+      where: { tenantId: tenant.id },
+    });
+    await prisma.tenant.delete({
+      where: { id: tenant.id },
+    });
+  });
+
+  // ========== Employee Self-Service Tests ==========
+
+  await t.test('Employee can create and list own availability', async (t) => {
+    const availDate = new Date('2026-03-15');
+
+    // Create availability entry as self
+    const createResponse = await app.inject({
+      method: 'POST',
+      url: '/api/scheduling/v2/availability',
+      headers: employeeHeaders,
+      payload: {
+        propertyId: property.id,
+        date: availDate.toISOString().split('T')[0], // YYYY-MM-DD
+        startTime: '09:00',
+        endTime: '17:00',
+        type: 'AVAILABLE',
+      },
+    });
+
+    t.equal(createResponse.statusCode, 201, 'Create availability returns 201');
+    const createData = getData(createResponse);
+    t.ok(createData.id, 'Response includes availability ID');
+    t.equal(createData.startTime, '09:00', 'Start time matches');
+    t.equal(createData.endTime, '17:00', 'End time matches');
+    t.equal(createData.type, 'AVAILABLE', 'Type matches');
+
+    // List own availability
+    const listResponse = await app.inject({
+      method: 'GET',
+      url: `/api/scheduling/v2/availability?propertyId=${property.id}&start=${new Date('2026-03-01').toISOString()}&end=${new Date('2026-03-31').toISOString()}`,
+      headers: employeeHeaders,
+    });
+
+    t.equal(listResponse.statusCode, 200, 'List availability returns 200');
+    const listData = getData(listResponse);
+    t.ok(Array.isArray(listData), 'Response is array');
+    t.equal(listData.length, 1, 'Returns 1 availability entry');
+    t.equal(listData[0].id, createData.id, 'Listed entry matches created entry');
+  });
+
+  await t.test('Employee cannot list another employee\'s availability without permission', async (t) => {
+    // Employee tries to list another employee's availability
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/scheduling/v2/availability?propertyId=${property.id}&employeeId=${employee2.id}`,
+      headers: employeeHeaders,
+    });
+
+    t.equal(response.statusCode, 403, 'Returns 403 Forbidden');
+    const body = getData(response);
+    t.match(body.message, /Forbidden|permission/i, 'Error indicates forbidden action');
+  });
+
+  await t.test('Invalid time range (startTime >= endTime) returns 400', async (t) => {
+    const availDate = new Date('2026-03-15');
+
+    // Create with invalid time range
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/scheduling/v2/availability',
+      headers: employeeHeaders,
+      payload: {
+        propertyId: property.id,
+        date: availDate.toISOString().split('T')[0],
+        startTime: '17:00',
+        endTime: '09:00', // Before start time
+        type: 'AVAILABLE',
+      },
+    });
+
+    t.equal(response.statusCode, 400, 'Returns 400 Bad Request');
+    const body = getData(response);
+    t.match(body.message, /startTime|before/i, 'Error indicates time validation failure');
+  });
+
+  await t.test('Employee can delete their own availability', async (t) => {
+    const availDate = new Date('2026-03-16');
+
+    // Create availability
+    const createResponse = await app.inject({
+      method: 'POST',
+      url: '/api/scheduling/v2/availability',
+      headers: employeeHeaders,
+      payload: {
+        propertyId: property.id,
+        date: availDate.toISOString().split('T')[0],
+        startTime: '09:00',
+        endTime: '17:00',
+        type: 'AVAILABLE',
+      },
+    });
+
+    const createdId = getData(createResponse).id;
+
+    // Delete it
+    const deleteResponse = await app.inject({
+      method: 'DELETE',
+      url: `/api/scheduling/v2/availability/${createdId}?propertyId=${property.id}`,
+      headers: employeeHeaders,
+    });
+
+    t.equal(deleteResponse.statusCode, 200, 'Delete returns 200');
+    const deleteData = getData(deleteResponse);
+    t.equal(deleteData.success, true, 'Success flag is true');
+
+    // Verify it's deleted
+    const listResponse = await app.inject({
+      method: 'GET',
+      url: `/api/scheduling/v2/availability?propertyId=${property.id}`,
+      headers: employeeHeaders,
+    });
+
+    const listData = getData(listResponse);
+    t.ok(!listData.some((a: { id: string }) => a.id === createdId), 'Availability entry is deleted');
+  });
+
+  // ========== Manager Access Control Tests ==========
+
+  await t.test('Manager with scheduling.view can list employee availability', async (t) => {
+    const availDate = new Date('2026-03-17');
+
+    // First, employee creates availability
+    await app.inject({
+      method: 'POST',
+      url: '/api/scheduling/v2/availability',
+      headers: employeeHeaders,
+      payload: {
+        propertyId: property.id,
+        date: availDate.toISOString().split('T')[0],
+        startTime: '10:00',
+        endTime: '18:00',
+        type: 'UNAVAILABLE',
+      },
+    });
+
+    // Manager lists employee's availability (manager has scheduling.view)
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/scheduling/v2/availability?propertyId=${property.id}&employeeId=${employeeUser.id}`,
+      headers: managerHeaders,
+    });
+
+    t.equal(response.statusCode, 200, 'Manager can list employee availability');
+    const data = getData(response);
+    t.ok(data.length > 0, 'Returns availability entries');
+  });
+
+  await t.test('Manager can create availability for scoped employee with scheduling.manage.availability', async (t) => {
+    const availDate = new Date('2026-03-18');
+
+    // Create availability for another employee as manager
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/scheduling/v2/availability',
+      headers: managerHeaders,
+      payload: {
+        propertyId: property.id,
+        employeeId: employeeUser.id, // Different employee
+        date: availDate.toISOString().split('T')[0],
+        startTime: '08:00',
+        endTime: '16:00',
+        type: 'PREFERRED',
+      },
+    });
+
+    t.equal(response.statusCode, 201, 'Manager can create availability for employee');
+    const data = getData(response);
+    t.equal(data.type, 'PREFERRED', 'Type set correctly');
+  });
+
+  await t.test('Manager can delete employee availability with permission', async (t) => {
+    const availDate = new Date('2026-03-19');
+
+    // Employee creates availability
+    const createResponse = await app.inject({
+      method: 'POST',
+      url: '/api/scheduling/v2/availability',
+      headers: employeeHeaders,
+      payload: {
+        propertyId: property.id,
+        date: availDate.toISOString().split('T')[0],
+        startTime: '09:00',
+        endTime: '17:00',
+        type: 'AVAILABLE',
+      },
+    });
+
+    const createdId = getData(createResponse).id;
+
+    // Manager deletes it
+    const deleteResponse = await app.inject({
+      method: 'DELETE',
+      url: `/api/scheduling/v2/availability/${createdId}?propertyId=${property.id}`,
+      headers: managerHeaders,
+    });
+
+    t.equal(deleteResponse.statusCode, 200, 'Manager can delete employee availability');
+  });
+
+  // ========== Tenant Isolation Tests ==========
+
+  await t.test('Availability entries are tenant-scoped', async (t) => {
+    const availDate = new Date('2026-03-20');
+
+    // Create availability as employee
+    const createResponse = await app.inject({
+      method: 'POST',
+      url: '/api/scheduling/v2/availability',
+      headers: employeeHeaders,
+      payload: {
+        propertyId: property.id,
+        date: availDate.toISOString().split('T')[0],
+        startTime: '09:00',
+        endTime: '17:00',
+        type: 'AVAILABLE',
+      },
+    });
+
+    t.equal(createResponse.statusCode, 201, 'Created availability');
+
+    // Verify entry was created with correct tenant ID
+    const entries = await prisma.wfmAvailability.findMany({
+      where: { tenantId: tenant.id },
+    });
+
+    t.ok(entries.length > 0, 'Availability entry stored in database');
+    t.equal(entries[0].tenantId, tenant.id, 'Entry has correct tenant ID');
+  });
+
+  // ========== Recurrence Rule Storage Tests ==========
+
+  await t.test('Recurrence rule is stored as-is (not expanded)', async (t) => {
+    const availDate = new Date('2026-03-21');
+    const recurrenceRule = 'FREQ=WEEKLY;BYDAY=MO,WE,FR';
+
+    const createResponse = await app.inject({
+      method: 'POST',
+      url: '/api/scheduling/v2/availability',
+      headers: employeeHeaders,
+      payload: {
+        propertyId: property.id,
+        date: availDate.toISOString().split('T')[0],
+        startTime: '09:00',
+        endTime: '17:00',
+        type: 'AVAILABLE',
+        recurrenceRule,
+      },
+    });
+
+    t.equal(createResponse.statusCode, 201, 'Created availability with recurrence rule');
+    const data = getData(createResponse);
+    t.equal(data.recurrenceRule, recurrenceRule, 'Recurrence rule returned as-is');
+
+    // Verify in database
+    const entry = await prisma.wfmAvailability.findUnique({
+      where: { id: data.id },
+    });
+
+    t.equal(entry?.recurrenceRule, recurrenceRule, 'Recurrence rule stored in database as-is');
+  });
+
+  // ========== Missing Employee Error Tests ==========
+
+  await t.test('Create availability for non-existent employee returns 404', async (t) => {
+    const availDate = new Date('2026-03-22');
+    const fakeEmployeeId = 'nonexistent-employee-id';
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/scheduling/v2/availability',
+      headers: managerHeaders,
+      payload: {
+        propertyId: property.id,
+        employeeId: fakeEmployeeId,
+        date: availDate.toISOString().split('T')[0],
+        startTime: '09:00',
+        endTime: '17:00',
+        type: 'AVAILABLE',
+      },
+    });
+
+    t.equal(response.statusCode, 404, 'Returns 404 for non-existent employee');
+    const body = getData(response);
+    t.match(body.message, /not found|Employee/i, 'Error indicates employee not found');
+  });
+
+  // ========== Delete Non-Existent Entry Tests ==========
+
+  await t.test('Delete non-existent availability returns 404', async (t) => {
+    const fakeId = 'nonexistent-id';
+
+    const response = await app.inject({
+      method: 'DELETE',
+      url: `/api/scheduling/v2/availability/${fakeId}?propertyId=${property.id}`,
+      headers: employeeHeaders,
+    });
+
+    t.equal(response.statusCode, 404, 'Returns 404 for non-existent availability');
+  });
+
+  // ========== Cleanup ==========
+
+  await t.teardown(async () => {
+    await app.close();
+  });
+});
+

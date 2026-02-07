@@ -156,3 +156,62 @@ export interface PublishEventDTO {
   createdAt: string;
   updatedAt: string;
 }
+/**
+ * Shift Plan (WFM V2)
+ * Represents a single shift in a schedule period
+ */
+export interface ShiftPlanDTO {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  schedulePeriodId: string;
+  departmentId: string;
+  jobRoleId: string;
+  startDateTime: string; // ISO datetime
+  endDateTime: string; // ISO datetime
+  breakMinutes: number;
+  isOpenShift: boolean;
+  notes?: string;
+  assignmentEmployeeIds: string[]; // Employee IDs assigned to this shift
+  createdAt: string;
+  updatedAt: string;
+}
+/**
+ * Scheduling request DTO (for open shift claims and swaps)
+ */
+export interface SchedulingRequestDTO {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  status: 'PENDING' | 'APPROVED' | 'DENIED' | 'CANCELED';
+  requestorEmployeeId: string;
+  fromShiftPlanId: string;
+  toEmployeeId: string | null;
+  managerUserId: string | null;
+  decisionAt: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  // Enriched data for UI
+  shift?: {
+    departmentId: string;
+    jobRoleId: string;
+    startDateTime: string;
+    endDateTime: string;
+  };
+}
+/**
+ * WFM Availability (V2)
+ * Date-based availability entry with start/end times
+ */
+export interface WfmAvailabilityDTO {
+  id: string;
+  employeeId: string;
+  date: string; // ISO datetime
+  startTime: string; // HH:MM format
+  endTime: string; // HH:MM format
+  type?: 'AVAILABLE' | 'UNAVAILABLE' | 'PREFERRED';
+  recurrenceRule?: string | null; // RFC 5545 format (stored as-is, not expanded)
+  createdAt: string;
+  updatedAt: string;
+}

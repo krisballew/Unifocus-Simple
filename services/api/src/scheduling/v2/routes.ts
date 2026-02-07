@@ -26,6 +26,11 @@ import {
   ListRequestsQuerySchema,
   ApproveRequestBodySchema,
   DenyRequestBodySchema,
+  CreateSwapRequestBodySchema,
+  CancelSwapRequestBodySchema,
+  AvailabilityListQuerySchema,
+  AvailabilityCreateBodySchema,
+  AvailabilityDeleteQuerySchema,
 } from './validators.js';
 
 /**
@@ -755,6 +760,152 @@ export async function schedulingV2Routes(
     }
   );
 
+  // ========== SWAP REQUEST ROUTES ==========
+
+  /**
+   * POST /api/scheduling/v2/swap-requests
+   * Employee creates a swap request to give their shift to another employee
+   */
+  fastify.post('/swap-requests', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userContext = getAuthContext(request);
+      if (!userContext || !userContext.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      // Validate body
+      const body = CreateSwapRequestBodySchema.parse(request.body);
+
+      const swapRequest = await service.createSwapRequest(userContext, body);
+
+      return reply.code(201).send({
+        success: true,
+        data: swapRequest,
+      });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        'status' in error &&
+        (error as { status: number }).status === 409
+      ) {
+        return reply.code(409).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (
+        error instanceof Error &&
+        'status' in error &&
+        (error as { status: number }).status === 403
+      ) {
+        return reply.code(403).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.code(404).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('validation')) {
+        return reply.code(400).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
+
+  /**
+   * POST /api/scheduling/v2/swap-requests/:id/cancel
+   * Employee cancels their own pending swap request
+   */
+  fastify.post(
+    '/swap-requests/:id/cancel',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const userContext = getAuthContext(request);
+        if (!userContext || !userContext.userId) {
+          return reply.code(401).send({
+            success: false,
+            message: 'Unauthorized',
+          });
+        }
+
+        const { id } = request.params as { id: string };
+
+        // Validate body
+        const body = CancelSwapRequestBodySchema.parse(request.body);
+
+        const result = await service.cancelSwapRequest(userContext, {
+          requestId: id,
+          propertyId: body.propertyId,
+        });
+
+        return reply.code(200).send({
+          success: true,
+          data: result,
+        });
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          'status' in error &&
+          (error as { status: number }).status === 409
+        ) {
+          return reply.code(409).send({
+            success: false,
+            message: error.message,
+          });
+        }
+
+        if (
+          error instanceof Error &&
+          'status' in error &&
+          (error as { status: number }).status === 403
+        ) {
+          return reply.code(403).send({
+            success: false,
+            message: error.message,
+          });
+        }
+
+        if (error instanceof Error && error.message.includes('not found')) {
+          return reply.code(404).send({
+            success: false,
+            message: error.message,
+          });
+        }
+
+        if (error instanceof Error && error.message.includes('validation')) {
+          return reply.code(400).send({
+            success: false,
+            message: error.message,
+          });
+        }
+
+        fastify.log.error(error);
+        return reply.code(500).send({
+          success: false,
+          message: error instanceof Error ? error.message : 'Internal server error',
+        });
+      }
+    }
+  );
+
   /**
    * GET /api/scheduling/v2/requests
    * List scheduling requests (manager view)
@@ -913,6 +1064,161 @@ export async function schedulingV2Routes(
 
       if (error instanceof Error && error.message.includes('not found')) {
         return reply.code(404).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('validation')) {
+        return reply.code(400).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
+
+  // ========== AVAILABILITY ROUTES ==========
+
+  /**
+   * GET /api/scheduling/v2/availability
+   * List availability entries for self or (with permission) another employee
+   * Query: propertyId (required), employeeId?, start?, end?
+   */
+  fastify.get('/availability', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userContext = getAuthContext(request);
+      if (!userContext || !userContext.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      // Validate query params
+      const query = AvailabilityListQuerySchema.parse(request.query);
+
+      const entries = await service.listAvailability(userContext, query);
+
+      return reply.code(200).send({
+        success: true,
+        data: entries,
+      });
+    } catch (error) {
+      if (error instanceof SchedulingAuthError) {
+        return reply.code(error.statusCode).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('validation')) {
+        return reply.code(400).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
+
+  /**
+   * POST /api/scheduling/v2/availability
+   * Create availability entry for self or (with permission) another employee
+   * Body: propertyId, employeeId?, date, startTime, endTime, type?, recurrenceRule?
+   */
+  fastify.post('/availability', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userContext = getAuthContext(request);
+      if (!userContext || !userContext.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      // Validate body
+      const body = AvailabilityCreateBodySchema.parse(request.body);
+
+      const entry = await service.createAvailability(userContext, body);
+
+      return reply.code(201).send({
+        success: true,
+        data: entry,
+      });
+    } catch (error) {
+      if (error instanceof SchedulingAuthError) {
+        return reply.code(error.statusCode).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('validation')) {
+        return reply.code(400).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.code(404).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
+
+  /**
+   * DELETE /api/scheduling/v2/availability/:id
+   * Delete availability entry (self or manager with permission)
+   * Query: propertyId
+   */
+  fastify.delete('/availability/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userContext = getAuthContext(request);
+      if (!userContext || !userContext.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      const { id } = request.params as { id: string };
+
+      // Validate query params
+      const query = AvailabilityDeleteQuerySchema.parse(request.query);
+
+      const result = await service.deleteAvailability(userContext, {
+        id,
+        propertyId: query.propertyId,
+      });
+
+      return reply.code(200).send({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      if (error instanceof SchedulingAuthError) {
+        return reply.code(error.statusCode).send({
           success: false,
           message: error.message,
         });
