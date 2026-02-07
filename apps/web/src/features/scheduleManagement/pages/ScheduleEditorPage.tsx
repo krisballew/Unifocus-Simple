@@ -17,6 +17,10 @@ import {
 } from '../api/shifts';
 import type { Shift, CreateShiftPayload, UpdateShiftPayload } from '../api/shifts';
 import { AssignEmployeesModal } from '../components/AssignEmployeesModal';
+import { BulkCreateShiftsModal } from '../components/BulkCreateShiftsModal';
+import type { BulkCreateFormData } from '../components/BulkCreateShiftsModal';
+import { CopyDayModal } from '../components/CopyDayModal';
+import type { CopyDayOptions } from '../components/CopyDayModal';
 import { ShiftList } from '../components/ShiftList';
 import { ShiftModal } from '../components/ShiftModal';
 import type { ShiftFormData } from '../components/ShiftModal';
@@ -38,8 +42,20 @@ export function ScheduleEditorPage(): React.ReactElement {
   const [jobRoleFilter, setJobRoleFilter] = useState<string>('');
   const [showShiftModal, setShowShiftModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showBulkCreateModal, setShowBulkCreateModal] = useState(false);
+  const [showCopyDayModal, setShowCopyDayModal] = useState(false);
   const [editingShift, setEditingShift] = useState<Shift | undefined>(undefined);
   const [assigningShift, setAssigningShift] = useState<Shift | undefined>(undefined);
+  const [bulkCreateProgress, setBulkCreateProgress] = useState<{
+    current: number;
+    total: number;
+    errors: string[];
+  } | null>(null);
+  const [copyDayProgress, setCopyDayProgress] = useState<{
+    current: number;
+    total: number;
+    errors: string[];
+  } | null>(null);
 
   // Fetch schedule periods
   const periodsQuery = useQuery({
@@ -277,6 +293,184 @@ export function ScheduleEditorPage(): React.ReactElement {
     toggleOpenMutation.mutate({ shiftId: shift.id, isOpenShift: !shift.isOpenShift });
   };
 
+  const handleBulkCreate = async (
+    templates: { startTime: string; endTime: string; count: number }[],
+    formData: BulkCreateFormData
+  ) => {
+    if (!selectedPropertyId || !selectedPeriodId || !selectedDate) return;
+
+    const totalShifts = templates.reduce((sum, t) => sum + t.count, 0);
+    setBulkCreateProgress({ current: 0, total: totalShifts, errors: [] });
+
+    let current = 0;
+    const errors: string[] = [];
+
+    // Process templates in batches of 3 for controlled concurrency
+    const batchSize = 3;
+    const allShifts: Array<{ template: (typeof templates)[0]; index: number }> = [];
+
+    templates.forEach((template) => {
+      for (let i = 0; i < template.count; i++) {
+        allShifts.push({ template, index: i });
+      }
+    });
+
+    for (let i = 0; i < allShifts.length; i += batchSize) {
+      const batch = allShifts.slice(i, i + batchSize);
+      const promises = batch.map(async ({ template }) => {
+        try {
+          const startDateTime = new Date(`${selectedDate}T${template.startTime}:00`).toISOString();
+          const endDateTime = new Date(`${selectedDate}T${template.endTime}:00`).toISOString();
+
+          await createShift({
+            schedulePeriodId: selectedPeriodId,
+            propertyId: selectedPropertyId,
+            departmentId: formData.departmentId,
+            jobRoleId: formData.jobRoleId,
+            startDateTime,
+            endDateTime,
+            breakMinutes: formData.breakMinutes,
+            isOpenShift: formData.isOpenShift,
+            notes: formData.notes || undefined,
+          });
+          current++;
+          setBulkCreateProgress({ current, total: totalShifts, errors });
+        } catch (error) {
+          const errorMsg = `Failed to create shift ${template.startTime}-${template.endTime}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+          errors.push(errorMsg);
+          setBulkCreateProgress({ current, total: totalShifts, errors });
+        }
+      });
+
+      await Promise.all(promises);
+    }
+
+    // Refresh shifts list
+    await queryClient.invalidateQueries({ queryKey: ['shifts'] });
+
+    // Show summary
+    if (errors.length > 0) {
+      alert(
+        `Created ${current} of ${totalShifts} shifts.\n\nErrors:\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? `\n...and ${errors.length - 5} more` : ''}`
+      );
+    } else {
+      alert(`Successfully created all ${totalShifts} shifts!`);
+    }
+
+    setBulkCreateProgress(null);
+    setShowBulkCreateModal(false);
+  };
+
+  const handleCopyDay = async (sourceDate: string, targetDate: string, options: CopyDayOptions) => {
+    if (!selectedPropertyId || !selectedPeriodId) return;
+
+    try {
+      // Fetch shifts from source date
+      const startOfDay = new Date(sourceDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(sourceDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const sourceShifts = await getShifts({
+        propertyId: selectedPropertyId,
+        schedulePeriodId: selectedPeriodId,
+        start: startOfDay.toISOString(),
+        end: endOfDay.toISOString(),
+      });
+
+      if (sourceShifts.length === 0) {
+        alert('No shifts found on the source date.');
+        setCopyDayProgress(null);
+        setShowCopyDayModal(false);
+        return;
+      }
+
+      setCopyDayProgress({ current: 0, total: sourceShifts.length, errors: [] });
+
+      let current = 0;
+      const errors: string[] = [];
+      const createdShifts: Shift[] = [];
+
+      // Process shifts in batches of 3
+      const batchSize = 3;
+      for (let i = 0; i < sourceShifts.length; i += batchSize) {
+        const batch = sourceShifts.slice(i, i + batchSize);
+        const promises = batch.map(async (sourceShift) => {
+          try {
+            // Calculate time offset
+            const sourceStart = new Date(sourceShift.startDateTime);
+            const sourceEnd = new Date(sourceShift.endDateTime);
+            const startTime = sourceStart.toTimeString().slice(0, 5);
+            const endTime = sourceEnd.toTimeString().slice(0, 5);
+
+            const targetStartDateTime = new Date(`${targetDate}T${startTime}:00`).toISOString();
+            const targetEndDateTime = new Date(`${targetDate}T${endTime}:00`).toISOString();
+
+            const newShift = await createShift({
+              schedulePeriodId: selectedPeriodId,
+              propertyId: selectedPropertyId,
+              departmentId: sourceShift.departmentId,
+              jobRoleId: sourceShift.jobRoleId,
+              startDateTime: targetStartDateTime,
+              endDateTime: targetEndDateTime,
+              breakMinutes: sourceShift.breakMinutes,
+              isOpenShift: options.setAsOpenShifts ? true : sourceShift.isOpenShift,
+              notes: sourceShift.notes || undefined,
+            });
+
+            createdShifts.push(newShift);
+            current++;
+            setCopyDayProgress({ current, total: sourceShifts.length, errors });
+
+            // If including assignments and shift has assignments, copy them
+            if (options.includeAssignments && sourceShift.assignments && !options.setAsOpenShifts) {
+              for (const assignment of sourceShift.assignments) {
+                try {
+                  await assignShift(newShift.id, {
+                    propertyId: selectedPropertyId,
+                    employeeId: assignment.employeeId,
+                  });
+                } catch (assignError) {
+                  errors.push(
+                    `Failed to assign employee to shift: ${assignError instanceof Error ? assignError.message : 'Unknown error'}`
+                  );
+                }
+              }
+            }
+          } catch (error) {
+            errors.push(
+              `Failed to copy shift: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+            setCopyDayProgress({ current, total: sourceShifts.length, errors });
+          }
+        });
+
+        await Promise.all(promises);
+      }
+
+      // Refresh shifts list
+      await queryClient.invalidateQueries({ queryKey: ['shifts'] });
+
+      // Show summary
+      if (errors.length > 0) {
+        alert(
+          `Copied ${current} of ${sourceShifts.length} shifts.\n\nErrors:\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? `\n...and ${errors.length - 5} more` : ''}`
+        );
+      } else {
+        alert(`Successfully copied all ${sourceShifts.length} shifts!`);
+      }
+
+      setCopyDayProgress(null);
+      setShowCopyDayModal(false);
+    } catch (error) {
+      alert(
+        `Failed to fetch source shifts: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      setCopyDayProgress(null);
+      setShowCopyDayModal(false);
+    }
+  };
+
   const isLoading =
     createMutation.isPending ||
     updateMutation.isPending ||
@@ -336,15 +530,43 @@ export function ScheduleEditorPage(): React.ReactElement {
           <h2>Schedule Editor</h2>
           <p>Create and manage shift schedules.</p>
         </div>
-        <button
-          type="button"
-          className="button button--primary"
-          onClick={handleCreateShift}
-          disabled={isLoading || !canEdit || !selectedDate}
-          title={!canEdit ? 'You do not have permission to create shifts' : ''}
-        >
-          Create Shift
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            type="button"
+            className="button button--secondary"
+            onClick={() => setShowCopyDayModal(true)}
+            disabled={isLoading || !canEdit || !selectedDate || !!copyDayProgress}
+            title={
+              !canEdit
+                ? 'You do not have permission to copy shifts'
+                : 'Copy shifts from another day'
+            }
+          >
+            Copy Day
+          </button>
+          <button
+            type="button"
+            className="button button--secondary"
+            onClick={() => setShowBulkCreateModal(true)}
+            disabled={isLoading || !canEdit || !selectedDate || !!bulkCreateProgress}
+            title={
+              !canEdit
+                ? 'You do not have permission to create shifts'
+                : 'Create multiple shifts at once'
+            }
+          >
+            Bulk Create
+          </button>
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={handleCreateShift}
+            disabled={isLoading || !canEdit || !selectedDate}
+            title={!canEdit ? 'You do not have permission to create shifts' : ''}
+          >
+            Create Shift
+          </button>
+        </div>
       </div>
 
       <div
@@ -508,6 +730,91 @@ export function ScheduleEditorPage(): React.ReactElement {
           onUnassign={handleUnassign}
           isLoading={isLoading}
         />
+      )}
+
+      {showBulkCreateModal && selectedPropertyId && selectedPeriodId && selectedDate && (
+        <BulkCreateShiftsModal
+          propertyId={selectedPropertyId}
+          schedulePeriodId={selectedPeriodId}
+          selectedDate={selectedDate}
+          onClose={() => {
+            if (!bulkCreateProgress) {
+              setShowBulkCreateModal(false);
+            }
+          }}
+          onSubmit={handleBulkCreate}
+          isLoading={!!bulkCreateProgress}
+        />
+      )}
+
+      {showCopyDayModal && periodDays.length > 0 && selectedDate && (
+        <CopyDayModal
+          periodDays={periodDays}
+          selectedDate={selectedDate}
+          onClose={() => {
+            if (!copyDayProgress) {
+              setShowCopyDayModal(false);
+            }
+          }}
+          onSubmit={handleCopyDay}
+          isLoading={!!copyDayProgress}
+          canAssign={canAssign}
+        />
+      )}
+
+      {/* Progress indicators */}
+      {bulkCreateProgress && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            background: 'white',
+            border: '2px solid var(--brand-primary)',
+            borderRadius: '8px',
+            padding: '1rem',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            minWidth: '300px',
+            zIndex: 1000,
+          }}
+        >
+          <strong>Bulk Creating Shifts</strong>
+          <div style={{ marginTop: '0.5rem' }}>
+            Progress: {bulkCreateProgress.current} / {bulkCreateProgress.total}
+          </div>
+          {bulkCreateProgress.errors.length > 0 && (
+            <div style={{ marginTop: '0.5rem', color: 'red', fontSize: '0.875rem' }}>
+              {bulkCreateProgress.errors.length} error(s) occurred
+            </div>
+          )}
+        </div>
+      )}
+
+      {copyDayProgress && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            background: 'white',
+            border: '2px solid var(--brand-primary)',
+            borderRadius: '8px',
+            padding: '1rem',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            minWidth: '300px',
+            zIndex: 1000,
+          }}
+        >
+          <strong>Copying Day Shifts</strong>
+          <div style={{ marginTop: '0.5rem' }}>
+            Progress: {copyDayProgress.current} / {copyDayProgress.total}
+          </div>
+          {copyDayProgress.errors.length > 0 && (
+            <div style={{ marginTop: '0.5rem', color: 'red', fontSize: '0.875rem' }}>
+              {copyDayProgress.errors.length} error(s) occurred
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
