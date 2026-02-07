@@ -210,21 +210,55 @@ function AppShellContent(): React.ReactElement {
 
   // Handle new tab opening when clicking nav items
   useEffect(() => {
-    const navItem = NAV_ITEMS.find((item) => item.path === location.pathname);
-    if (navItem && navItem.path !== '/') {
-      const tabId = navItem.path;
+    // Map for Schedule Management sub-pages (not in NAV_ITEMS but routable)
+    const scheduleSubpages: Record<string, { label: string; path: string }> = {
+      '/schedule-management/periods': {
+        label: 'Schedule Periods',
+        path: '/schedule-management/periods',
+      },
+      '/schedule-management/editor': {
+        label: 'Schedule Editor',
+        path: '/schedule-management/editor',
+      },
+      '/schedule-management/requests': {
+        label: 'Schedule Requests',
+        path: '/schedule-management/requests',
+      },
+      '/schedule-management/availability': {
+        label: 'Employee Availability',
+        path: '/schedule-management/availability',
+      },
+    };
 
+    // Check if current path is a Schedule Management sub-page
+    const subpage = scheduleSubpages[location.pathname];
+    if (subpage) {
       setOpenTabs((prevTabs) => {
-        const existingTab = prevTabs.find((t) => t.id === tabId);
+        const existingTab = prevTabs.find((t) => t.id === subpage.path);
         if (!existingTab) {
-          return [...prevTabs, { id: tabId, label: navItem.label, path: navItem.path }];
+          return [...prevTabs, { id: subpage.path, label: subpage.label, path: subpage.path }];
         }
         return prevTabs;
       });
+      setActiveTabId(subpage.path);
+    } else {
+      // Fall back to NAV_ITEMS matching
+      const navItem = NAV_ITEMS.find((item) => item.path === location.pathname);
+      if (navItem && navItem.path !== '/') {
+        const tabId = navItem.path;
 
-      setActiveTabId(tabId);
-    } else if (navItem?.path === '/') {
-      setActiveTabId('home');
+        setOpenTabs((prevTabs) => {
+          const existingTab = prevTabs.find((t) => t.id === tabId);
+          if (!existingTab) {
+            return [...prevTabs, { id: tabId, label: navItem.label, path: navItem.path }];
+          }
+          return prevTabs;
+        });
+
+        setActiveTabId(tabId);
+      } else if (navItem?.path === '/') {
+        setActiveTabId('home');
+      }
     }
   }, [location.pathname]);
 
