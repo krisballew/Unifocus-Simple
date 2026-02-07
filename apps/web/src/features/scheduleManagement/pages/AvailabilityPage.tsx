@@ -10,6 +10,7 @@ import type { AvailabilityType } from '../api/availability';
 import { AvailabilityFilters } from '../components/AvailabilityFilters';
 import { AvailabilityModal } from '../components/AvailabilityModal';
 import { AvailabilityTable } from '../components/AvailabilityTable';
+import { formatApiError } from '../utils/apiErrors';
 
 export function AvailabilityPage(): React.ReactElement {
   const { selectedTenantId, selectedPropertyId } = useSelection();
@@ -85,6 +86,9 @@ export function AvailabilityPage(): React.ReactElement {
           dateRange.end,
         ],
       });
+    },
+    onError: (error) => {
+      alert(`Failed to create availability: ${formatApiError(error)}`);
     },
   });
 

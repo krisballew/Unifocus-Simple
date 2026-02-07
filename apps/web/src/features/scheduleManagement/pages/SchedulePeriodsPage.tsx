@@ -13,6 +13,7 @@ import {
 import { hasPermission, SCHEDULING_PERMISSIONS } from '../../../utils/permissions';
 import { CreateSchedulePeriodModal } from '../components/CreateSchedulePeriodModal';
 import { SchedulePeriodList } from '../components/SchedulePeriodList';
+import { formatApiError } from '../utils/apiErrors';
 
 export function SchedulePeriodsPage(): React.ReactElement {
   const { selectedTenantId, selectedPropertyId } = useSelection();
@@ -40,6 +41,9 @@ export function SchedulePeriodsPage(): React.ReactElement {
       queryClient.invalidateQueries({ queryKey: ['schedulePeriods'] });
       setShowCreateModal(false);
     },
+    onError: (error) => {
+      alert(`Failed to create schedule period: ${formatApiError(error)}`);
+    },
   });
 
   const publishMutation = useMutation({
@@ -47,12 +51,18 @@ export function SchedulePeriodsPage(): React.ReactElement {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedulePeriods'] });
     },
+    onError: (error) => {
+      alert(`Failed to publish schedule: ${formatApiError(error)}`);
+    },
   });
 
   const lockMutation = useMutation({
     mutationFn: (id: string) => lockSchedulePeriod({ id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedulePeriods'] });
+    },
+    onError: (error) => {
+      alert(`Failed to lock schedule period: ${formatApiError(error)}`);
     },
   });
 

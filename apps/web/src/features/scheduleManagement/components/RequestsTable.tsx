@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { approveRequest, denyRequest } from '../api/requests';
 import type { SchedulingRequest } from '../api/requests';
 import { useScheduleLookups } from '../hooks/useScheduleLookups';
+import { formatApiError } from '../utils/apiErrors';
 
 import { DenyRequestModal } from './DenyRequestModal';
 import { RequestTypeBadge } from './RequestTypeBadge';
@@ -21,6 +22,7 @@ export function RequestsTable({
 }: RequestsTableProps): React.ReactElement {
   const queryClient = useQueryClient();
   const [denyingRequestId, setDenyingRequestId] = useState<string | null>(null);
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
 
   // Fetch lookups for resolving IDs to names
   const lookups = useScheduleLookups(propertyId);
@@ -28,9 +30,17 @@ export function RequestsTable({
   // Approve mutation
   const approveMutation = useMutation({
     mutationFn: (requestId: string) => approveRequest(requestId, { propertyId }),
-    onSuccess: () => {
+    onSuccess: (_data, requestId) => {
       queryClient.invalidateQueries({ queryKey: ['requests'] });
+      setRowErrors((prev) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [requestId]: _, ...next } = prev;
+        return next;
+      });
       onRequestUpdated?.();
+    },
+    onError: (error, requestId) => {
+      setRowErrors((prev) => ({ ...prev, [requestId]: formatApiError(error) }));
     },
   });
 
@@ -38,10 +48,19 @@ export function RequestsTable({
   const denyMutation = useMutation({
     mutationFn: ({ requestId, reason }: { requestId: string; reason?: string }) =>
       denyRequest(requestId, { propertyId, reason }),
-    onSuccess: () => {
+    onSuccess: (_data, { requestId }) => {
       queryClient.invalidateQueries({ queryKey: ['requests'] });
       setDenyingRequestId(null);
+      setRowErrors((prev) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [requestId]: _, ...next } = prev;
+        return next;
+      });
       onRequestUpdated?.();
+    },
+    onError: (error, { requestId }) => {
+      setRowErrors((prev) => ({ ...prev, [requestId]: formatApiError(error) }));
+      setDenyingRequestId(null);
     },
   });
 
@@ -139,25 +158,38 @@ export function RequestsTable({
 
               <div>{formatEmployee(request)}</div>
 
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button
-                  type="button"
-                  className="button button--small button--primary"
-                  onClick={() => approveMutation.mutate(request.id)}
-                  disabled={isProcessing}
-                  title="Approve this request"
+              <div>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '0.5rem',
+                    marginBottom: rowErrors[request.id] ? '0.5rem' : 0,
+                  }}
                 >
-                  {approveMutation.isPending ? 'Approving...' : 'Approve'}
-                </button>
-                <button
-                  type="button"
-                  className="button button--small button--danger"
-                  onClick={() => setDenyingRequestId(request.id)}
-                  disabled={isProcessing}
-                  title="Deny this request"
-                >
-                  {denyMutation.isPending ? 'Denying...' : 'Deny'}
-                </button>
+                  <button
+                    type="button"
+                    className="button button--small button--primary"
+                    onClick={() => approveMutation.mutate(request.id)}
+                    disabled={isProcessing}
+                    title="Approve this request"
+                  >
+                    {approveMutation.isPending ? 'Approving...' : 'Approve'}
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--small button--danger"
+                    onClick={() => setDenyingRequestId(request.id)}
+                    disabled={isProcessing}
+                    title="Deny this request"
+                  >
+                    {denyMutation.isPending ? 'Denying...' : 'Deny'}
+                  </button>
+                </div>
+                {rowErrors[request.id] && (
+                  <div style={{ fontSize: '0.875rem', color: '#d32f2f', marginTop: '0.25rem' }}>
+                    {rowErrors[request.id]}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -168,7 +200,7 @@ export function RequestsTable({
         <DenyRequestModal
           requestId={denyingRequestId}
           onClose={() => setDenyingRequestId(null)}
-          onDeny={(reason) => {
+          onDeny={(reason?: string) => {
             denyMutation.mutate({ requestId: denyingRequestId, reason });
           }}
           isLoading={denyMutation.isPending}

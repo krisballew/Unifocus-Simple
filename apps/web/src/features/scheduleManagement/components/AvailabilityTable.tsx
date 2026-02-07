@@ -2,6 +2,7 @@ import React from 'react';
 
 import { deleteAvailability } from '../api/availability';
 import type { AvailabilityEntry } from '../api/availability';
+import { formatApiError } from '../utils/apiErrors';
 
 export interface AvailabilityTableProps {
   entries: AvailabilityEntry[];
@@ -45,8 +46,7 @@ export function AvailabilityTable({
       await deleteAvailability({ id: entryId, propertyId });
       onDelete();
     } catch (error) {
-      console.error('Error deleting availability:', error);
-      alert('Failed to delete availability entry');
+      alert(`Failed to delete availability entry: ${formatApiError(error)}`);
     }
   };
 

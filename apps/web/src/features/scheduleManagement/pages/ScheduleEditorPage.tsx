@@ -24,6 +24,7 @@ import type { CopyDayOptions } from '../components/CopyDayModal';
 import { ShiftList } from '../components/ShiftList';
 import { ShiftModal } from '../components/ShiftModal';
 import type { ShiftFormData } from '../components/ShiftModal';
+import { formatApiError } from '../utils/apiErrors';
 
 export function ScheduleEditorPage(): React.ReactElement {
   const { selectedTenantId, selectedPropertyId } = useSelection();
@@ -155,7 +156,7 @@ export function ScheduleEditorPage(): React.ReactElement {
       setEditingShift(undefined);
     },
     onError: (error) => {
-      alert(`Failed to create shift: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`Failed to create shift: ${formatApiError(error)}`);
     },
   });
 
@@ -168,7 +169,7 @@ export function ScheduleEditorPage(): React.ReactElement {
       setEditingShift(undefined);
     },
     onError: (error) => {
-      alert(`Failed to update shift: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`Failed to update shift: ${formatApiError(error)}`);
     },
   });
 
@@ -178,7 +179,7 @@ export function ScheduleEditorPage(): React.ReactElement {
       queryClient.invalidateQueries({ queryKey: ['shifts'] });
     },
     onError: (error) => {
-      alert(`Failed to delete shift: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`Failed to delete shift: ${formatApiError(error)}`);
     },
   });
 
@@ -189,9 +190,7 @@ export function ScheduleEditorPage(): React.ReactElement {
       queryClient.invalidateQueries({ queryKey: ['shifts'] });
     },
     onError: (error) => {
-      alert(
-        `Failed to assign employee: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+      alert(`Failed to assign employee: ${formatApiError(error)}`);
     },
   });
 
@@ -202,9 +201,7 @@ export function ScheduleEditorPage(): React.ReactElement {
       queryClient.invalidateQueries({ queryKey: ['shifts'] });
     },
     onError: (error) => {
-      alert(
-        `Failed to unassign employee: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+      alert(`Failed to unassign employee: ${formatApiError(error)}`);
     },
   });
 
@@ -215,9 +212,7 @@ export function ScheduleEditorPage(): React.ReactElement {
       queryClient.invalidateQueries({ queryKey: ['shifts'] });
     },
     onError: (error) => {
-      alert(
-        `Failed to toggle shift status: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+      alert(`Failed to toggle shift status: ${formatApiError(error)}`);
     },
   });
 
@@ -336,7 +331,7 @@ export function ScheduleEditorPage(): React.ReactElement {
           current++;
           setBulkCreateProgress({ current, total: totalShifts, errors });
         } catch (error) {
-          const errorMsg = `Failed to create shift ${template.startTime}-${template.endTime}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+          const errorMsg = `Failed to create shift ${template.startTime}-${template.endTime}: ${formatApiError(error)}`;
           errors.push(errorMsg);
           setBulkCreateProgress({ current, total: totalShifts, errors });
         }
@@ -431,16 +426,12 @@ export function ScheduleEditorPage(): React.ReactElement {
                     employeeId: assignment.employeeId,
                   });
                 } catch (assignError) {
-                  errors.push(
-                    `Failed to assign employee to shift: ${assignError instanceof Error ? assignError.message : 'Unknown error'}`
-                  );
+                  errors.push(`Failed to assign employee to shift: ${formatApiError(assignError)}`);
                 }
               }
             }
           } catch (error) {
-            errors.push(
-              `Failed to copy shift: ${error instanceof Error ? error.message : 'Unknown error'}`
-            );
+            errors.push(`Failed to copy shift: ${formatApiError(error)}`);
             setCopyDayProgress({ current, total: sourceShifts.length, errors });
           }
         });
@@ -463,9 +454,7 @@ export function ScheduleEditorPage(): React.ReactElement {
       setCopyDayProgress(null);
       setShowCopyDayModal(false);
     } catch (error) {
-      alert(
-        `Failed to fetch source shifts: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+      alert(`Failed to fetch source shifts: ${formatApiError(error)}`);
       setCopyDayProgress(null);
       setShowCopyDayModal(false);
     }
