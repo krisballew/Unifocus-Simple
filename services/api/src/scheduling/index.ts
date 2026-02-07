@@ -7,10 +7,10 @@
  */
 
 // Export types
-export * from './types';
+export * from './types.js';
 
 // Export service
-export * from './scheduling-service';
+export * from './scheduling-service.js';
 
 // Export routes
-export * from './routes';
+export * from './routes.js';

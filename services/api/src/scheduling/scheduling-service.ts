@@ -11,7 +11,7 @@ import type {
   Shift,
   SchedulingResult,
   SchedulingConflict,
-} from './types';
+} from './types.js';
 
 /**
  * Service class for scheduling operations

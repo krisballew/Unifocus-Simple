@@ -7,10 +7,10 @@ import { PrismaClient } from '@prisma/client';
 import { type FastifyInstance, type FastifyRequest, type FastifyReply } from 'fastify';
 import { z } from 'zod';
 
-import { getAuthContext, hasAnyRole } from '../auth/rbac';
+import { getAuthContext, hasAnyRole } from '../auth/rbac.js';
 
-import { createSchedulingService } from './scheduling-service';
-import type { CreateShiftRequest, UpdateShiftRequest } from './types';
+import { createSchedulingService } from './scheduling-service.js';
+import type { CreateShiftRequest, UpdateShiftRequest } from './types.js';
 
 const prisma = new PrismaClient();
 
