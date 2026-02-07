@@ -9,6 +9,7 @@ import type { AuthorizationContext } from '../../auth/rbac.js';
 
 import type {
   PublishEventDTO,
+  ScheduleEventDTO,
   SchedulePeriodDTO,
   SchedulingRequestDTO,
   ShiftPlanDTO,
@@ -161,7 +162,7 @@ export class SchedulingV2Service {
       throw new Error(`Schedule period '${schedulePeriodId}' not found`);
     }
 
-    // Handle idempotency: if already published, return success
+    // Handle idempotency: if already published, return existing event without creating duplicate
     if (period.status === 'PUBLISHED') {
       const event = await this.prisma.wfmPublishEvent.findFirst({
         where: {
@@ -180,13 +181,27 @@ export class SchedulingV2Service {
       throw new Error('Cannot publish a locked schedule period');
     }
 
-    // Update period status to PUBLISHED
-    const updated = await this.prisma.wfmSchedulePeriod.update({
-      where: { id: schedulePeriodId },
-      data: { status: 'PUBLISHED' },
-    });
+    // Transactional: Update period status to PUBLISHED and create events
+    const [updated] = await this.prisma.$transaction([
+      // Update schedule period status
+      this.prisma.wfmSchedulePeriod.update({
+        where: { id: schedulePeriodId },
+        data: { status: 'PUBLISHED' },
+      }),
+      // Create schedule event (audit trail)
+      this.prisma.wfmScheduleEvent.create({
+        data: {
+          tenantId: userContext.tenantId,
+          propertyId: period.propertyId,
+          schedulePeriodId,
+          type: 'PUBLISHED',
+          byUserId: userContext.userId,
+          at: new Date(),
+        },
+      }),
+    ]);
 
-    // Create publish event
+    // Create legacy publish event (for backward compatibility)
     const event = await this.prisma.wfmPublishEvent.create({
       data: {
         tenantId: userContext.tenantId,
@@ -213,6 +228,10 @@ export class SchedulingV2Service {
     userContext: AuthorizationContext,
     schedulePeriodId: string
   ): Promise<SchedulePeriodDTO> {
+    if (!userContext.tenantId) {
+      throw new Error('Tenant ID is required');
+    }
+
     const period = await this.prisma.wfmSchedulePeriod.findFirst({
       where: {
         id: schedulePeriodId,
@@ -224,22 +243,37 @@ export class SchedulingV2Service {
       throw new Error(`Schedule period '${schedulePeriodId}' not found`);
     }
 
-    // Handle idempotency: if already locked, return success
+    // Handle idempotency: if already locked, return success without creating duplicate event
     if (period.status === 'LOCKED') {
       return this.periodToDTO(period);
     }
 
-    const updated = await this.prisma.wfmSchedulePeriod.update({
-      where: { id: schedulePeriodId },
-      data: { status: 'LOCKED' },
-    });
+    // Transactional: Update period status to LOCKED and create event
+    const [updated] = await this.prisma.$transaction([
+      // Update schedule period status
+      this.prisma.wfmSchedulePeriod.update({
+        where: { id: schedulePeriodId },
+        data: { status: 'LOCKED' },
+      }),
+      // Create schedule event (audit trail)
+      this.prisma.wfmScheduleEvent.create({
+        data: {
+          tenantId: userContext.tenantId,
+          propertyId: period.propertyId,
+          schedulePeriodId,
+          type: 'LOCKED',
+          byUserId: userContext.userId,
+          at: new Date(),
+        },
+      }),
+    ]);
 
     return this.periodToDTO(updated);
   }
 
   /**
    * List schedule period lifecycle events (publish/lock)
-   * For MVP v1, returns publish events only
+   * Returns both PUBLISHED and LOCKED events
    * @param userContext - Auth context with user ID and tenant ID
    * @param schedulePeriodId - Schedule period ID to get events for
    * @returns Array of schedule events in chronological order
@@ -247,7 +281,7 @@ export class SchedulingV2Service {
   async listSchedulePeriodEvents(
     userContext: AuthorizationContext,
     schedulePeriodId: string
-  ): Promise<any[]> {
+  ): Promise<ScheduleEventDTO[]> {
     // Verify the period exists and user has access to it
     const period = await this.prisma.wfmSchedulePeriod.findFirst({
       where: {
@@ -260,15 +294,14 @@ export class SchedulingV2Service {
       throw new Error(`Schedule period '${schedulePeriodId}' not found`);
     }
 
-    // For MVP v1, query only publish events
-    // Lock events can be added in v2 with dedicated tracking
-    const publishEvents = await this.prisma.wfmPublishEvent.findMany({
+    // Query WfmScheduleEvent for PUBLISHED and LOCKED events
+    const scheduleEvents = await this.prisma.wfmScheduleEvent.findMany({
       where: {
         schedulePeriodId,
         tenantId: userContext.tenantId,
       },
       include: {
-        publishedByUser: {
+        byUser: {
           select: {
             id: true,
             name: true,
@@ -276,16 +309,16 @@ export class SchedulingV2Service {
           },
         },
       },
-      orderBy: { publishedAt: 'asc' },
+      orderBy: { at: 'asc' },
     });
 
     // Map to unified event format
-    return publishEvents.map((event) => ({
+    return scheduleEvents.map((event) => ({
       id: event.id,
-      type: 'PUBLISHED',
-      at: event.publishedAt.toISOString(),
-      byUserId: event.publishedByUserId,
-      byDisplayName: event.publishedByUser?.name || event.publishedByUser?.email || undefined,
+      type: event.type as 'PUBLISHED' | 'LOCKED',
+      at: event.at.toISOString(),
+      byUserId: event.byUserId,
+      byDisplayName: event.byUser?.name || event.byUser?.email || undefined,
     }));
   }
 

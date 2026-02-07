@@ -394,6 +394,241 @@ test('Scheduling V2: Schedule Period Lifecycle', async (t) => {
     }
   );
 
+  // ========== Event Creation Tests ==========
+
+  await t.test('POST /api/scheduling/v2/schedule-periods/:id/publish - Creates PUBLISHED event on state transition', async (t) => {
+    // Create a draft period
+    const period = await prisma.wfmSchedulePeriod.create({
+      data: {
+        tenantId: tenant1.id,
+        propertyId: property1.id,
+        startDate: new Date('2026-10-08'),
+        endDate: new Date('2026-10-14'),
+        status: 'DRAFT',
+        version: 1,
+      },
+    });
+
+    // Publish period
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/scheduling/v2/schedule-periods/${period.id}/publish`,
+      headers: adminHeaders,
+      payload: {},
+    });
+
+    t.equal(response.statusCode, 200, 'Returns 200 OK');
+
+    // Verify WfmScheduleEvent was created
+    const events = await prisma.wfmScheduleEvent.findMany({
+      where: {
+        schedulePeriodId: period.id,
+        type: 'PUBLISHED',
+      },
+    });
+
+    t.equal(events.length, 1, 'Creates exactly 1 PUBLISHED event');
+    t.equal(events[0].byUserId, adminUser.id, 'Event attributed to publishing user');
+    t.equal(events[0].tenantId, tenant1.id, 'Event scoped to correct tenant');
+    t.equal(events[0].propertyId, property1.id, 'Event scoped to correct property');
+  });
+
+  await t.test(
+    'POST /api/scheduling/v2/schedule-periods/:id/publish - Does NOT create duplicate event on idempotent publish',
+    async (t) => {
+      // Create and publish a period
+      const period = await prisma.wfmSchedulePeriod.create({
+        data: {
+          tenantId: tenant1.id,
+          propertyId: property1.id,
+          startDate: new Date('2026-10-15'),
+          endDate: new Date('2026-10-21'),
+          status: 'PUBLISHED',
+          version: 1,
+        },
+      });
+
+      // Create the initial event
+      await prisma.wfmScheduleEvent.create({
+        data: {
+          tenantId: tenant1.id,
+          propertyId: property1.id,
+          schedulePeriodId: period.id,
+          type: 'PUBLISHED',
+          byUserId: adminUser.id,
+          at: new Date(),
+        },
+      });
+
+      // Try to publish again (idempotent)
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/scheduling/v2/schedule-periods/${period.id}/publish`,
+        headers: adminHeaders,
+        payload: {},
+      });
+
+      t.equal(response.statusCode, 200, 'Returns 200 OK');
+
+      // Verify no duplicate event was created
+      const events = await prisma.wfmScheduleEvent.findMany({
+        where: {
+          schedulePeriodId: period.id,
+          type: 'PUBLISHED',
+        },
+      });
+
+      t.equal(events.length, 1, 'Still only 1 PUBLISHED event (no duplicate)');
+    }
+  );
+
+  await t.test('POST /api/scheduling/v2/schedule-periods/:id/lock - Creates LOCKED event on state transition', async (t) => {
+    // Create a draft period
+    const period = await prisma.wfmSchedulePeriod.create({
+      data: {
+        tenantId: tenant1.id,
+        propertyId: property1.id,
+        startDate: new Date('2026-10-22'),
+        endDate: new Date('2026-10-28'),
+        status: 'DRAFT',
+        version: 1,
+      },
+    });
+
+    // Lock period
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/scheduling/v2/schedule-periods/${period.id}/lock`,
+      headers: adminHeaders,
+      payload: {},
+    });
+
+    t.equal(response.statusCode, 200, 'Returns 200 OK');
+
+    // Verify WfmScheduleEvent was created
+    const events = await prisma.wfmScheduleEvent.findMany({
+      where: {
+        schedulePeriodId: period.id,
+        type: 'LOCKED',
+      },
+    });
+
+    t.equal(events.length, 1, 'Creates exactly 1 LOCKED event');
+    t.equal(events[0].byUserId, adminUser.id, 'Event attributed to locking user');
+    t.equal(events[0].tenantId, tenant1.id, 'Event scoped to correct tenant');
+    t.equal(events[0].propertyId, property1.id, 'Event scoped to correct property');
+  });
+
+  await t.test(
+    'POST /api/scheduling/v2/schedule-periods/:id/lock - Does NOT create duplicate event on idempotent lock',
+    async (t) => {
+      // Create and lock a period
+      const period = await prisma.wfmSchedulePeriod.create({
+        data: {
+          tenantId: tenant1.id,
+          propertyId: property1.id,
+          startDate: new Date('2026-10-29'),
+          endDate: new Date('2026-11-04'),
+          status: 'LOCKED',
+          version: 1,
+        },
+      });
+
+      // Create the initial event
+      await prisma.wfmScheduleEvent.create({
+        data: {
+          tenantId: tenant1.id,
+          propertyId: property1.id,
+          schedulePeriodId: period.id,
+          type: 'LOCKED',
+          byUserId: adminUser.id,
+          at: new Date(),
+        },
+      });
+
+      // Try to lock again (idempotent)
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/scheduling/v2/schedule-periods/${period.id}/lock`,
+        headers: adminHeaders,
+        payload: {},
+      });
+
+      t.equal(response.statusCode, 200, 'Returns 200 OK');
+
+      // Verify no duplicate event was created
+      const events = await prisma.wfmScheduleEvent.findMany({
+        where: {
+          schedulePeriodId: period.id,
+          type: 'LOCKED',
+        },
+      });
+
+      t.equal(events.length, 1, 'Still only 1 LOCKED event (no duplicate)');
+    }
+  );
+
+  await t.test(
+    'GET /api/scheduling/v2/schedule-periods/:id/events - Returns both PUBLISHED and LOCKED events',
+    async (t) => {
+      // Create a period
+      const period = await prisma.wfmSchedulePeriod.create({
+        data: {
+          tenantId: tenant1.id,
+          propertyId: property1.id,
+          startDate: new Date('2026-11-05'),
+          endDate: new Date('2026-11-11'),
+          status: 'LOCKED',
+          version: 1,
+        },
+      });
+
+      // Create PUBLISHED event
+      await prisma.wfmScheduleEvent.create({
+        data: {
+          tenantId: tenant1.id,
+          propertyId: property1.id,
+          schedulePeriodId: period.id,
+          type: 'PUBLISHED',
+          byUserId: adminUser.id,
+          at: new Date('2026-11-05T10:00:00Z'),
+        },
+      });
+
+      // Create LOCKED event
+      await prisma.wfmScheduleEvent.create({
+        data: {
+          tenantId: tenant1.id,
+          propertyId: property1.id,
+          schedulePeriodId: period.id,
+          type: 'LOCKED',
+          byUserId: adminUser.id,
+          at: new Date('2026-11-05T11:00:00Z'),
+        },
+      });
+
+      // Fetch events
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/scheduling/v2/schedule-periods/${period.id}/events?propertyId=${property1.id}`,
+        headers: adminHeaders,
+      });
+
+      t.equal(response.statusCode, 200, 'Returns 200 OK');
+      const body = getData(response);
+      t.ok(Array.isArray(body), 'Returns array');
+      t.equal(body.length, 2, 'Returns both events');
+
+      // Verify event order (chronological)
+      t.equal(body[0].type, 'PUBLISHED', 'First event is PUBLISHED');
+      t.equal(body[1].type, 'LOCKED', 'Second event is LOCKED');
+
+      // Verify event details
+      t.equal(body[0].byUserId, adminUser.id, 'Event has byUserId');
+      t.ok(body[0].byDisplayName, 'Event has byDisplayName');
+    }
+  );
+
   // ========== Full Lifecycle Test ==========
 
   await t.test('Full Lifecycle: Create → Publish → Lock', async (t) => {
@@ -430,6 +665,16 @@ test('Scheduling V2: Schedule Period Lifecycle', async (t) => {
     t.equal(published.period.status, 'PUBLISHED', 'Status is PUBLISHED');
     t.ok(published.event, 'Publish event created');
     t.equal(published.event.publishedByUserId, adminUser.id, 'Event has correct publisher');
+
+    // Verify PUBLISHED schedule event was created
+    let scheduleEvents = await prisma.wfmScheduleEvent.findMany({
+      where: {
+        schedulePeriodId: period.id,
+        type: 'PUBLISHED',
+      },
+    });
+    t.equal(scheduleEvents.length, 1, 'PUBLISHED schedule event created');
+
     // 3. Lock period
     const lockResponse = await app.inject({
       method: 'POST',
@@ -441,6 +686,15 @@ test('Scheduling V2: Schedule Period Lifecycle', async (t) => {
     t.equal(lockResponse.statusCode, 200, 'Period locked');
     const locked = getData(lockResponse);
     t.equal(locked.status, 'LOCKED', 'Status is LOCKED');
+
+    // Verify LOCKED schedule event was created
+    scheduleEvents = await prisma.wfmScheduleEvent.findMany({
+      where: {
+        schedulePeriodId: period.id,
+        type: 'LOCKED',
+      },
+    });
+    t.equal(scheduleEvents.length, 1, 'LOCKED schedule event created');
 
     // 4. Verify list shows all statuses
     const listResponse = await app.inject({
