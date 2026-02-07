@@ -784,21 +784,21 @@ export async function getSchedulePeriods(
     ...(params.start && { start: params.start }),
     ...(params.end && { end: params.end }),
   });
-  return client.get(`/api/scheduling/v2/periods?${queryParams.toString()}`);
+  return client.get(`/api/scheduling/v2/schedule-periods?${queryParams.toString()}`);
 }
 
 export async function createSchedulePeriod(
   params: CreateSchedulePeriodParams
 ): Promise<SchedulePeriod> {
   const client = getApiClient();
-  return client.post('/api/scheduling/v2/periods', params);
+  return client.post('/api/scheduling/v2/schedule-periods', params);
 }
 
 export async function publishSchedulePeriod(
   params: PublishSchedulePeriodParams
 ): Promise<SchedulePeriod> {
   const client = getApiClient();
-  return client.post(`/api/scheduling/v2/periods/${params.id}/publish`, {
+  return client.post(`/api/scheduling/v2/schedule-periods/${params.id}/publish`, {
     notes: params.notes,
   });
 }
@@ -807,5 +807,5 @@ export async function lockSchedulePeriod(
   params: LockSchedulePeriodParams
 ): Promise<SchedulePeriod> {
   const client = getApiClient();
-  return client.post(`/api/scheduling/v2/periods/${params.id}/lock`, {});
+  return client.post(`/api/scheduling/v2/schedule-periods/${params.id}/lock`, {});
 }
