@@ -79,43 +79,51 @@ export function App() {
       let apiBaseUrl = import.meta.env['VITE_API_BASE_URL'] || 'http://localhost:3001';
 
       if (import.meta.env.DEV) {
-        // In development, try multiple API endpoints in order of preference:
-        // 1. Configured API URL (http://localhost:3001)
-        // 2. Localhost with any port
-        // 3. Relative /api proxy (for Codespaces/remote access with Vite proxy)
+        // In development, use the configured API URL or fall back to /api proxy
+        // The /api proxy works with Vite's development server and Codespaces
 
-        const apiUrls = [apiBaseUrl, 'http://localhost:3001'];
+        // Skip direct health checks in Codespace environments (detected by domain pattern)
+        const isCodespace =
+          typeof window !== 'undefined' && window.location.hostname.includes('.github.dev');
 
-        let finalUrl: string | null = null;
-
-        for (const url of apiUrls) {
-          try {
-            const controller = new AbortController();
-            const timeoutId = window.setTimeout(() => controller.abort(), 2000);
-
-            const response = await fetch(`${url}/health`, {
-              method: 'HEAD',
-              signal: controller.signal,
-            }).catch(() => null);
-
-            window.clearTimeout(timeoutId);
-
-            if (response && response.ok) {
-              finalUrl = url;
-              console.log(`✓ API verified at ${url}`);
-              break;
-            }
-          } catch (error) {
-            // Continue to next URL
-          }
-        }
-
-        // If no direct API URL worked, use /api proxy (works with Vite proxy or remote servers)
-        if (!finalUrl) {
-          console.log('Using /api proxy for API requests');
+        if (isCodespace) {
+          console.log('Detected Codespace environment, using /api proxy');
           apiBaseUrl = '/api';
         } else {
-          apiBaseUrl = finalUrl;
+          // Local development: try direct connection first, then fall back to proxy
+          const apiUrls = [apiBaseUrl];
+
+          let finalUrl: string | null = null;
+
+          for (const url of apiUrls) {
+            try {
+              const controller = new AbortController();
+              const timeoutId = window.setTimeout(() => controller.abort(), 2000);
+
+              const response = await fetch(`${url}/health`, {
+                method: 'HEAD',
+                signal: controller.signal,
+              }).catch(() => null);
+
+              window.clearTimeout(timeoutId);
+
+              if (response && response.ok) {
+                finalUrl = url;
+                console.log(`✓ API verified at ${url}`);
+                break;
+              }
+            } catch (error) {
+              // Continue to next URL
+            }
+          }
+
+          // If direct URL didn't work, use /api proxy
+          if (!finalUrl) {
+            console.log('Using /api proxy for API requests');
+            apiBaseUrl = '/api';
+          } else {
+            apiBaseUrl = finalUrl;
+          }
         }
       }
 

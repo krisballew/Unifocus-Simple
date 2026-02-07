@@ -1,27 +1,29 @@
 import React, { useState } from 'react';
 
 interface JobAddFormProps {
-  jobStructure: {
-    divisions: Array<{
-      id: string;
-      name: string;
-      departments: Array<{
-        id: string;
-        name: string;
-        jobRoles: Array<{
+  jobStructure:
+    | {
+        divisions: Array<{
           id: string;
           name: string;
-          code?: string | null;
+          departments: Array<{
+            id: string;
+            name: string;
+            jobRoles: Array<{
+              id: string;
+              name: string;
+              code?: string | null;
+            }>;
+          }>;
         }>;
-      }>;
-    }>;
-  } | undefined;
+      }
+    | undefined;
   onJobAdded: () => void;
   selectedEffectiveRangeIndex: number;
   jobCompensationRecords: Array<{
     effectiveStartDate: string;
     effectiveEndDate: string;
-    jobs: any[];
+    jobs: Array<Record<string, unknown>>;
   }>;
   employeeId: string;
 }
@@ -35,6 +37,7 @@ export function JobAddForm({
 }: JobAddFormProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [validation, setValidation] = useState<{ errors: string[] }>({ errors: [] });
   const [formData, setFormData] = useState({
     isPrimary: false,
     departmentId: '',
@@ -47,6 +50,99 @@ export function JobAddForm({
     annualAmount: '',
     payGroup: '',
   });
+
+  // Helper: Check if end date is in the future (after today at 12:00 AM)
+  const isEndDateInFuture = (endDateStr: string): boolean => {
+    if (!endDateStr) return false;
+    const endDate = new Date(endDateStr);
+    const today = new Date();
+    // Compare dates at 12:00 AM - set times to 0
+    endDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    return endDate.getTime() > today.getTime();
+  };
+
+  // Helper: Validate job status and end date relationship
+  const validateStatusEndDateRelationship = (
+    status: string,
+    startDate: string,
+    endDate: string,
+    newErrors: string[] = []
+  ): string[] => {
+    const errors = [...newErrors];
+
+    // Rule 0: End date cannot be before start date
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(0, 0, 0, 0);
+      if (end.getTime() < start.getTime()) {
+        errors.push('End Date cannot be before Start Date');
+      }
+    }
+
+    if (status === 'inactive') {
+      // Rule 1: If status is inactive, end date must be set
+      if (!endDate) {
+        errors.push('End Date is required when Job Status is set to Inactive');
+      }
+    }
+
+    if (endDate && status === 'inactive') {
+      // Rule 2: If status is inactive but end date is in the future, warn and auto-correct
+      if (isEndDateInFuture(endDate)) {
+        // Auto-correct: If end date is future and status is inactive, change status to active
+        return errors;
+      }
+    }
+
+    if (endDate && isEndDateInFuture(endDate)) {
+      // Rule 3: If end date is in the future, job must be Active (not inactive)
+      // The UI will guide user but won't prevent - they can decide
+      if (status === 'inactive') {
+        errors.push(
+          'Job Status should remain Active for future End Dates. The job will automatically become Inactive after the End Date.'
+        );
+      }
+    }
+
+    return errors;
+  };
+
+  // Handle status change with validation
+  const handleStatusChange = (newStatus: string) => {
+    const errors = validateStatusEndDateRelationship(newStatus, formData.jobDate, formData.endDate);
+    setValidation({ errors });
+    setFormData((prev) => ({
+      ...prev,
+      jobStatus: newStatus as 'active' | 'inactive' | 'on-leave',
+    }));
+  };
+
+  // Handle end date change with validation
+  const handleEndDateChange = (newEndDate: string) => {
+    const errors = validateStatusEndDateRelationship(
+      formData.jobStatus,
+      formData.jobDate,
+      newEndDate
+    );
+    setValidation({ errors });
+
+    // Auto-correct: If end date is in future and status is inactive, change status to active
+    if (newEndDate && isEndDateInFuture(newEndDate) && formData.jobStatus === 'inactive') {
+      setFormData((prev) => ({
+        ...prev,
+        endDate: newEndDate,
+        jobStatus: 'active',
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        endDate: newEndDate,
+      }));
+    }
+  };
 
   // Get all departments
   const allDepartments = React.useMemo(() => {
@@ -108,6 +204,17 @@ export function JobAddForm({
       return;
     }
 
+    // Validate status and end date relationship
+    const finalErrors = validateStatusEndDateRelationship(
+      formData.jobStatus,
+      formData.jobDate,
+      formData.endDate
+    );
+    if (finalErrors.length > 0) {
+      setValidation({ errors: finalErrors });
+      return;
+    }
+
     const { jobRole, department } = roleDetails;
 
     const newJob = {
@@ -138,7 +245,9 @@ export function JobAddForm({
       const employmentDetails = data?.employmentDetails || {};
 
       // Update the specific compensation record with new job
-      const updatedRecords = [...(employmentDetails.jobCompensationRecords || jobCompensationRecords)];
+      const updatedRecords = [
+        ...(employmentDetails.jobCompensationRecords || jobCompensationRecords),
+      ];
       if (!updatedRecords[selectedEffectiveRangeIndex]) {
         updatedRecords[selectedEffectiveRangeIndex] = {
           effectiveStartDate: new Date().toISOString().split('T')[0],
@@ -218,9 +327,43 @@ export function JobAddForm({
         Add New Job
       </h4>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+      {validation.errors.length > 0 && (
+        <div
+          style={{
+            padding: '12px',
+            marginBottom: '16px',
+            backgroundColor: '#fee2e2',
+            border: '1px solid #fecaca',
+            borderRadius: '4px',
+          }}
+        >
+          {validation.errors.map((error, index) => (
+            <div
+              key={index}
+              style={{
+                color: '#991b1b',
+                fontSize: '0.85rem',
+                marginBottom: index < validation.errors.length - 1 ? '8px' : 0,
+              }}
+            >
+              • {error}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '12px',
+          marginBottom: '12px',
+        }}
+      >
         <div>
-          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}>
+          <label
+            style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}
+          >
             Department
           </label>
           <select
@@ -252,7 +395,9 @@ export function JobAddForm({
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}>
+          <label
+            style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}
+          >
             Job Role
           </label>
           <select
@@ -278,14 +423,25 @@ export function JobAddForm({
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr 1fr 1fr',
+          gap: '12px',
+          marginBottom: '12px',
+        }}
+      >
         <div>
-          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}>
+          <label
+            style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}
+          >
             Pay Type
           </label>
           <select
             value={formData.payType}
-            onChange={(e) => setFormData((prev) => ({...prev, payType: e.target.value as any }))}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, payType: e.target.value as 'hourly' | 'salary' }))
+            }
             disabled={isSaving}
             style={{
               width: '100%',
@@ -301,7 +457,9 @@ export function JobAddForm({
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}>
+          <label
+            style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}
+          >
             Rate
           </label>
           <input
@@ -321,7 +479,9 @@ export function JobAddForm({
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}>
+          <label
+            style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}
+          >
             Start Date
           </label>
           <input
@@ -340,13 +500,15 @@ export function JobAddForm({
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}>
+          <label
+            style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}
+          >
             End Date
           </label>
           <input
             type="date"
             value={formData.endDate}
-            onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))}
+            onChange={(e) => handleEndDateChange(e.target.value)}
             disabled={isSaving}
             style={{
               width: '100%',
@@ -354,19 +516,29 @@ export function JobAddForm({
               fontSize: '0.85rem',
               border: '1px solid var(--border)',
               borderRadius: '4px',
+              borderColor: validation.errors.length > 0 ? '#dc2626' : 'var(--border)',
             }}
           />
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gap: '12px',
+          marginBottom: '16px',
+        }}
+      >
         <div>
-          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}>
+          <label
+            style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}
+          >
             Status
           </label>
           <select
             value={formData.jobStatus}
-            onChange={(e) => setFormData((prev) => ({ ...prev, jobStatus: e.target.value as any }))}
+            onChange={(e) => handleStatusChange(e.target.value)}
             disabled={isSaving}
             style={{
               width: '100%',
@@ -374,6 +546,7 @@ export function JobAddForm({
               fontSize: '0.85rem',
               border: '1px solid var(--border)',
               borderRadius: '4px',
+              borderColor: validation.errors.length > 0 ? '#dc2626' : 'var(--border)',
             }}
           >
             <option value="active">Active</option>
@@ -383,7 +556,9 @@ export function JobAddForm({
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}>
+          <label
+            style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}
+          >
             Annual Comp.
           </label>
           <input
@@ -403,7 +578,9 @@ export function JobAddForm({
         </div>
 
         <div>
-          <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}>
+          <label
+            style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', fontWeight: 500 }}
+          >
             Pay Group
           </label>
           <input
@@ -423,7 +600,15 @@ export function JobAddForm({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 500 }}>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.85rem',
+              fontWeight: 500,
+            }}
+          >
             <input
               type="checkbox"
               checked={formData.isPrimary}

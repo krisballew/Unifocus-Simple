@@ -1,10 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { getApiClient, type Employee, saveEmploymentDetails, getJobStructure } from '../services/api-client';
+import React, { useState, useEffect, useMemo } from 'react';
+
+import {
+  getApiClient,
+  type Employee,
+  saveEmploymentDetails,
+  getJobStructure,
+} from '../services/api-client';
 import { queryKeys } from '../services/query-keys';
+
 import { JobAddForm } from './JobAddForm';
-import { JobEditForm } from './JobEditForm';
 import { JobDeleteForm } from './JobDeleteForm';
+import { JobEditForm } from './JobEditForm';
 
 interface EmploymentDetailsState {
   // Core Employment Record - Comprehensive Identity & Employment Relationship
@@ -259,23 +266,27 @@ export function EmploymentDetailsModal({
   const queryClient = useQueryClient();
   const apiClient = getApiClient();
   const [details, setDetails] = useState<EmploymentDetailsState>(emptyDetails);
-  const [activeTab, setActiveTab] = useState<'core' | 'jobpay' | 'pay' | 'scheduling' | 'compliance' | 'attendance' | 'hotel'>(
-    'core'
-  );
+  const [activeTab, setActiveTab] = useState<
+    'core' | 'jobpay' | 'pay' | 'scheduling' | 'compliance' | 'attendance' | 'hotel'
+  >('core');
 
   // Trigger refresh when jobs are added
   const [jobsRefreshKey, setJobsRefreshKey] = useState(0);
+  const [hideInactiveJobs, setHideInactiveJobs] = useState(true);
 
   // Re-fetch employment details when jobsRefreshKey changes
   useEffect(() => {
     if (employee && isOpen && jobsRefreshKey > 0) {
       const fetchDetails = async () => {
         try {
-          const response = await getApiClient().get<{ data: { employmentDetails: Record<string, any> } }>(
-            `/api/employees/${employee.id}/employment-details`
-          );
+          const response = await getApiClient().get<{
+            data: { employmentDetails: Record<string, unknown> };
+          }>(`/api/employees/${employee.id}/employment-details`);
           const employmentDetails = response.data?.employmentDetails || {};
-          if (Object.keys(employmentDetails).length > 0 && employmentDetails.jobCompensationRecords) {
+          if (
+            Object.keys(employmentDetails).length > 0 &&
+            employmentDetails.jobCompensationRecords
+          ) {
             setDetails((prev) => ({
               ...prev,
               jobCompensationRecords: employmentDetails.jobCompensationRecords,
@@ -334,7 +345,11 @@ export function EmploymentDetailsModal({
     jobStructureQuery.data?.divisions.forEach((division) => {
       division.departments.forEach((department) => {
         department.jobRoles.forEach((jobRole) => {
-          map.set(jobRole.id, { name: jobRole.name, code: jobRole.code, departmentId: department.id });
+          map.set(jobRole.id, {
+            name: jobRole.name,
+            code: jobRole.code,
+            departmentId: department.id,
+          });
         });
       });
     });
@@ -342,7 +357,7 @@ export function EmploymentDetailsModal({
   }, [jobStructureQuery.data]);
 
   // Get all departments for dropdown
-  const allDepartments = useMemo(() => {
+  const _allDepartments = useMemo(() => {
     const depts: Array<{ id: string; name: string; divisionName: string }> = [];
     jobStructureQuery.data?.divisions.forEach((division) => {
       division.departments.forEach((department) => {
@@ -368,9 +383,9 @@ export function EmploymentDetailsModal({
       // Fetch existing employment details from API
       const fetchDetails = async () => {
         try {
-          const response = await apiClient.get<{ data: { employmentDetails: Record<string, any> } }>(
-            `/api/employees/${employee.id}/employment-details`
-          );
+          const response = await apiClient.get<{
+            data: { employmentDetails: Record<string, unknown> };
+          }>(`/api/employees/${employee.id}/employment-details`);
           const employmentDetails = response.data?.employmentDetails || {};
 
           // Populate form with saved details if available
@@ -592,7 +607,7 @@ export function EmploymentDetailsModal({
         minorStatus: details.minorStatus,
       };
 
-      return await saveEmploymentDetails(employee.id, payload as any);
+      return await saveEmploymentDetails(employee.id, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -627,7 +642,7 @@ export function EmploymentDetailsModal({
             className={`modal-tab ${activeTab === 'core' ? 'active' : ''}`}
             onClick={() => setActiveTab('core')}
           >
-            Core Record
+            Employee Details
           </button>
           <button
             className={`modal-tab ${activeTab === 'jobpay' ? 'active' : ''}`}
@@ -671,14 +686,22 @@ export function EmploymentDetailsModal({
           {/* Core Employment Record */}
           {activeTab === 'core' && (
             <div className="form-section-group">
-              <h3>Core Employment Record</h3>
+              <h3>Employee Details</h3>
               <p className="form-description">
-                Identity and employment relationship anchor. Every other module keys off this record.
+                Identity and employment relationship anchor. Every other module keys off this
+                record.
               </p>
 
               {/* IDENTIFIERS */}
               <div style={{ marginTop: '24px' }}>
-                <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                <h4
+                  style={{
+                    fontSize: '0.95rem',
+                    marginBottom: '12px',
+                    color: 'var(--text-secondary)',
+                    fontWeight: 600,
+                  }}
+                >
                   Identifiers
                 </h4>
                 <div className="form-row">
@@ -690,7 +713,11 @@ export function EmploymentDetailsModal({
                       disabled
                       style={{ background: '#f8fafc', cursor: 'not-allowed' }}
                     />
-                    <small style={{ display: 'block', marginTop: '4px', color: 'var(--text-secondary)' }}>System generated, immutable</small>
+                    <small
+                      style={{ display: 'block', marginTop: '4px', color: 'var(--text-secondary)' }}
+                    >
+                      System generated, immutable
+                    </small>
                   </div>
                   <div className="form-field">
                     <label>External Employee ID</label>
@@ -698,7 +725,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.externalEmployeeId}
                       placeholder="Client/Payroll ID"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, externalEmployeeId: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, externalEmployeeId: e.target.value }))
+                      }
                     />
                   </div>
                 </div>
@@ -709,7 +738,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.legacyId}
                       placeholder="Migration reference ID"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, legacyId: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, legacyId: e.target.value }))
+                      }
                     />
                   </div>
                   <div className="form-field">
@@ -718,7 +749,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.badgeCardId}
                       placeholder="Physical badge number"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, badgeCardId: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, badgeCardId: e.target.value }))
+                      }
                     />
                   </div>
                 </div>
@@ -729,7 +762,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.biometricIdReference}
                       placeholder="Fingerprint or biometric system ID"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, biometricIdReference: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, biometricIdReference: e.target.value }))
+                      }
                     />
                   </div>
                   <div className="form-field">
@@ -738,35 +773,33 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.preferredName}
                       placeholder="Nickname or preferred name"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, preferredName: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, preferredName: e.target.value }))
+                      }
                     />
                   </div>
                 </div>
               </div>
 
               {/* EMPLOYMENT RELATIONSHIP */}
-              <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
-                <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              <div
+                style={{
+                  marginTop: '24px',
+                  paddingTop: '24px',
+                  borderTop: '1px solid var(--border)',
+                }}
+              >
+                <h4
+                  style={{
+                    fontSize: '0.95rem',
+                    marginBottom: '12px',
+                    color: 'var(--text-secondary)',
+                    fontWeight: 600,
+                  }}
+                >
                   Employment Relationship
                 </h4>
                 <div className="form-row">
-                  <div className="form-field">
-                    <label>Employment Status</label>
-                    <select
-                      value={details.employmentStatus}
-                      onChange={(e) =>
-                        setDetails((prev) => ({
-                          ...prev,
-                          employmentStatus: e.target.value as any,
-                        }))
-                      }
-                    >
-                      <option value="active">Active</option>
-                      <option value="leave">Leave of Absence</option>
-                      <option value="terminated">Terminated</option>
-                      <option value="suspended">Suspended</option>
-                    </select>
-                  </div>
                   <div className="form-field">
                     <label>Employment Type</label>
                     <select
@@ -774,7 +807,7 @@ export function EmploymentDetailsModal({
                       onChange={(e) =>
                         setDetails((prev) => ({
                           ...prev,
-                          employmentType: e.target.value as any,
+                          employmentType: e.target.value,
                         }))
                       }
                     >
@@ -794,7 +827,7 @@ export function EmploymentDetailsModal({
                       onChange={(e) =>
                         setDetails((prev) => ({
                           ...prev,
-                          workerClassification: e.target.value as any,
+                          workerClassification: e.target.value,
                         }))
                       }
                     >
@@ -808,7 +841,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.flsaStatus}
                       placeholder="Fair Labor Standards Act status"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, flsaStatus: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, flsaStatus: e.target.value }))
+                      }
                     />
                   </div>
                 </div>
@@ -820,7 +855,7 @@ export function EmploymentDetailsModal({
                       onChange={(e) =>
                         setDetails((prev) => ({
                           ...prev,
-                          unionStatus: e.target.value as any,
+                          unionStatus: e.target.value,
                         }))
                       }
                     >
@@ -834,7 +869,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.bargainingUnit}
                       placeholder="Union bargaining unit"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, bargainingUnit: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, bargainingUnit: e.target.value }))
+                      }
                       disabled={details.unionStatus === 'non-union'}
                     />
                   </div>
@@ -847,7 +884,7 @@ export function EmploymentDetailsModal({
                       onChange={(e) =>
                         setDetails((prev) => ({
                           ...prev,
-                          employmentCategory: e.target.value as any,
+                          employmentCategory: e.target.value,
                         }))
                       }
                     >
@@ -861,8 +898,21 @@ export function EmploymentDetailsModal({
               </div>
 
               {/* DATES */}
-              <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
-                <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              <div
+                style={{
+                  marginTop: '24px',
+                  paddingTop: '24px',
+                  borderTop: '1px solid var(--border)',
+                }}
+              >
+                <h4
+                  style={{
+                    fontSize: '0.95rem',
+                    marginBottom: '12px',
+                    color: 'var(--text-secondary)',
+                    fontWeight: 600,
+                  }}
+                >
                   Dates
                 </h4>
                 <div className="form-row">
@@ -871,7 +921,9 @@ export function EmploymentDetailsModal({
                     <input
                       type="date"
                       value={details.originalHireDate}
-                      onChange={(e) => setDetails((prev) => ({ ...prev, originalHireDate: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, originalHireDate: e.target.value }))
+                      }
                     />
                   </div>
                   <div className="form-field">
@@ -879,9 +931,15 @@ export function EmploymentDetailsModal({
                     <input
                       type="date"
                       value={details.mostRecentHireDate}
-                      onChange={(e) => setDetails((prev) => ({ ...prev, mostRecentHireDate: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, mostRecentHireDate: e.target.value }))
+                      }
                     />
-                    <small style={{ display: 'block', marginTop: '4px', color: 'var(--text-secondary)' }}>For rehires</small>
+                    <small
+                      style={{ display: 'block', marginTop: '4px', color: 'var(--text-secondary)' }}
+                    >
+                      For rehires
+                    </small>
                   </div>
                 </div>
                 <div className="form-row">
@@ -890,7 +948,9 @@ export function EmploymentDetailsModal({
                     <input
                       type="date"
                       value={details.seniorityDate}
-                      onChange={(e) => setDetails((prev) => ({ ...prev, seniorityDate: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, seniorityDate: e.target.value }))
+                      }
                     />
                   </div>
                   <div className="form-field">
@@ -898,7 +958,9 @@ export function EmploymentDetailsModal({
                     <input
                       type="date"
                       value={details.probationEndDate}
-                      onChange={(e) => setDetails((prev) => ({ ...prev, probationEndDate: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, probationEndDate: e.target.value }))
+                      }
                     />
                   </div>
                 </div>
@@ -908,7 +970,9 @@ export function EmploymentDetailsModal({
                     <input
                       type="date"
                       value={details.terminationDate}
-                      onChange={(e) => setDetails((prev) => ({ ...prev, terminationDate: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, terminationDate: e.target.value }))
+                      }
                       disabled={details.employmentStatus !== 'terminated'}
                     />
                   </div>
@@ -918,7 +982,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.terminationReason}
                       placeholder="Reason for termination"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, terminationReason: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, terminationReason: e.target.value }))
+                      }
                       disabled={details.employmentStatus !== 'terminated'}
                     />
                   </div>
@@ -937,15 +1003,26 @@ export function EmploymentDetailsModal({
                       Rehire Eligible
                     </label>
                   </div>
-                  <div className="form-field">
-                    {/* Spacer */}
-                  </div>
+                  <div className="form-field">{/* Spacer */}</div>
                 </div>
               </div>
 
               {/* ORGANIZATIONAL PLACEMENT */}
-              <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
-                <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              <div
+                style={{
+                  marginTop: '24px',
+                  paddingTop: '24px',
+                  borderTop: '1px solid var(--border)',
+                }}
+              >
+                <h4
+                  style={{
+                    fontSize: '0.95rem',
+                    marginBottom: '12px',
+                    color: 'var(--text-secondary)',
+                    fontWeight: 600,
+                  }}
+                >
                   Organizational Placement
                 </h4>
                 <div className="form-row">
@@ -967,7 +1044,11 @@ export function EmploymentDetailsModal({
                       disabled
                       style={{ background: '#f8fafc', cursor: 'not-allowed' }}
                     />
-                    <small style={{ display: 'block', marginTop: '4px', color: 'var(--text-secondary)' }}>Set from HR Management</small>
+                    <small
+                      style={{ display: 'block', marginTop: '4px', color: 'var(--text-secondary)' }}
+                    >
+                      Set from HR Management
+                    </small>
                   </div>
                 </div>
                 <div className="form-row">
@@ -977,7 +1058,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.division}
                       placeholder="Division or business unit"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, division: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, division: e.target.value }))
+                      }
                     />
                   </div>
                   <div className="form-field">
@@ -986,7 +1069,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.department}
                       placeholder="Department"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, department: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, department: e.target.value }))
+                      }
                     />
                   </div>
                 </div>
@@ -997,7 +1082,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.costCenter}
                       placeholder="Cost center code"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, costCenter: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, costCenter: e.target.value }))
+                      }
                     />
                   </div>
                   <div className="form-field">
@@ -1006,15 +1093,30 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.workSiteLocation}
                       placeholder="Physical work location"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, workSiteLocation: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, workSiteLocation: e.target.value }))
+                      }
                     />
                   </div>
                 </div>
               </div>
 
               {/* REPORTING STRUCTURE */}
-              <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
-                <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              <div
+                style={{
+                  marginTop: '24px',
+                  paddingTop: '24px',
+                  borderTop: '1px solid var(--border)',
+                }}
+              >
+                <h4
+                  style={{
+                    fontSize: '0.95rem',
+                    marginBottom: '12px',
+                    color: 'var(--text-secondary)',
+                    fontWeight: 600,
+                  }}
+                >
                   Reporting Structure
                 </h4>
                 <div className="form-row">
@@ -1024,7 +1126,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.managerId}
                       placeholder="Manager employee ID"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, managerId: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, managerId: e.target.value }))
+                      }
                     />
                   </div>
                   <div className="form-field">
@@ -1033,7 +1137,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.managerName}
                       placeholder="Manager full name"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, managerName: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, managerName: e.target.value }))
+                      }
                     />
                   </div>
                 </div>
@@ -1044,7 +1150,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.secondaryManagerId}
                       placeholder="Secondary manager employee ID"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, secondaryManagerId: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, secondaryManagerId: e.target.value }))
+                      }
                     />
                   </div>
                   <div className="form-field">
@@ -1053,7 +1161,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.secondaryManagerName}
                       placeholder="Secondary manager full name"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, secondaryManagerName: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, secondaryManagerName: e.target.value }))
+                      }
                     />
                   </div>
                 </div>
@@ -1064,7 +1174,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.hrBusinessPartner}
                       placeholder="Assigned HR contact"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, hrBusinessPartner: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, hrBusinessPartner: e.target.value }))
+                      }
                     />
                   </div>
                   <div className="form-field">
@@ -1073,7 +1185,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.timeApproverId}
                       placeholder="Time approver employee ID"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, timeApproverId: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, timeApproverId: e.target.value }))
+                      }
                     />
                   </div>
                 </div>
@@ -1084,18 +1198,31 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.timeApproverName}
                       placeholder="Time approver full name"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, timeApproverName: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, timeApproverName: e.target.value }))
+                      }
                     />
                   </div>
-                  <div className="form-field">
-                    {/* Spacer */}
-                  </div>
+                  <div className="form-field">{/* Spacer */}</div>
                 </div>
               </div>
 
               {/* SYSTEM GOVERNANCE */}
-              <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
-                <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              <div
+                style={{
+                  marginTop: '24px',
+                  paddingTop: '24px',
+                  borderTop: '1px solid var(--border)',
+                }}
+              >
+                <h4
+                  style={{
+                    fontSize: '0.95rem',
+                    marginBottom: '12px',
+                    color: 'var(--text-secondary)',
+                    fontWeight: 600,
+                  }}
+                >
                   System Governance
                 </h4>
                 <div className="form-row">
@@ -1106,7 +1233,7 @@ export function EmploymentDetailsModal({
                       onChange={(e) =>
                         setDetails((prev) => ({
                           ...prev,
-                          employmentRecordStatus: e.target.value as any,
+                          employmentRecordStatus: e.target.value,
                         }))
                       }
                     >
@@ -1120,7 +1247,9 @@ export function EmploymentDetailsModal({
                     <input
                       type="date"
                       value={details.effectiveDate}
-                      onChange={(e) => setDetails((prev) => ({ ...prev, effectiveDate: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, effectiveDate: e.target.value }))
+                      }
                     />
                   </div>
                 </div>
@@ -1133,17 +1262,32 @@ export function EmploymentDetailsModal({
                       disabled
                       style={{ background: '#f8fafc', cursor: 'not-allowed' }}
                     />
-                    <small style={{ display: 'block', marginTop: '4px', color: 'var(--text-secondary)' }}>Auto-incremented on save</small>
+                    <small
+                      style={{ display: 'block', marginTop: '4px', color: 'var(--text-secondary)' }}
+                    >
+                      Auto-incremented on save
+                    </small>
                   </div>
-                  <div className="form-field">
-                    {/* Spacer */}
-                  </div>
+                  <div className="form-field">{/* Spacer */}</div>
                 </div>
               </div>
 
               {/* LEGACY / CONTACT INFO */}
-              <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
-                <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              <div
+                style={{
+                  marginTop: '24px',
+                  paddingTop: '24px',
+                  borderTop: '1px solid var(--border)',
+                }}
+              >
+                <h4
+                  style={{
+                    fontSize: '0.95rem',
+                    marginBottom: '12px',
+                    color: 'var(--text-secondary)',
+                    fontWeight: 600,
+                  }}
+                >
                   Additional Information
                 </h4>
                 <div className="form-row">
@@ -1153,7 +1297,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.contactInfo}
                       placeholder="Phone, address, or alternate contact"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, contactInfo: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, contactInfo: e.target.value }))
+                      }
                     />
                   </div>
                   <div className="form-field">
@@ -1162,7 +1308,9 @@ export function EmploymentDetailsModal({
                       type="text"
                       value={details.emergencyContact}
                       placeholder="Name, relationship, and phone"
-                      onChange={(e) => setDetails((prev) => ({ ...prev, emergencyContact: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, emergencyContact: e.target.value }))
+                      }
                     />
                   </div>
                 </div>
@@ -1178,73 +1326,66 @@ export function EmploymentDetailsModal({
                 Manage job assignments and compensation across different effective date ranges.
               </p>
 
-              {/* EFFECTIVE DATE RANGE SELECTOR */}
-              <div style={{ marginTop: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                  <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                    Effective Date Range:
-                  </label>
-                  <input
-                    type="date"
-                    value={details.jobCompensationRecords[details.selectedEffectiveRangeIndex]?.effectiveStartDate || ''}
-                    onChange={(e) => {
-                      const records = [...details.jobCompensationRecords];
-                      if (records[details.selectedEffectiveRangeIndex]) {
-                        records[details.selectedEffectiveRangeIndex].effectiveStartDate = e.target.value;
-                        setDetails((prev) => ({ ...prev, jobCompensationRecords: records }));
-                      }
-                    }}
-                    style={{ padding: '4px 6px', fontSize: '0.85rem', border: '1px solid var(--border)', borderRadius: '4px', width: '120px' }}
-                  />
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px' }}>–</span>
-                  <input
-                    type="text"
-                    value={details.jobCompensationRecords[details.selectedEffectiveRangeIndex]?.effectiveEndDate || 'Present'}
-                    disabled
-                    style={{ padding: '4px 6px', fontSize: '0.85rem', border: 'none', borderRadius: '4px', backgroundColor: 'transparent', width: '90px', fontWeight: 500, color: 'var(--text-secondary)' }}
-                  />
-                  <button style={{ padding: '0 4px', fontSize: '0.85rem', backgroundColor: 'transparent', color: 'var(--brand-primary)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 500 }} title="View effective date range history">
-                    Show History
-                  </button>
-                </div>
-              </div>
-
               {/* JOBS TABLE - FULL WIDTH */}
-              <div style={{ marginTop: '-30px' }}>
+              <div style={{ marginTop: '24px' }}>
                 {/* ADD/EDIT/DELETE JOB FORMS */}
                 <div style={{ marginBottom: '24px', display: 'flex', gap: '24px' }}>
                   <JobAddForm
                     jobStructure={jobStructureQuery.data}
-                    onJobAdded={() => setJobsRefreshKey(prev => prev + 1)}
+                    onJobAdded={() => setJobsRefreshKey((prev) => prev + 1)}
                     selectedEffectiveRangeIndex={details.selectedEffectiveRangeIndex}
                     jobCompensationRecords={details.jobCompensationRecords}
                     employeeId={employee?.id || ''}
                   />
                   {details.jobCompensationRecords[details.selectedEffectiveRangeIndex]?.jobs &&
-                    details.jobCompensationRecords[details.selectedEffectiveRangeIndex].jobs.length > 0 && (
+                    details.jobCompensationRecords[details.selectedEffectiveRangeIndex].jobs
+                      .length > 0 && (
                       <>
                         <JobEditForm
-                          jobs={details.jobCompensationRecords[details.selectedEffectiveRangeIndex].jobs}
-                          onJobUpdated={() => setJobsRefreshKey(prev => prev + 1)}
+                          jobs={
+                            details.jobCompensationRecords[details.selectedEffectiveRangeIndex].jobs
+                          }
+                          onJobUpdated={() => setJobsRefreshKey((prev) => prev + 1)}
                           selectedEffectiveRangeIndex={details.selectedEffectiveRangeIndex}
                           jobCompensationRecords={details.jobCompensationRecords}
                           employeeId={employee?.id || ''}
                         />
                         <JobDeleteForm
-                          jobs={details.jobCompensationRecords[details.selectedEffectiveRangeIndex].jobs}
-                          onJobDeleted={() => setJobsRefreshKey(prev => prev + 1)}
+                          jobs={
+                            details.jobCompensationRecords[details.selectedEffectiveRangeIndex].jobs
+                          }
+                          onJobDeleted={() => setJobsRefreshKey((prev) => prev + 1)}
                           selectedEffectiveRangeIndex={details.selectedEffectiveRangeIndex}
                           jobCompensationRecords={details.jobCompensationRecords}
                           employeeId={employee?.id || ''}
                         />
+                        <a
+                          onClick={() => setHideInactiveJobs(!hideInactiveJobs)}
+                          style={{
+                            fontSize: '0.9rem',
+                            color: 'var(--brand-primary)',
+                            cursor: 'pointer',
+                            fontWeight: 500,
+                            textDecoration: 'underline',
+                          }}
+                        >
+                          {hideInactiveJobs ? 'Show Inactive' : 'Hide Inactive'}
+                        </a>
                       </>
                     )}
                 </div>
 
-                {/* JOBS FOR EFFECTIVE DATE */}
+                {/* JOBS TABLE */}
                 <div>
-                  <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                    Jobs for Effective Date
+                  <h4
+                    style={{
+                      fontSize: '0.95rem',
+                      marginBottom: '12px',
+                      color: 'var(--text-secondary)',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Jobs
                   </h4>
                   <div style={{ overflowX: 'auto' }}>
                     <div className="page-table" style={{ gap: '6px' }}>
@@ -1264,84 +1405,92 @@ export function EmploymentDetailsModal({
                       </div>
                       {/* Existing Jobs - filtered */}
                       {details.jobCompensationRecords[details.selectedEffectiveRangeIndex]?.jobs &&
-                      details.jobCompensationRecords[details.selectedEffectiveRangeIndex].jobs.length > 0 ? (
+                      details.jobCompensationRecords[details.selectedEffectiveRangeIndex].jobs
+                        .length > 0 ? (
                         details.jobCompensationRecords[details.selectedEffectiveRangeIndex].jobs
                           .filter((job) => {
-                            // Filter out inactive jobs with end dates before the selected effective range
-                            if (job.jobStatus === 'inactive' && job.endDate) {
-                              const jobEndDate = new Date(job.endDate).getTime();
-                              const rangeStartDate = new Date(details.jobCompensationRecords[details.selectedEffectiveRangeIndex]?.effectiveStartDate || '').getTime();
-                              if (jobEndDate < rangeStartDate) {
-                                return false; // Filter out this job
-                              }
+                            // Filter inactive jobs if hideInactiveJobs is true
+                            if (hideInactiveJobs && job.jobStatus === 'inactive') {
+                              return false;
                             }
                             return true;
                           })
                           .map((job, idx) => {
-                          const jobRole = job.jobRoleId ? jobRoleById.get(job.jobRoleId) : undefined;
-                          const departmentName = job.departmentId
-                            ? departmentNameById.get(job.departmentId)
-                            : jobRole?.departmentId
-                              ? departmentNameById.get(jobRole.departmentId)
+                            const jobRole = job.jobRoleId
+                              ? jobRoleById.get(job.jobRoleId)
                               : undefined;
-                          const jobTitle = jobRole?.name ?? job.jobTitle;
-                          const departmentLabel = departmentName ?? job.department;
+                            const departmentName = job.departmentId
+                              ? departmentNameById.get(job.departmentId)
+                              : jobRole?.departmentId
+                                ? departmentNameById.get(jobRole.departmentId)
+                                : undefined;
+                            const jobTitle = jobRole?.name ?? job.jobTitle;
+                            const departmentLabel = departmentName ?? job.department;
 
-                          return (
-                          <div
-                            key={job.id || `job-${idx}`}
-                            className="page-table__row is-selectable"
-                            style={{ gridTemplateColumns: '0.5fr 2fr 1fr 1fr 1fr 1fr 1fr 1.2fr 1fr' }}
-                          >
-                            <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                              {job.isPrimary ? '◆' : '○'}
-                            </div>
-                            <div
-                              style={{
-                                fontWeight: 500,
-                                color: 'var(--text-secondary)',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                minWidth: 0,
-                              }}
-                              title={`${departmentLabel} - ${jobTitle}`}
-                            >
-                              {departmentLabel} - {jobTitle}
-                            </div>
-                            <div>{job.payType}</div>
-                            <div>{getPayRateDisplay(job)}</div>
-                            <div>{job.jobDate || '–'}</div>
-                            <div>{job.endDate || '–'}</div>
-                            <div>
-                              <span
+                            return (
+                              <div
+                                key={job.id || `job-${idx}`}
+                                className="page-table__row is-selectable"
                                 style={{
-                                  padding: '2px 8px',
-                                  borderRadius: '4px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 500,
-                                  backgroundColor:
-                                    job.jobStatus === 'active'
-                                      ? 'rgba(34, 197, 94, 0.1)'
-                                      : job.jobStatus === 'on-leave'
-                                        ? 'rgba(59, 130, 246, 0.1)'
-                                        : 'rgba(107, 114, 128, 0.1)',
-                                  color:
-                                    job.jobStatus === 'active'
-                                      ? '#22c55e'
-                                      : job.jobStatus === 'on-leave'
-                                        ? '#3b82f6'
-                                        : '#6b7280'
+                                  gridTemplateColumns: '0.5fr 2fr 1fr 1fr 1fr 1fr 1fr 1.2fr 1fr',
                                 }}
                               >
-                                {job.jobStatus || '–'}
-                              </span>
-                            </div>
-                            <div>{job.annualAmount || '–'}</div>
-                            <div>{job.payGroup || '–'}</div>
-                          </div>
-                        );
-                        })
+                                <div
+                                  style={{
+                                    textAlign: 'center',
+                                    color: '#f59e0b',
+                                    fontWeight: 600,
+                                    fontSize: '1rem',
+                                  }}
+                                >
+                                  {job.isPrimary ? '⭐' : ''}
+                                </div>
+                                <div
+                                  style={{
+                                    fontWeight: 500,
+                                    color: 'var(--text-secondary)',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    minWidth: 0,
+                                  }}
+                                  title={`${departmentLabel} - ${jobTitle}`}
+                                >
+                                  {departmentLabel} - {jobTitle}
+                                </div>
+                                <div>{job.payType}</div>
+                                <div>{getPayRateDisplay(job)}</div>
+                                <div>{job.jobDate || '–'}</div>
+                                <div>{job.endDate || '–'}</div>
+                                <div>
+                                  <span
+                                    style={{
+                                      padding: '2px 8px',
+                                      borderRadius: '4px',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 500,
+                                      backgroundColor:
+                                        job.jobStatus === 'active'
+                                          ? 'rgba(34, 197, 94, 0.1)'
+                                          : job.jobStatus === 'on-leave'
+                                            ? 'rgba(59, 130, 246, 0.1)'
+                                            : 'rgba(107, 114, 128, 0.1)',
+                                      color:
+                                        job.jobStatus === 'active'
+                                          ? '#22c55e'
+                                          : job.jobStatus === 'on-leave'
+                                            ? '#3b82f6'
+                                            : '#6b7280',
+                                    }}
+                                  >
+                                    {job.jobStatus || '–'}
+                                  </span>
+                                </div>
+                                <div>{job.annualAmount || '–'}</div>
+                                <div>{job.payGroup || '–'}</div>
+                              </div>
+                            );
+                          })
                       ) : (
                         <div
                           className="page-table__row"
@@ -1370,23 +1519,26 @@ export function EmploymentDetailsModal({
           {activeTab === 'pay' && (
             <div className="form-section-group">
               <h3>Pay & Labor Setup</h3>
-              <p className="form-description">Department, Job Roles, and pay configuration. Employees can have multiple job roles with different pay rates.</p>
+              <p className="form-description">
+                Department, Job Roles, and pay configuration. Employees can have multiple job roles
+                with different pay rates.
+              </p>
 
               {/* Department & Job Roles Section */}
               <div className="form-row">
                 <div className="form-field">
                   <label>Primary Department</label>
-                  <input
-                    type="text"
-                    placeholder="Populated from labor structure"
-                    disabled
-                  />
+                  <input type="text" placeholder="Populated from labor structure" disabled />
                 </div>
                 <div className="form-field">
                   <label>Job Roles</label>
                   <input
                     type="text"
-                    placeholder={details.jobRoles?.length ? `${details.jobRoles.length} role(s)` : 'Add from labor structure'}
+                    placeholder={
+                      details.jobRoles?.length
+                        ? `${details.jobRoles.length} role(s)`
+                        : 'Add from labor structure'
+                    }
                     disabled
                   />
                 </div>
@@ -1394,25 +1546,74 @@ export function EmploymentDetailsModal({
 
               {/* Job Roles Details */}
               {details.jobRoles && details.jobRoles.length > 0 && (
-                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-                  <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)' }}>
+                <div
+                  style={{
+                    marginTop: '16px',
+                    paddingTop: '16px',
+                    borderTop: '1px solid var(--border)',
+                  }}
+                >
+                  <h4
+                    style={{
+                      fontSize: '0.95rem',
+                      marginBottom: '12px',
+                      color: 'var(--text-secondary)',
+                    }}
+                  >
                     Configured Job Roles
                   </h4>
                   {details.jobRoles.map((job, idx) => (
-                    <div key={idx} style={{ marginBottom: '16px', padding: '12px', backgroundColor: 'var(--surface-light)', borderRadius: '4px' }}>
+                    <div
+                      key={idx}
+                      style={{
+                        marginBottom: '16px',
+                        padding: '12px',
+                        backgroundColor: 'var(--surface-light)',
+                        borderRadius: '4px',
+                      }}
+                    >
                       <div style={{ fontWeight: '500', marginBottom: '8px', color: 'var(--text)' }}>
                         {job.jobTitle} {job.isPrimary ? '(Primary)' : ''}
                       </div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                      <div
+                        style={{
+                          fontSize: '0.85rem',
+                          color: 'var(--text-secondary)',
+                          marginBottom: '8px',
+                        }}
+                      >
                         {job.masterCategory && <span>Category: {job.masterCategory}</span>}
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.9rem' }}>
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr',
+                          gap: '12px',
+                          fontSize: '0.9rem',
+                        }}
+                      >
                         <div>
-                          <span style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Pay Type</span>
+                          <span
+                            style={{
+                              display: 'block',
+                              color: 'var(--text-secondary)',
+                              fontSize: '0.8rem',
+                            }}
+                          >
+                            Pay Type
+                          </span>
                           <span>{job.payType || 'Not set'}</span>
                         </div>
                         <div>
-                          <span style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Rate</span>
+                          <span
+                            style={{
+                              display: 'block',
+                              color: 'var(--text-secondary)',
+                              fontSize: '0.8rem',
+                            }}
+                          >
+                            Rate
+                          </span>
                           <span>{job.hourlyRate || job.salaryAmount || 'Not set'}</span>
                         </div>
                       </div>
@@ -1422,8 +1623,20 @@ export function EmploymentDetailsModal({
               )}
 
               {/* Pay Configuration */}
-              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-                <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', color: 'var(--text-secondary)' }}>
+              <div
+                style={{
+                  marginTop: '16px',
+                  paddingTop: '16px',
+                  borderTop: '1px solid var(--border)',
+                }}
+              >
+                <h4
+                  style={{
+                    fontSize: '0.95rem',
+                    marginBottom: '12px',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
                   Default Pay Configuration
                 </h4>
 
@@ -1450,7 +1663,9 @@ export function EmploymentDetailsModal({
                       type="number"
                       step="0.01"
                       value={details.hourlyRate}
-                      onChange={(e) => setDetails((prev) => ({ ...prev, hourlyRate: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, hourlyRate: e.target.value }))
+                      }
                       placeholder="0.00"
                     />
                   </div>
@@ -1463,7 +1678,9 @@ export function EmploymentDetailsModal({
                       type="number"
                       step="0.01"
                       value={details.salaryAmount}
-                      onChange={(e) => setDetails((prev) => ({ ...prev, salaryAmount: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, salaryAmount: e.target.value }))
+                      }
                       placeholder="0.00"
                     />
                   </div>
@@ -1472,7 +1689,9 @@ export function EmploymentDetailsModal({
                     <input
                       type="text"
                       value={details.payrollGroup}
-                      onChange={(e) => setDetails((prev) => ({ ...prev, payrollGroup: e.target.value }))}
+                      onChange={(e) =>
+                        setDetails((prev) => ({ ...prev, payrollGroup: e.target.value }))
+                      }
                     />
                   </div>
                 </div>
@@ -1496,7 +1715,10 @@ export function EmploymentDetailsModal({
                         type="checkbox"
                         checked={details.tipPoolParticipation}
                         onChange={(e) =>
-                          setDetails((prev) => ({ ...prev, tipPoolParticipation: e.target.checked }))
+                          setDetails((prev) => ({
+                            ...prev,
+                            tipPoolParticipation: e.target.checked,
+                          }))
                         }
                       />
                       Tip Pool Participation
@@ -1504,21 +1726,21 @@ export function EmploymentDetailsModal({
                   </div>
                 </div>
 
-              <div className="form-row">
-                <div className="form-field">
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={details.minorStatus}
-                      onChange={(e) =>
-                        setDetails((prev) => ({ ...prev, minorStatus: e.target.checked }))
-                      }
-                    />
-                    Minor Employee (age &lt; 18)
-                  </label>
+                <div className="form-row">
+                  <div className="form-field">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={details.minorStatus}
+                        onChange={(e) =>
+                          setDetails((prev) => ({ ...prev, minorStatus: e.target.checked }))
+                        }
+                      />
+                      Minor Employee (age &lt; 18)
+                    </label>
+                  </div>
                 </div>
               </div>
-            </div>
             </div>
           )}
 
@@ -1526,7 +1748,9 @@ export function EmploymentDetailsModal({
           {activeTab === 'scheduling' && (
             <div className="form-section-group">
               <h3>Scheduling Eligibility</h3>
-              <p className="form-description">High-impact scheduling controls for manager flexibility.</p>
+              <p className="form-description">
+                High-impact scheduling controls for manager flexibility.
+              </p>
 
               <div className="form-row">
                 <div className="form-field">
@@ -1534,7 +1758,9 @@ export function EmploymentDetailsModal({
                   <input
                     type="text"
                     value={details.primaryRole}
-                    onChange={(e) => setDetails((prev) => ({ ...prev, primaryRole: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((prev) => ({ ...prev, primaryRole: e.target.value }))
+                    }
                   />
                 </div>
                 <div className="form-field">
@@ -1542,7 +1768,9 @@ export function EmploymentDetailsModal({
                   <input
                     type="text"
                     value={details.secondaryRoles}
-                    onChange={(e) => setDetails((prev) => ({ ...prev, secondaryRoles: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((prev) => ({ ...prev, secondaryRoles: e.target.value }))
+                    }
                     placeholder="Comma-separated"
                   />
                 </div>
@@ -1554,7 +1782,9 @@ export function EmploymentDetailsModal({
                   <input
                     type="text"
                     value={details.departmentEligibility}
-                    onChange={(e) => setDetails((prev) => ({ ...prev, departmentEligibility: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((prev) => ({ ...prev, departmentEligibility: e.target.value }))
+                    }
                   />
                 </div>
               </div>
@@ -1565,7 +1795,9 @@ export function EmploymentDetailsModal({
                   <input
                     type="text"
                     value={details.availability}
-                    onChange={(e) => setDetails((prev) => ({ ...prev, availability: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((prev) => ({ ...prev, availability: e.target.value }))
+                    }
                     placeholder="e.g., Mon-Fri 9am-5pm"
                   />
                 </div>
@@ -1574,7 +1806,9 @@ export function EmploymentDetailsModal({
                   <input
                     type="number"
                     value={details.maxWeeklyHours}
-                    onChange={(e) => setDetails((prev) => ({ ...prev, maxWeeklyHours: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((prev) => ({ ...prev, maxWeeklyHours: e.target.value }))
+                    }
                   />
                 </div>
               </div>
@@ -1620,7 +1854,9 @@ export function EmploymentDetailsModal({
           {activeTab === 'compliance' && (
             <div className="form-section-group">
               <h3>Compliance & Certifications</h3>
-              <p className="form-description">Track certifications and expiration dates for operational compliance.</p>
+              <p className="form-description">
+                Track certifications and expiration dates for operational compliance.
+              </p>
 
               <div className="form-row">
                 <div className="form-field">
@@ -1629,7 +1865,10 @@ export function EmploymentDetailsModal({
                       type="checkbox"
                       checked={details.foodHandlerCertification}
                       onChange={(e) =>
-                        setDetails((prev) => ({ ...prev, foodHandlerCertification: e.target.checked }))
+                        setDetails((prev) => ({
+                          ...prev,
+                          foodHandlerCertification: e.target.checked,
+                        }))
                       }
                     />
                     Food Handler Certification
@@ -1640,7 +1879,9 @@ export function EmploymentDetailsModal({
                   <input
                     type="date"
                     value={details.foodHandlerExpiry}
-                    onChange={(e) => setDetails((prev) => ({ ...prev, foodHandlerExpiry: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((prev) => ({ ...prev, foodHandlerExpiry: e.target.value }))
+                    }
                   />
                 </div>
               </div>
@@ -1663,7 +1904,9 @@ export function EmploymentDetailsModal({
                   <input
                     type="date"
                     value={details.alcoholExpiry}
-                    onChange={(e) => setDetails((prev) => ({ ...prev, alcoholExpiry: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((prev) => ({ ...prev, alcoholExpiry: e.target.value }))
+                    }
                   />
                 </div>
               </div>
@@ -1675,7 +1918,10 @@ export function EmploymentDetailsModal({
                       type="checkbox"
                       checked={details.safetyTrainingCompleted}
                       onChange={(e) =>
-                        setDetails((prev) => ({ ...prev, safetyTrainingCompleted: e.target.checked }))
+                        setDetails((prev) => ({
+                          ...prev,
+                          safetyTrainingCompleted: e.target.checked,
+                        }))
                       }
                     />
                     Safety Training Completed
@@ -1686,7 +1932,9 @@ export function EmploymentDetailsModal({
                   <input
                     type="date"
                     value={details.safetyTrainingExpiry}
-                    onChange={(e) => setDetails((prev) => ({ ...prev, safetyTrainingExpiry: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((prev) => ({ ...prev, safetyTrainingExpiry: e.target.value }))
+                    }
                   />
                 </div>
               </div>
@@ -1697,7 +1945,9 @@ export function EmploymentDetailsModal({
           {activeTab === 'attendance' && (
             <div className="form-section-group">
               <h3>Time & Attendance Controls</h3>
-              <p className="form-description">Lightweight structure to enforce attendance without heavy overhead.</p>
+              <p className="form-description">
+                Lightweight structure to enforce attendance without heavy overhead.
+              </p>
 
               <div className="form-row">
                 <div className="form-field">
@@ -1706,7 +1956,9 @@ export function EmploymentDetailsModal({
                     type="number"
                     step="0.5"
                     value={details.ptoBalance}
-                    onChange={(e) => setDetails((prev) => ({ ...prev, ptoBalance: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((prev) => ({ ...prev, ptoBalance: e.target.value }))
+                    }
                     placeholder="Hours"
                   />
                 </div>
@@ -1716,7 +1968,9 @@ export function EmploymentDetailsModal({
                     type="number"
                     step="0.5"
                     value={details.sickLeaveBalance}
-                    onChange={(e) => setDetails((prev) => ({ ...prev, sickLeaveBalance: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((prev) => ({ ...prev, sickLeaveBalance: e.target.value }))
+                    }
                     placeholder="Hours"
                   />
                 </div>
@@ -1728,7 +1982,9 @@ export function EmploymentDetailsModal({
                   <input
                     type="text"
                     value={details.attendanceFlags}
-                    onChange={(e) => setDetails((prev) => ({ ...prev, attendanceFlags: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((prev) => ({ ...prev, attendanceFlags: e.target.value }))
+                    }
                     placeholder="Disciplinary notes (optional)"
                   />
                 </div>
@@ -1775,7 +2031,9 @@ export function EmploymentDetailsModal({
           {activeTab === 'hotel' && (
             <div className="form-section-group">
               <h3>Hotel-Specific Operational Data</h3>
-              <p className="form-description">Practical operational details for hotel management.</p>
+              <p className="form-description">
+                Practical operational details for hotel management.
+              </p>
 
               <div className="form-row">
                 <div className="form-field">
@@ -1783,7 +2041,9 @@ export function EmploymentDetailsModal({
                   <input
                     type="text"
                     value={details.uniformSize}
-                    onChange={(e) => setDetails((prev) => ({ ...prev, uniformSize: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((prev) => ({ ...prev, uniformSize: e.target.value }))
+                    }
                     placeholder="e.g., M, L, XL"
                   />
                 </div>
@@ -1792,7 +2052,9 @@ export function EmploymentDetailsModal({
                   <input
                     type="text"
                     value={details.languagesSpoken}
-                    onChange={(e) => setDetails((prev) => ({ ...prev, languagesSpoken: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((prev) => ({ ...prev, languagesSpoken: e.target.value }))
+                    }
                     placeholder="Comma-separated"
                   />
                 </div>
@@ -1804,7 +2066,9 @@ export function EmploymentDetailsModal({
                   <input
                     type="text"
                     value={details.housekeepingZone}
-                    onChange={(e) => setDetails((prev) => ({ ...prev, housekeepingZone: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((prev) => ({ ...prev, housekeepingZone: e.target.value }))
+                    }
                   />
                 </div>
               </div>
@@ -1817,7 +2081,10 @@ export function EmploymentDetailsModal({
                     onChange={(e) =>
                       setDetails((prev) => ({
                         ...prev,
-                        keycardAccessLevel: e.target.value as 'standard' | 'elevated' | 'restricted',
+                        keycardAccessLevel: e.target.value as
+                          | 'standard'
+                          | 'elevated'
+                          | 'restricted',
                       }))
                     }
                   >
@@ -1831,7 +2098,9 @@ export function EmploymentDetailsModal({
                   <input
                     type="text"
                     value={details.maintenanceSpecialty}
-                    onChange={(e) => setDetails((prev) => ({ ...prev, maintenanceSpecialty: e.target.value }))}
+                    onChange={(e) =>
+                      setDetails((prev) => ({ ...prev, maintenanceSpecialty: e.target.value }))
+                    }
                   />
                 </div>
               </div>
@@ -1858,11 +2127,7 @@ export function EmploymentDetailsModal({
           <button className="button secondary" onClick={onClose}>
             Cancel
           </button>
-          <button
-            className="button primary"
-            onClick={handleSave}
-            disabled={saveMutation.isPending}
-          >
+          <button className="button primary" onClick={handleSave} disabled={saveMutation.isPending}>
             {saveMutation.isPending ? 'Saving...' : 'Save Details'}
           </button>
         </div>

@@ -69,6 +69,21 @@ export function I18nProvider({ children, initialConfig }: I18nProviderProps) {
       const loadUserLocalePreference = async () => {
         try {
           setLoading(true);
+
+          // Check if user is authenticated before loading preferences
+          const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+          if (!token) {
+            // User not authenticated, use defaults from localStorage if available
+            if (typeof window !== 'undefined') {
+              const saved = localStorage.getItem('localeConfig');
+              if (saved) {
+                const parsed = JSON.parse(saved) as LocaleConfig;
+                setConfig(parsed);
+              }
+            }
+            return;
+          }
+
           const apiClient = getApiClient();
           const response = (await apiClient.get('/api/me/locale')) as LocaleResponse;
 
@@ -92,7 +107,12 @@ export function I18nProvider({ children, initialConfig }: I18nProviderProps) {
             }
           }
         } catch (error) {
-          console.warn('Failed to load locale config from server:', error);
+          // Silently fail for auth errors on login page
+          const isAuthError =
+            error instanceof Error && error.message.includes('Authentication required');
+          if (!isAuthError) {
+            console.warn('Failed to load locale config from server:', error);
+          }
 
           // Fallback to localStorage
           if (typeof window !== 'undefined') {

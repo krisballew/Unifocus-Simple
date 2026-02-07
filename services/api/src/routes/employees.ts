@@ -169,11 +169,19 @@ export async function employeeRoutes(server: FastifyInstance) {
       take: 200,
     });
 
-    const formattedEmployees = employees.map((employee) => ({
-      ...employee,
-      managers: employee.managerLinks.map((link) => link.manager),
-      managerIds: employee.managerLinks.map((link) => link.managerId),
-    }));
+    const formattedEmployees = employees.map((employee) => {
+      const employmentDetails = (employee.employmentDetails as Record<string, unknown>) || {};
+      return {
+        ...employee,
+        employmentStatus: employmentDetails.employmentStatus || 'active',
+        terminationDate: employmentDetails.terminationDate,
+        terminationReason: employmentDetails.terminationReason,
+        employmentStatusChangedOn: employmentDetails.employmentStatusChangedOn,
+        employmentStatusChangedBy: employmentDetails.employmentStatusChangedBy,
+        managers: employee.managerLinks.map((link) => link.manager),
+        managerIds: employee.managerLinks.map((link) => link.managerId),
+      };
+    });
 
     return reply.send({ data: formattedEmployees });
   });
@@ -310,6 +318,10 @@ export async function employeeRoutes(server: FastifyInstance) {
         phone?: string | null;
         hireDate?: string | null;
         isActive?: boolean;
+        employmentStatus?: string;
+        terminationDate?: string;
+        terminationReason?: string;
+        employmentStatusChangedBy?: string;
       };
 
       const existing = await prisma.employee.findFirst({
@@ -327,6 +339,23 @@ export async function employeeRoutes(server: FastifyInstance) {
       }
 
       const employee = await prisma.$transaction(async (tx) => {
+        // Merge employment details if status-related fields are provided
+        let updatedEmploymentDetails =
+          (existing.employmentDetails as Record<string, unknown>) || {};
+        if (payload.employmentStatus || payload.terminationDate || payload.terminationReason) {
+          updatedEmploymentDetails = {
+            ...updatedEmploymentDetails,
+            ...(payload.employmentStatus && { employmentStatus: payload.employmentStatus }),
+            ...(payload.terminationDate && { terminationDate: payload.terminationDate }),
+            ...(payload.terminationReason && { terminationReason: payload.terminationReason }),
+            ...(payload.employmentStatus && {
+              employmentStatusChangedOn: new Date().toISOString(),
+              employmentStatusChangedBy:
+                payload.employmentStatusChangedBy || context.userId || 'Unknown',
+            }),
+          };
+        }
+
         const updatedEmployee = await tx.employee.update({
           where: { id: employeeId },
           data: {
@@ -336,6 +365,10 @@ export async function employeeRoutes(server: FastifyInstance) {
             phone: payload.phone ?? existing.phone,
             hireDate: payload.hireDate ? new Date(payload.hireDate) : existing.hireDate,
             isActive: payload.isActive ?? existing.isActive,
+            employmentDetails:
+              payload.employmentStatus || payload.terminationDate || payload.terminationReason
+                ? updatedEmploymentDetails
+                : existing.employmentDetails,
           },
         });
 

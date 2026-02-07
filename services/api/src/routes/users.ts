@@ -11,6 +11,47 @@ export async function userRoutes(server: FastifyInstance, config: AppConfig) {
   server.get('/me', async (request, reply) => {
     const authCtx = getAuthContext(request);
 
+    // In dev mode with auth disabled, allow unauthenticated access
+    if (config.authSkipVerification && !authCtx.userId) {
+      // Create a temporary logged-in user for dev/testing
+      const devUser = await prisma.user.findFirst({
+        where: {
+          isActive: true,
+        },
+        include: {
+          roleAssignments: {
+            where: { isActive: true },
+            include: { role: true },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      if (devUser) {
+        const roles = devUser.roleAssignments.map((ra) => ra.role.name);
+        return reply.send({
+          userId: devUser.id,
+          email: devUser.email || '',
+          username: devUser.email || '',
+          name: devUser.name || '',
+          tenantId: devUser.tenantId,
+          roles: roles.length > 0 ? roles : ['Employee'],
+          scopes: ['read:all', 'write:all'],
+        });
+      }
+
+      // Fallback dev user
+      return reply.send({
+        userId: 'dev-user-id',
+        email: 'dev@unifocus.local',
+        username: 'dev-user',
+        name: 'Dev User',
+        tenantId: 'dev-tenant-id',
+        roles: ['Employee'],
+        scopes: ['read:all', 'write:all'],
+      });
+    }
+
     if (!authCtx.userId) {
       return reply.status(401).send({
         code: 'UNAUTHORIZED',
@@ -145,24 +186,21 @@ export async function userRoutes(server: FastifyInstance, config: AppConfig) {
   server.get('/me/locale', async (request, reply) => {
     const authCtx = getAuthContext(request);
 
-    if (!authCtx.userId || !authCtx.tenantId) {
-      return reply.status(401).send({
-        code: 'UNAUTHORIZED',
-        message: 'Authentication required',
-      });
-    }
-
-    // In dev mode with auth disabled, return default locale
+    // In dev mode with auth disabled, return default locale without requiring auth context
     if (config.authSkipVerification) {
       return reply.send({
         locale: 'en-US',
         timezone: 'UTC',
-        tenant: {
-          weekStartDay: 'Monday',
-          defaultLocale: 'en-US',
-          defaultTimezone: 'UTC',
-          defaultCurrency: 'USD',
-        },
+        weekStartDay: 0,
+        currency: 'USD',
+        defaultLocale: 'en-US',
+      });
+    }
+
+    if (!authCtx.userId || !authCtx.tenantId) {
+      return reply.status(401).send({
+        code: 'UNAUTHORIZED',
+        message: 'Authentication required',
       });
     }
 

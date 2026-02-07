@@ -29,16 +29,24 @@ class ApiClient {
     }
 
     // Attach authorization token if available
+    let token: string | null = null;
+
     try {
       const authService = getAuthService();
-      const token = authService.getAccessToken();
-      if (token) {
-        (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-        // Note: In dev mode with mock tokens, the backend will fetch the dev user from the database
-        // so we don't need to send x-tenant-id and x-user-id headers
-      }
+      token = authService.getAccessToken();
     } catch {
-      // Auth service not initialized, skip token attachment
+      // Auth service not initialized, try localStorage
+    }
+
+    // Fallback to localStorage token if auth service doesn't have one
+    if (!token) {
+      token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+    }
+
+    if (token) {
+      (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+      // Note: In dev mode with mock tokens, the backend will fetch the dev user from the database
+      // so we don't need to send x-tenant-id and x-user-id headers
     }
 
     // In development, honor the logged-in user from localStorage if present
@@ -160,6 +168,11 @@ export interface Employee {
   phone?: string | null;
   hireDate?: string | null;
   isActive: boolean;
+  employmentStatus?: string;
+  terminationDate?: string;
+  terminationReason?: string;
+  employmentStatusChangedOn?: string;
+  employmentStatusChangedBy?: string;
   property?: {
     id: string;
     name: string;
@@ -363,6 +376,10 @@ export async function updateEmployee(
     phone?: string | null;
     hireDate?: string | null;
     isActive?: boolean;
+    employmentStatus?: string;
+    terminationDate?: string;
+    terminationReason?: string;
+    employmentStatusChangedBy?: string;
   }
 ): Promise<Employee> {
   const client = getApiClient();

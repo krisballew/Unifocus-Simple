@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-var-requires */
 /**
  * Environment Variable Validation Script
  *
@@ -14,18 +15,24 @@
  *   1 - Missing or invalid environment variables
  */
 
-// Load environment variables from .env files for web validation
-if (process.env['WEB_ENV'] === 'true') {
-  // Prefer .env.local, then .env, then .env.example
+// Load environment variables from .env files
+{
   const dotenv = require('dotenv');
   const fs = require('fs');
   const path = require('path');
-  const envDir = path.resolve(__dirname, '../apps/web');
+
+  const isWebEnv = process.env['WEB_ENV'] === 'true';
+  const envDir = isWebEnv
+    ? path.resolve(__dirname, '../apps/web')
+    : path.resolve(__dirname, '../services/api');
+
+  // Prefer .env.local, then .env, then .env.example
   const envFiles = ['.env.local', '.env', '.env.example'];
   for (const file of envFiles) {
     const filePath = path.join(envDir, file);
     if (fs.existsSync(filePath)) {
       dotenv.config({ path: filePath, override: true });
+      break;
     }
   }
 }

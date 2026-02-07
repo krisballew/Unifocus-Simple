@@ -4,9 +4,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { EmploymentDetailsModal } from '../components/EmploymentDetailsModal';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { useSelection } from '../context/SelectionContext';
+import { useAuth } from '../hooks/useAuth';
 import {
   createEmployee,
-  deactivateEmployee,
   getEmployees,
   updateEmployee,
   type Employee,
@@ -31,6 +31,7 @@ const emptyForm: EmployeeFormState = {
 
 export function HrManagementPage(): React.ReactElement {
   const { selectedPropertyId, selectedTenantId } = useSelection();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
@@ -39,6 +40,10 @@ export function HrManagementPage(): React.ReactElement {
   const [showForm, setShowForm] = useState(false);
   const [showEmploymentDetails, setShowEmploymentDetails] = useState(false);
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
+  const [showTerminationDialog, setShowTerminationDialog] = useState(false);
+  const [terminationEmployeeId, setTerminationEmployeeId] = useState<string | null>(null);
+  const [terminationDate, setTerminationDate] = useState('');
+  const [terminationReason, setTerminationReason] = useState('');
 
   useEffect(() => {
     if (!toast) return;
@@ -109,44 +114,12 @@ export function HrManagementPage(): React.ReactElement {
     },
   });
 
-  const deactivateMutation = useMutation({
-    mutationFn: (employeeId: string) => deactivateEmployee(employeeId),
-    onSuccess: (updated) => {
-      queryClient.setQueryData<Employee[]>(
-        queryKeys.employees(selectedPropertyId ?? undefined),
-        (current) =>
-          (current ?? []).map((employee) =>
-            employee.id === updated.id ? { ...employee, isActive: updated.isActive } : employee
-          )
-      );
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.employees(selectedPropertyId ?? undefined),
-      });
-    },
-  });
-
-  const activateMutation = useMutation({
-    mutationFn: (employeeId: string) => updateEmployee(employeeId, { isActive: true }),
-    onSuccess: (updated) => {
-      queryClient.setQueryData<Employee[]>(
-        queryKeys.employees(selectedPropertyId ?? undefined),
-        (current) =>
-          (current ?? []).map((employee) =>
-            employee.id === updated.id ? { ...employee, isActive: updated.isActive } : employee
-          )
-      );
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.employees(selectedPropertyId ?? undefined),
-      });
-    },
-  });
-
   const selectedEmployee = useMemo(
     () => sortedEmployees.find((employee) => employee.id === selectedEmployeeId) ?? null,
     [sortedEmployees, selectedEmployeeId]
   );
 
-  const handleEdit = (employee: Employee) => {
+  const _handleEdit = (employee: Employee) => {
     setEditingEmployeeId(employee.id);
     setFormState({
       firstName: employee.firstName,
@@ -317,6 +290,157 @@ export function HrManagementPage(): React.ReactElement {
         selectedPropertyId={selectedPropertyId}
       />
 
+      {showTerminationDialog && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              padding: '24px',
+              borderRadius: '8px',
+              maxWidth: '500px',
+              width: '90%',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '1.1rem' }}>
+              Terminate Employment
+            </h3>
+            <p style={{ marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              Please provide the termination date and reason.
+            </p>
+            <div style={{ marginBottom: '16px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '0.85rem',
+                  marginBottom: '4px',
+                  fontWeight: 500,
+                }}
+              >
+                Termination Date *
+              </label>
+              <input
+                type="date"
+                value={terminationDate}
+                onChange={(e) => setTerminationDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  fontSize: '0.9rem',
+                  border: '1px solid var(--border)',
+                  borderRadius: '4px',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '0.85rem',
+                  marginBottom: '4px',
+                  fontWeight: 500,
+                }}
+              >
+                Termination Reason *
+              </label>
+              <textarea
+                value={terminationReason}
+                onChange={(e) => setTerminationReason(e.target.value)}
+                placeholder="e.g., Resignation, Retirement, Layoff, etc."
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  fontSize: '0.9rem',
+                  border: '1px solid var(--border)',
+                  borderRadius: '4px',
+                  boxSizing: 'border-box',
+                  minHeight: '80px',
+                  fontFamily: 'inherit',
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowTerminationDialog(false);
+                  setTerminationEmployeeId(null);
+                  setTerminationDate('');
+                  setTerminationReason('');
+                }}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: '0.9rem',
+                  border: '1px solid var(--border)',
+                  borderRadius: '4px',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!terminationDate || !terminationReason.trim()) {
+                    alert('Please provide both termination date and reason');
+                    return;
+                  }
+                  if (!terminationEmployeeId) return;
+
+                  try {
+                    await updateEmployee(terminationEmployeeId, {
+                      employmentStatus: 'terminated',
+                      terminationDate,
+                      terminationReason,
+                      employmentStatusChangedBy: user?.name || user?.username || 'Unknown User',
+                    });
+                    queryClient.invalidateQueries({
+                      queryKey: queryKeys.employees(selectedPropertyId ?? undefined),
+                    });
+                    setShowTerminationDialog(false);
+                    setTerminationEmployeeId(null);
+                    setTerminationDate('');
+                    setTerminationReason('');
+                    showToast('Employment terminated successfully');
+                  } catch (error) {
+                    console.error('Failed to terminate employment:', error);
+                    showToast('Failed to terminate employment', 'error');
+                  }
+                }}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: '0.9rem',
+                  border: 'none',
+                  borderRadius: '4px',
+                  backgroundColor: 'var(--brand-primary)',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                Confirm Termination
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="page-table">
         <div className="page-table__row page-table__header">
           <div>Employee ID</div>
@@ -324,8 +448,9 @@ export function HrManagementPage(): React.ReactElement {
           <div>Email</div>
           <div>Property</div>
           <div>Hire Date</div>
-          <div>Status</div>
-          <div>Action</div>
+          <div>Employment Status</div>
+          <div>Changed On</div>
+          <div>Changed By</div>
         </div>
         {sortedEmployees.map((employee) => (
           <div
@@ -354,20 +479,64 @@ export function HrManagementPage(): React.ReactElement {
             <div>{employee.email ?? '—'}</div>
             <div>{employee.property?.name ?? '—'}</div>
             <div>{employee.hireDate ? new Date(employee.hireDate).toLocaleDateString() : '—'}</div>
-            <div>{employee.isActive ? 'Active' : 'Inactive'}</div>
             <div>
-              <button
-                className="link-button"
-                type="button"
-                onClick={() =>
-                  employee.isActive
-                    ? deactivateMutation.mutate(employee.id)
-                    : activateMutation.mutate(employee.id)
+              <select
+                value={
+                  (employee as Employee & { employmentStatus?: string }).employmentStatus ||
+                  'active'
                 }
-                disabled={deactivateMutation.isPending || activateMutation.isPending}
+                onChange={async (e) => {
+                  e.stopPropagation();
+                  const newStatus = e.target.value;
+                  if (newStatus === 'terminated') {
+                    setTerminationEmployeeId(employee.id);
+                    setTerminationDate('');
+                    setTerminationReason('');
+                    setShowTerminationDialog(true);
+                  } else {
+                    try {
+                      await updateEmployee(employee.id, {
+                        employmentStatus: newStatus,
+                        employmentStatusChangedBy: user?.name || user?.username || 'Unknown User',
+                      });
+                      queryClient.invalidateQueries({
+                        queryKey: queryKeys.employees(selectedPropertyId ?? undefined),
+                      });
+                      showToast('Employment status updated');
+                    } catch (error) {
+                      console.error('Failed to update status:', error);
+                      showToast('Failed to update status', 'error');
+                    }
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: '0.9rem',
+                  border: '1px solid var(--border)',
+                  borderRadius: '4px',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                }}
               >
-                {employee.isActive ? 'Deactivate' : 'Activate'}
-              </button>
+                <option value="active">Active</option>
+                <option value="leave">Leave of Absence</option>
+                <option value="terminated">Terminated</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+            <div>
+              {(employee as Employee & { employmentStatusChangedOn?: string })
+                .employmentStatusChangedOn
+                ? new Date(
+                    (employee as Employee & { employmentStatusChangedOn?: string })
+                      .employmentStatusChangedOn!
+                  ).toLocaleDateString()
+                : '—'}
+            </div>
+            <div>
+              {(employee as Employee & { employmentStatusChangedBy?: string })
+                .employmentStatusChangedBy || '—'}
             </div>
           </div>
         ))}
