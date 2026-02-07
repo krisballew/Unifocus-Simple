@@ -29,6 +29,26 @@ async function main() {
 
   // Create properties
   console.log('Creating properties...');
+
+  // All feature flags enabled for demo properties
+  const allFeatures = {
+    scheduling_v2: true,
+    time_clock: true,
+    timecard: true,
+    exceptions_queue: true,
+    hr_management: true,
+    org_structure: true,
+    user_administration: true,
+    properties_management: true,
+    advanced_reporting: true,
+    mobile_access: true,
+    labor_compliance: true,
+    shift_swaps: true,
+    availability_management: true,
+    schedule_templates: true,
+    auto_scheduling: true,
+  };
+
   const property1 = await prisma.property.create({
     data: {
       tenantId: tenant.id,
@@ -37,6 +57,7 @@ async function main() {
       city: 'New York',
       state: 'NY',
       zipCode: '10019',
+      features: allFeatures,
     },
   });
   console.log(`✓ Created property: ${property1.name}`);
@@ -49,6 +70,7 @@ async function main() {
       city: 'Beverly Hills',
       state: 'CA',
       zipCode: '90210',
+      features: allFeatures,
     },
   });
   console.log(`✓ Created property: ${property2.name}`);
@@ -61,6 +83,7 @@ async function main() {
       city: 'Chicago',
       state: 'IL',
       zipCode: '60601',
+      features: allFeatures,
     },
   });
   console.log(`✓ Created property: ${property3.name}`);
@@ -73,6 +96,7 @@ async function main() {
       city: 'Miami',
       state: 'FL',
       zipCode: '33131',
+      features: allFeatures,
     },
   });
   console.log(`✓ Created property: ${property4.name}`);
@@ -85,6 +109,7 @@ async function main() {
       city: 'Denver',
       state: 'CO',
       zipCode: '80202',
+      features: allFeatures,
     },
   });
   console.log(`✓ Created property: ${property5.name}`);

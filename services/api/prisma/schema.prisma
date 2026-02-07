@@ -92,6 +92,10 @@ model Property {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Feature flags configuration (JSON object)
+  // Example: { "scheduling_v2": true, "advanced_reporting": true, "mobile_access": true }
+  features  Json     @default("{}")
+
   divisions           Division[]
   departments         Department[]
   jobRoles            JobRole[]

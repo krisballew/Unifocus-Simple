@@ -40,6 +40,26 @@ async function seedTestData() {
 
   // Create Properties
   console.log('\n🏨 Creating properties...');
+
+  // All feature flags enabled for test properties
+  const allFeatures = {
+    scheduling_v2: true,
+    time_clock: true,
+    timecard: true,
+    exceptions_queue: true,
+    hr_management: true,
+    org_structure: true,
+    user_administration: true,
+    properties_management: true,
+    advanced_reporting: true,
+    mobile_access: true,
+    labor_compliance: true,
+    shift_swaps: true,
+    availability_management: true,
+    schedule_templates: true,
+    auto_scheduling: true,
+  };
+
   const properties = await Promise.all([
     prisma.property.create({
       data: {
@@ -49,6 +69,7 @@ async function seedTestData() {
         city: 'San Francisco',
         state: 'CA',
         zipCode: '94102',
+        features: allFeatures,
       },
     }),
     prisma.property.create({
@@ -59,6 +80,7 @@ async function seedTestData() {
         city: 'Santa Monica',
         state: 'CA',
         zipCode: '90401',
+        features: allFeatures,
       },
     }),
     prisma.property.create({
@@ -69,10 +91,11 @@ async function seedTestData() {
         city: 'Los Angeles',
         state: 'CA',
         zipCode: '90012',
+        features: allFeatures,
       },
     }),
   ]);
-  console.log(`   ✓ Created ${properties.length} properties`);
+  console.log(`   ✓ Created ${properties.length} properties with all features enabled`);
 
   const [grandHotel, coastalResort, _downtownPlaza] = properties;
 
