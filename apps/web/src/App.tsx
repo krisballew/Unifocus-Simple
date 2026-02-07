@@ -5,7 +5,7 @@ import { AppShell } from './components/AppShell';
 import { LoadingSkeleton } from './components/LoadingSkeleton';
 import { LoginPage } from './components/LoginPage';
 import { I18nProvider } from './context/I18nContext';
-import { AvailabilityManagementPlaceholder } from './features/scheduleManagement/pages/AvailabilityManagementPlaceholder';
+import { AvailabilityPage } from './features/scheduleManagement/pages/AvailabilityPage';
 import { RequestsPage } from './features/scheduleManagement/pages/RequestsPage';
 import { ScheduleEditorPage } from './features/scheduleManagement/pages/ScheduleEditorPage';
 import { SchedulePeriodsPage } from './features/scheduleManagement/pages/SchedulePeriodsPage';
@@ -92,7 +92,7 @@ function AppRoutes() {
           path="schedule-management/availability"
           element={
             FEATURE_SCHEDULING_V2 ? (
-              <AvailabilityManagementPlaceholder />
+              <AvailabilityPage />
             ) : (
               <PlaceholderPage title="Availability Management" />
             )

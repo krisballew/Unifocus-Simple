@@ -52,4 +52,5 @@ export const SCHEDULING_PERMISSIONS = {
   LOCK: 'scheduling.lock',
   VIEW: 'scheduling.view',
   MANAGE_REQUESTS: 'scheduling.manage.requests',
+  MANAGE_AVAILABILITY: 'scheduling.manage.availability',
 } as const;
