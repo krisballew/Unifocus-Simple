@@ -3,7 +3,12 @@
  * Enterprise scheduling endpoints with org-aware access control
  */
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+
+import { getAuthContext } from '../../auth/rbac.js';
+
+import { requireSchedulingPermission, SchedulingAuthError } from './guard.js';
+import { SCHEDULING_PERMISSIONS } from './permissions.js';
 
 /**
  * Register V2 scheduling routes
@@ -49,4 +54,47 @@ export async function schedulingV2Routes(fastify: FastifyInstance): Promise<void
     version: 'v2',
     message: 'Scheduling V2 API placeholder',
   }));
+
+  // Example protected route demonstrating guard pattern
+  // Other routes will follow this pattern once implemented
+  fastify.get('/schedules', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const context = getAuthContext(request);
+
+      // Check if user is authenticated
+      if (!context || !context.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      // Require VIEW permission using guard
+      requireSchedulingPermission(context, SCHEDULING_PERMISSIONS.VIEW);
+
+      // TODO: Implement schedule listing with org-scope filtering
+      // const schedules = await schedulingService.getSchedules(context, filters);
+
+      return reply.code(200).send({
+        success: true,
+        data: [],
+        message: 'Placeholder: Schedule listing not yet implemented',
+      });
+    } catch (error) {
+      // Handle guard errors with proper HTTP responses
+      if (error instanceof SchedulingAuthError) {
+        return reply.code(error.statusCode).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      // Log and handle unexpected errors
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
 }

@@ -17,6 +17,9 @@ export * from './validators.js';
 // Export org-scope adapter
 export * from './org-scope-adapter.js';
 
+// Export guard (authorization helpers)
+export * from './guard.js';
+
 // Export service
 export * from './scheduling-v2-service.js';
 

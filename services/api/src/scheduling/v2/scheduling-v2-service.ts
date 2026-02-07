@@ -12,12 +12,9 @@ import type {
   ShiftDTO,
   UpdateShiftDTO,
 } from './dtos.js';
+import { requireDepartmentAccess, requireEmployeeAccess } from './guard.js';
 import type { UserWithContext } from './org-scope-adapter.js';
-import {
-  canAccessDepartment,
-  canAccessEmployee,
-  getAccessibleDepartmentIds,
-} from './org-scope-adapter.js';
+import { getAccessibleDepartmentIds } from './org-scope-adapter.js';
 
 /**
  * Service class for V2 scheduling operations
@@ -57,16 +54,9 @@ export class SchedulingV2Service {
     propertyId: string,
     request: CreateShiftDTO
   ): Promise<ShiftDTO> {
-    // Validate user has access to department and employee
-    const canAccessDept = await canAccessDepartment(user, propertyId, request.departmentId);
-    if (!canAccessDept) {
-      throw new Error('No access to specified department');
-    }
-
-    const canAccessEmp = await canAccessEmployee(user, propertyId, request.employeeId);
-    if (!canAccessEmp) {
-      throw new Error('No access to specified employee');
-    }
+    // Validate user has access to department and employee using guard helpers
+    await requireDepartmentAccess(user, propertyId, request.departmentId);
+    await requireEmployeeAccess(user, propertyId, request.employeeId);
 
     // TODO: Implement shift creation with conflict detection
     throw new Error('Not implemented');
