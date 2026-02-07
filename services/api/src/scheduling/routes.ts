@@ -11,6 +11,7 @@ import { getAuthContext, hasAnyRole } from '../auth/rbac.js';
 
 import { createSchedulingService } from './scheduling-service.js';
 import type { CreateShiftRequest, UpdateShiftRequest } from './types.js';
+import { schedulingV2Routes } from './v2/routes.js';
 
 const prisma = new PrismaClient();
 
@@ -59,6 +60,9 @@ const GetShiftsQuerySchema = z.object({
  */
 export async function schedulingRoutes(fastify: FastifyInstance) {
   const schedulingService = createSchedulingService(prisma);
+
+  // Register V2 routes
+  await fastify.register(schedulingV2Routes, { prefix: '/v2' });
 
   /**
    * GET /api/scheduling/shifts
