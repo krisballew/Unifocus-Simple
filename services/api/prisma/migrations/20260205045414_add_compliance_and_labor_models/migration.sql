@@ -12,19 +12,19 @@
 
 */
 -- DropForeignKey
-ALTER TABLE "Employee" DROP CONSTRAINT "Employee_managerId_fkey";
+ALTER TABLE "Employee" DROP CONSTRAINT IF EXISTS "Employee_managerId_fkey";
 
 -- DropForeignKey
-ALTER TABLE "User" DROP CONSTRAINT "User_defaultPropertyId_fkey";
+ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "User_defaultPropertyId_fkey";
 
 -- DropIndex
-DROP INDEX "Employee_employmentDetails_idx";
+DROP INDEX IF EXISTS "Employee_employmentDetails_idx";
 
 -- DropIndex
-DROP INDEX "Employee_managerId_idx";
+DROP INDEX IF EXISTS "Employee_managerId_idx";
 
 -- DropIndex
-DROP INDEX "EmployeeJobAssignment_tenantId_employeeId_id_key";
+DROP INDEX IF EXISTS "EmployeeJobAssignment_tenantId_employeeId_id_key";
 
 -- AlterTable
 ALTER TABLE "Department" ADD COLUMN     "costCenter" TEXT,
@@ -36,12 +36,12 @@ ADD COLUMN     "managerId" TEXT,
 ADD COLUMN     "reportingGroupId" TEXT;
 
 -- AlterTable
-ALTER TABLE "Employee" DROP COLUMN "managerId",
+ALTER TABLE "Employee" DROP COLUMN IF EXISTS "managerId",
 ADD COLUMN     "employeeId" TEXT;
 
 -- AlterTable
-ALTER TABLE "EmployeeJobAssignment" DROP COLUMN "department",
-DROP COLUMN "jobTitle",
+ALTER TABLE "EmployeeJobAssignment" DROP COLUMN IF EXISTS "department",
+DROP COLUMN IF EXISTS "jobTitle",
 ADD COLUMN     "hourlyRate" DOUBLE PRECISION,
 ADD COLUMN     "isPrimary" BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN     "jobRoleId" TEXT NOT NULL,
@@ -338,7 +338,12 @@ CREATE INDEX "EmployeeJobAssignment_jobRoleId_idx" ON "EmployeeJobAssignment"("j
 CREATE UNIQUE INDEX "EmployeeJobAssignment_tenantId_employeeId_jobRoleId_key" ON "EmployeeJobAssignment"("tenantId", "employeeId", "jobRoleId");
 
 -- CreateIndex
-CREATE INDEX "EmployeeReport_createdAt_idx" ON "EmployeeReport"("createdAt");
+DO $$
+BEGIN
+    IF to_regclass('"EmployeeReport"') IS NOT NULL THEN
+        CREATE INDEX IF NOT EXISTS "EmployeeReport_createdAt_idx" ON "EmployeeReport"("createdAt");
+    END IF;
+END $$;
 
 -- AddForeignKey
 ALTER TABLE "Division" ADD CONSTRAINT "Division_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;

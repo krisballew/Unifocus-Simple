@@ -12,6 +12,30 @@ generator client {
 }
 
 // ============================================================================
+// ENTERPRISE SCHEDULING V2 ENUMS
+// ============================================================================
+
+enum WfmScheduleStatus {
+  DRAFT
+  PUBLISHED
+  LOCKED
+  ARCHIVED
+}
+
+enum WfmRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+  CANCELED
+}
+
+enum WfmAvailabilityType {
+  AVAILABLE
+  UNAVAILABLE
+  PREFERRED
+}
+
+// ============================================================================
 // TENANT & ORGANIZATION STRUCTURE
 // ============================================================================
 
@@ -39,6 +63,12 @@ model Tenant {
   employees   Employee[]
   schedules   Schedule[]
   shifts      Shift[]
+  wfmSchedulePeriods  WfmSchedulePeriod[]  @relation("WfmSchedulePeriodTenant")
+  wfmShiftPlans       WfmShiftPlan[]       @relation("WfmShiftPlanTenant")
+  wfmShiftAssignments WfmShiftAssignment[] @relation("WfmShiftAssignmentTenant")
+  wfmAvailabilities   WfmAvailability[]    @relation("WfmAvailabilityTenant")
+  wfmSwapRequests     WfmSwapRequest[]     @relation("WfmSwapRequestTenant")
+  wfmPublishEvents    WfmPublishEvent[]    @relation("WfmPublishEventTenant")
   punches     Punch[]
   exceptions  Exception[]
   auditLogs   AuditLog[]
@@ -71,6 +101,12 @@ model Property {
   employees           Employee[]
   schedules           Schedule[]
   auditLogs           AuditLog[]
+  wfmSchedulePeriods  WfmSchedulePeriod[]  @relation("WfmSchedulePeriodProperty")
+  wfmShiftPlans       WfmShiftPlan[]       @relation("WfmShiftPlanProperty")
+  wfmShiftAssignments WfmShiftAssignment[] @relation("WfmShiftAssignmentProperty")
+  wfmAvailabilities   WfmAvailability[]    @relation("WfmAvailabilityProperty")
+  wfmSwapRequests     WfmSwapRequest[]     @relation("WfmSwapRequestProperty")
+  wfmPublishEvents    WfmPublishEvent[]    @relation("WfmPublishEventProperty")
 
   @@unique([tenantId, id])
   @@index([tenantId])
@@ -160,6 +196,7 @@ model Department {
   userRoleAssignments UserRoleAssignment[]
   jobRoles            JobRole[]
   auditLogs           AuditLog[]
+  wfmShiftPlans       WfmShiftPlan[] @relation("WfmShiftPlanDepartment")
 
   @@unique([tenantId, propertyId, id])
   @@index([tenantId])
@@ -201,6 +238,7 @@ model JobRole {
 
   jobAssignments  JobAssignment[]
   employeeJobAssignments EmployeeJobAssignment[]
+  wfmShiftPlans   WfmShiftPlan[] @relation("WfmShiftPlanJobRole")
 
   @@unique([tenantId, propertyId, departmentId, id])
   @@index([tenantId])
@@ -273,6 +311,10 @@ model User {
   roleAssignments UserRoleAssignment[]
   managedDepartments Department[]  @relation("DepartmentManager")
   auditLogs       AuditLog[]
+  wfmSchedulePeriodsCreated WfmSchedulePeriod[] @relation("WfmSchedulePeriodCreatedBy")
+  wfmShiftAssignmentsAssigned WfmShiftAssignment[] @relation("WfmShiftAssignmentAssignedBy")
+  wfmSwapRequestsManaged WfmSwapRequest[] @relation("WfmSwapRequestManager")
+  wfmPublishEventsPublished WfmPublishEvent[] @relation("WfmPublishEventPublishedBy")
 
   // Labor compliance rules system
   createdRulePackages RulePackage[] @relation("RulePackageCreatedBy")
@@ -366,6 +408,10 @@ model Employee {
   punches        Punch[]
   exceptions     Exception[]
   auditLogs      AuditLog[]
+  wfmShiftAssignments WfmShiftAssignment[] @relation("WfmShiftAssignmentEmployee")
+  wfmAvailabilities   WfmAvailability[]    @relation("WfmAvailabilityEmployee")
+  wfmSwapRequestsRequested WfmSwapRequest[] @relation("WfmSwapRequestRequestor")
+  wfmSwapRequestsTargeted  WfmSwapRequest[] @relation("WfmSwapRequestTarget")
 
   // Labor compliance rules system
   validationResults RuleValidationResult[] @relation("ValidationResults")
@@ -485,6 +531,183 @@ model Shift {
   @@unique([tenantId, scheduleId, id])
   @@index([tenantId])
   @@index([scheduleId])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// ENTERPRISE SCHEDULING V2
+// ============================================================================
+
+model WfmSchedulePeriod {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation("WfmSchedulePeriodTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId String
+  property  Property @relation("WfmSchedulePeriodProperty", fields: [propertyId], references: [id], onDelete: Cascade)
+
+  startDate DateTime
+  endDate   DateTime
+  status    WfmScheduleStatus @default(DRAFT)
+  version   Int      @default(1)
+  name      String?
+
+  createdByUserId String?
+  createdByUser   User? @relation("WfmSchedulePeriodCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shiftPlans    WfmShiftPlan[]    @relation("WfmSchedulePeriodShiftPlans")
+  publishEvents WfmPublishEvent[] @relation("WfmSchedulePeriodPublishEvents")
+
+  @@unique([tenantId, propertyId, startDate, version])
+  @@index([tenantId, propertyId, startDate])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([createdAt])
+}
+
+model WfmShiftPlan {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation("WfmShiftPlanTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId String
+  property  Property @relation("WfmShiftPlanProperty", fields: [propertyId], references: [id], onDelete: Cascade)
+
+  schedulePeriodId String
+  schedulePeriod   WfmSchedulePeriod @relation("WfmSchedulePeriodShiftPlans", fields: [schedulePeriodId], references: [id], onDelete: Cascade)
+
+  departmentId String
+  department   Department @relation("WfmShiftPlanDepartment", fields: [departmentId], references: [id], onDelete: Cascade)
+
+  jobRoleId String
+  jobRole   JobRole @relation("WfmShiftPlanJobRole", fields: [jobRoleId], references: [id], onDelete: Cascade)
+
+  startDateTime DateTime
+  endDateTime   DateTime
+  breakMinutes  Int      @default(0)
+  isOpenShift   Boolean  @default(false)
+  notes         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments WfmShiftAssignment[] @relation("WfmShiftPlanAssignments")
+  swapRequests WfmSwapRequest[]    @relation("WfmSwapRequestFromShiftPlan")
+
+  @@index([schedulePeriodId, startDateTime])
+  @@index([tenantId, propertyId, departmentId])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([departmentId])
+  @@index([jobRoleId])
+  @@index([createdAt])
+}
+
+model WfmShiftAssignment {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation("WfmShiftAssignmentTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId String
+  property  Property @relation("WfmShiftAssignmentProperty", fields: [propertyId], references: [id], onDelete: Cascade)
+
+  shiftPlanId String
+  shiftPlan   WfmShiftPlan @relation("WfmShiftPlanAssignments", fields: [shiftPlanId], references: [id], onDelete: Cascade)
+
+  employeeId String
+  employee   Employee @relation("WfmShiftAssignmentEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+
+  assignedByUserId String?
+  assignedByUser   User? @relation("WfmShiftAssignmentAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+  assignedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([shiftPlanId, employeeId])
+  @@index([employeeId, assignedAt])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([shiftPlanId])
+  @@index([createdAt])
+}
+
+model WfmAvailability {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation("WfmAvailabilityTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId String
+  property  Property @relation("WfmAvailabilityProperty", fields: [propertyId], references: [id], onDelete: Cascade)
+
+  employeeId String
+  employee   Employee @relation("WfmAvailabilityEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+
+  date      DateTime
+  startTime String
+  endTime   String
+  type      WfmAvailabilityType?
+  recurrenceRule String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId, date])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([createdAt])
+}
+
+model WfmSwapRequest {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation("WfmSwapRequestTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId String
+  property  Property @relation("WfmSwapRequestProperty", fields: [propertyId], references: [id], onDelete: Cascade)
+
+  requestorEmployeeId String
+  requestorEmployee   Employee @relation("WfmSwapRequestRequestor", fields: [requestorEmployeeId], references: [id], onDelete: Cascade)
+
+  fromShiftPlanId String
+  fromShiftPlan   WfmShiftPlan @relation("WfmSwapRequestFromShiftPlan", fields: [fromShiftPlanId], references: [id], onDelete: Cascade)
+
+  toEmployeeId String?
+  toEmployee   Employee? @relation("WfmSwapRequestTarget", fields: [toEmployeeId], references: [id], onDelete: SetNull)
+
+  status     WfmRequestStatus @default(PENDING)
+  managerUserId String?
+  managerUser   User? @relation("WfmSwapRequestManager", fields: [managerUserId], references: [id], onDelete: SetNull)
+  decisionAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, propertyId, status])
+  @@index([requestorEmployeeId])
+  @@index([fromShiftPlanId])
+  @@index([createdAt])
+}
+
+model WfmPublishEvent {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation("WfmPublishEventTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId String
+  property  Property @relation("WfmPublishEventProperty", fields: [propertyId], references: [id], onDelete: Cascade)
+
+  schedulePeriodId String
+  schedulePeriod   WfmSchedulePeriod @relation("WfmSchedulePeriodPublishEvents", fields: [schedulePeriodId], references: [id], onDelete: Cascade)
+
+  publishedByUserId String
+  publishedByUser   User? @relation("WfmPublishEventPublishedBy", fields: [publishedByUserId], references: [id], onDelete: SetNull)
+  publishedAt DateTime @default(now())
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schedulePeriodId, publishedAt])
+  @@index([tenantId])
+  @@index([propertyId])
   @@index([createdAt])
 }
 
