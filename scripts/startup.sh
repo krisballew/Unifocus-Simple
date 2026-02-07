@@ -90,7 +90,7 @@ if [ "$(docker ps -q --filter name=unifocus-postgres)" ]; then
 else
   docker-compose up -d
   log_warning "Waiting for containers to be healthy..."
-  
+
   # Wait for PostgreSQL to be ready
   max_attempts=30
   attempt=1

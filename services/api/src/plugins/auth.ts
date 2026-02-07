@@ -149,6 +149,7 @@ export async function registerAuthPlugin(
       // Try to get user from headers first
       let tenantId = request.headers['x-tenant-id'] as string | undefined;
       let userId = request.headers['x-user-id'] as string | undefined;
+      let scopes = request.headers['x-scopes'] as string | undefined;
 
       // If no headers provided, get dev user from database
       if (!userId || !tenantId) {
@@ -175,6 +176,9 @@ export async function registerAuthPlugin(
 
       const roleNames = userRoles.map((ra) => ra.role.name);
 
+      // Parse scopes from header (comma or space separated) or use defaults
+      const scopeList = scopes ? scopes.split(/[,\s]+/).filter(Boolean) : ['read:all', 'write:all'];
+
       // Set user object
       (request as AuthenticatedRequest).user = {
         userId: userId,
@@ -182,7 +186,7 @@ export async function registerAuthPlugin(
         username: 'dev-user',
         tenantId: tenantId,
         roles: roleNames.length > 0 ? roleNames : ['Employee'], // Default to Employee if no roles
-        scopes: ['read:all', 'write:all'],
+        scopes: scopeList,
       };
     });
 

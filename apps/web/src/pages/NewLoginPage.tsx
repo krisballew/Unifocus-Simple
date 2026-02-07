@@ -32,19 +32,16 @@ export function NewLoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(
-        '/api/auth/login',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email,
-            password,
-          }),
-        }
-      );
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
 
       if (!response.ok) {
         const data = await response.json();
@@ -74,7 +71,7 @@ export function NewLoginPage() {
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '100vh',
-        backgroundColor: '#2e8a99',
+        backgroundColor: 'var(--uf-teal-50)',
       }}
     >
       <div
@@ -96,15 +93,15 @@ export function NewLoginPage() {
             fill="none"
             style={{ display: 'inline-block' }}
           >
-            <path d="M24 4L4 14L24 24L44 14L24 4Z" fill="#2e8a99" />
-            <path d="M4 24L24 34L44 24" stroke="#2e8a99" strokeWidth="2" fill="none" />
-            <path d="M4 34L24 44L44 34" stroke="#2e8a99" strokeWidth="2" fill="none" />
+            <path d="M24 4L4 14L24 24L44 14L24 4Z" fill="var(--uf-teal-50)" />
+            <path d="M4 24L24 34L44 24" stroke="var(--uf-teal-50)" strokeWidth="2" fill="none" />
+            <path d="M4 34L24 44L44 34" stroke="var(--uf-teal-50)" strokeWidth="2" fill="none" />
           </svg>
           <h1
             style={{
               fontSize: '28px',
               marginTop: '8px',
-              color: '#1e5a66',
+              color: 'var(--uf-teal-40)',
               fontWeight: '600',
               letterSpacing: '1px',
             }}
@@ -117,7 +114,7 @@ export function NewLoginPage() {
           style={{
             textAlign: 'center',
             marginBottom: '1.5rem',
-            color: '#333',
+            color: 'var(--uf-text-color)',
             fontSize: '14px',
             fontWeight: '500',
           }}
@@ -125,14 +122,21 @@ export function NewLoginPage() {
           Workforce Management Platform
         </p>
 
-        <h2 style={{ fontSize: '20px', marginBottom: '1.5rem', color: '#333' }}>Sign In</h2>
+        <h2 style={{ fontSize: '20px', marginBottom: '1.5rem', color: 'var(--uf-text-color)' }}>
+          Sign In
+        </h2>
 
         <form onSubmit={handleSubmit}>
           {/* Username/Email Field */}
           <div style={{ marginBottom: '1rem' }}>
             <label
               htmlFor="email"
-              style={{ display: 'block', marginBottom: '0.5rem', fontSize: '14px', color: '#333' }}
+              style={{
+                display: 'block',
+                marginBottom: '0.5rem',
+                fontSize: '14px',
+                color: 'var(--uf-text-color)',
+              }}
             >
               Username
             </label>
@@ -148,7 +152,9 @@ export function NewLoginPage() {
               style={{
                 width: '100%',
                 padding: '12px',
-                border: emailError ? '1px solid #ff6b6b' : '1px solid #ddd',
+                border: emailError
+                  ? '1px solid var(--uf-error-50)'
+                  : '1px solid var(--uf-border-color)',
                 borderRadius: '4px',
                 fontSize: '14px',
                 boxSizing: 'border-box',
@@ -163,15 +169,23 @@ export function NewLoginPage() {
                   marginTop: '4px',
                 }}
               >
-                <small style={{ color: '#ff6b6b', fontSize: '12px' }}>{emailError}</small>
-                <a href="#" style={{ color: '#2e8a99', fontSize: '12px', textDecoration: 'none' }}>
+                <small style={{ color: 'var(--uf-error-50)', fontSize: '12px' }}>
+                  {emailError}
+                </small>
+                <a
+                  href="#"
+                  style={{ color: 'var(--uf-teal-50)', fontSize: '12px', textDecoration: 'none' }}
+                >
                   Forgot your username?
                 </a>
               </div>
             )}
             {!emailError && (
               <div style={{ textAlign: 'right', marginTop: '4px' }}>
-                <a href="#" style={{ color: '#2e8a99', fontSize: '12px', textDecoration: 'none' }}>
+                <a
+                  href="#"
+                  style={{ color: 'var(--uf-teal-50)', fontSize: '12px', textDecoration: 'none' }}
+                >
                   Forgot your username?
                 </a>
               </div>
@@ -182,7 +196,12 @@ export function NewLoginPage() {
           <div style={{ marginBottom: '1rem' }}>
             <label
               htmlFor="password"
-              style={{ display: 'block', marginBottom: '0.5rem', fontSize: '14px', color: '#333' }}
+              style={{
+                display: 'block',
+                marginBottom: '0.5rem',
+                fontSize: '14px',
+                color: 'var(--uf-text-color)',
+              }}
             >
               Password
             </label>
@@ -200,7 +219,9 @@ export function NewLoginPage() {
                   width: '100%',
                   padding: '12px',
                   paddingRight: '40px',
-                  border: passwordError ? '1px solid #ff6b6b' : '1px solid #ddd',
+                  border: passwordError
+                    ? '1px solid var(--uf-error-50)'
+                    : '1px solid var(--uf-border-color)',
                   borderRadius: '4px',
                   fontSize: '14px',
                   boxSizing: 'border-box',
@@ -218,7 +239,7 @@ export function NewLoginPage() {
                   border: 'none',
                   cursor: 'pointer',
                   padding: '4px',
-                  color: '#666',
+                  color: 'var(--uf-text-color-secondary)',
                 }}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
@@ -258,10 +279,12 @@ export function NewLoginPage() {
                   marginTop: '4px',
                 }}
               >
-                <small style={{ color: '#ff6b6b', fontSize: '12px' }}>{passwordError}</small>
+                <small style={{ color: 'var(--uf-error-50)', fontSize: '12px' }}>
+                  {passwordError}
+                </small>
                 <a
                   href="/forgot-password"
-                  style={{ color: '#2e8a99', fontSize: '12px', textDecoration: 'none' }}
+                  style={{ color: 'var(--uf-teal-50)', fontSize: '12px', textDecoration: 'none' }}
                 >
                   Forgot Password?
                 </a>
@@ -271,7 +294,7 @@ export function NewLoginPage() {
               <div style={{ textAlign: 'right', marginTop: '4px' }}>
                 <a
                   href="/forgot-password"
-                  style={{ color: '#2e8a99', fontSize: '12px', textDecoration: 'none' }}
+                  style={{ color: 'var(--uf-teal-50)', fontSize: '12px', textDecoration: 'none' }}
                 >
                   Forgot Password?
                 </a>
@@ -283,7 +306,9 @@ export function NewLoginPage() {
           <div
             style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            <span style={{ fontSize: '14px', color: '#333' }}>Keep me signed in:</span>
+            <span style={{ fontSize: '14px', color: 'var(--uf-text-color)' }}>
+              Keep me signed in:
+            </span>
             <label
               style={{
                 position: 'relative',
@@ -306,7 +331,7 @@ export function NewLoginPage() {
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  backgroundColor: rememberMe ? '#2e8a99' : '#ccc',
+                  backgroundColor: rememberMe ? 'var(--uf-teal-50)' : 'var(--uf-mono-85)',
                   borderRadius: '24px',
                   transition: '0.3s',
                 }}
@@ -332,8 +357,8 @@ export function NewLoginPage() {
           {error && (
             <div
               style={{
-                backgroundColor: '#fee',
-                color: '#c00',
+                backgroundColor: 'var(--uf-error-95)',
+                color: 'var(--uf-error-20)',
                 padding: '12px',
                 borderRadius: '4px',
                 marginBottom: '1rem',
@@ -351,7 +376,7 @@ export function NewLoginPage() {
             style={{
               width: '100%',
               padding: '14px',
-              backgroundColor: isLoading ? '#ccc' : '#2e8a99',
+              backgroundColor: isLoading ? 'var(--uf-mono-85)' : 'var(--uf-teal-50)',
               color: 'white',
               border: 'none',
               borderRadius: '4px',

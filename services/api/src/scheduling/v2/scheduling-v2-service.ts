@@ -14,7 +14,7 @@ import type {
   ShiftPlanDTO,
 } from './dtos.js';
 import { hasScope } from '../../auth/rbac.js';
-import { requireDepartmentAccess, requireEmployeeAccess, requireWritablePeriod, SchedulingAuthError, requireSchedulingPermission } from './guard.js';
+import { requireDepartmentAccess, requireEmployeeAccess, requireWritablePeriod, SchedulingAuthError, requireSchedulingPermission, hasSchedulingViewScope } from './guard.js';
 import { SCHEDULING_PERMISSIONS } from './permissions.js';
 import { isEmployeeEligibleForJob } from './hr-eligibility-adapter.js';
 
@@ -53,16 +53,28 @@ export class SchedulingV2Service {
     propertyId: string,
     filters?: { start?: Date; end?: Date; status?: string }
   ): Promise<SchedulePeriodDTO[]> {
+    // Determine if user can see all periods (manager) or only published (employee)
+    const isManager = hasSchedulingViewScope(userContext);
+
+    const where: any = {
+      tenantId: userContext.tenantId,
+      propertyId,
+      ...(filters?.start && { startDate: { gte: filters.start } }),
+      ...(filters?.end && { endDate: { lte: filters.end } }),
+    };
+
+    // If explicit status filter provided by manager, use it
+    if (filters?.status) {
+      where.status = filters.status as 'DRAFT' | 'PUBLISHED' | 'LOCKED' | 'ARCHIVED';
+    } else if (!isManager) {
+      // Employees can only see PUBLISHED and LOCKED periods
+      where.status = {
+        in: ['PUBLISHED', 'LOCKED'],
+      };
+    }
+
     const periods = await this.prisma.wfmSchedulePeriod.findMany({
-      where: {
-        tenantId: userContext.tenantId,
-        propertyId,
-        ...(filters?.start && { startDate: { gte: filters.start } }),
-        ...(filters?.end && { endDate: { lte: filters.end } }),
-        ...(filters?.status && {
-          status: filters.status as 'DRAFT' | 'PUBLISHED' | 'LOCKED' | 'ARCHIVED',
-        }),
-      },
+      where,
       orderBy: [{ startDate: 'asc' }, { version: 'desc' }],
     });
 
@@ -246,9 +258,29 @@ export class SchedulingV2Service {
       end?: Date;
     }
   ): Promise<ShiftPlanDTO[]> {
-    // Check scheduling.view permission
-    if (!hasScope(userContext, SCHEDULING_PERMISSIONS.VIEW)) {
-      throw new Error('Forbidden: scheduling.view permission required');
+    // Determine if user is manager (has scheduling.view) or employee
+    const isManager = hasSchedulingViewScope(userContext);
+
+    // For employees, verify the schedule period is PUBLISHED or LOCKED
+    if (!isManager) {
+      const period = await this.prisma.wfmSchedulePeriod.findFirst({
+        where: {
+          id: schedulePeriodId,
+          tenantId: userContext.tenantId,
+          propertyId,
+        },
+      });
+
+      if (!period) {
+        throw new SchedulingAuthError('Schedule period not found', 404);
+      }
+
+      if (period.status === 'DRAFT' || period.status === 'ARCHIVED') {
+        throw new SchedulingAuthError(
+          `Cannot view shifts from ${period.status} schedule period`,
+          403
+        );
+      }
     }
 
     // Build filter conditions
@@ -258,13 +290,19 @@ export class SchedulingV2Service {
       schedulePeriodId,
     };
 
-    // Apply optional department filter if provided
+    // Apply optional department filter if provided (managers only)
     if (filters?.departmentId) {
+      if (!isManager) {
+        throw new SchedulingAuthError('Employees cannot filter by department', 403);
+      }
       where.departmentId = filters.departmentId;
     }
 
-    // Apply optional job role filter
+    // Apply optional job role filter (managers only)
     if (filters?.jobRoleId) {
+      if (!isManager) {
+        throw new SchedulingAuthError('Employees cannot filter by job role', 403);
+      }
       where.jobRoleId = filters.jobRoleId;
     }
 
@@ -280,6 +318,154 @@ export class SchedulingV2Service {
     }
 
     // Query with assignments
+    const shifts = await this.prisma.wfmShiftPlan.findMany({
+      where,
+      include: {
+        assignments: {
+          select: {
+            employeeId: true,
+          },
+        },
+      },
+      orderBy: {
+        startDateTime: 'asc',
+      },
+    });
+
+    // For employees, filter to only their assigned shifts
+    let result = shifts;
+    if (!isManager) {
+      result = shifts.filter((shift) =>
+        shift.assignments.some((assignment) => assignment.employeeId === userContext.userId)
+      );
+    }
+
+    return result.map((shift) => this.shiftToDTO(shift));
+  }
+
+  /**
+   * List open shifts for marketplace (employees and managers)
+   * @param userContext - Auth context with permissions and tenant ID
+   * @param query - Query object with propertyId, start, end, and optional filters
+   * @returns Array of open shifts the user can access
+   */
+  async listOpenShifts(
+    userContext: AuthorizationContext,
+    query: {
+      propertyId: string;
+      start: string; // ISO datetime
+      end: string; // ISO datetime
+      departmentId?: string;
+      jobRoleId?: string;
+      includeIneligible?: string; // 'true' or 'false'
+    }
+  ): Promise<ShiftPlanDTO[]> {
+    const isManager = hasSchedulingViewScope(userContext);
+    const includeIneligible = query.includeIneligible === 'true';
+
+    // Parse dates
+    const startDate = new Date(query.start);
+    const endDate = new Date(query.end);
+
+    // Build base where clause with tenant/property scoping
+    const where: any = {
+      tenantId: userContext.tenantId,
+      propertyId: query.propertyId,
+      isOpenShift: true,
+      startDateTime: {
+        gte: startDate,
+        lte: endDate,
+      },
+    };
+
+    // Apply department filter (managers only)
+    if (query.departmentId) {
+      if (!isManager) {
+        throw new SchedulingAuthError('Employees cannot filter by department', 403);
+      }
+      where.departmentId = query.departmentId;
+    }
+
+    // Apply job role filter (managers only)
+    if (query.jobRoleId) {
+      if (!isManager) {
+        throw new SchedulingAuthError('Employees cannot filter by job role', 403);
+      }
+      where.jobRoleId = query.jobRoleId;
+    }
+
+    // For employees, restrict to PUBLISHED/LOCKED periods
+    if (!isManager) {
+      // Join with schedule period and filter by status
+      const shifts = await this.prisma.wfmShiftPlan.findMany({
+        where,
+        include: {
+          assignments: {
+            select: {
+              employeeId: true,
+            },
+          },
+          period: {
+            select: {
+              status: true,
+            },
+          },
+        },
+        orderBy: {
+          startDateTime: 'asc',
+        },
+      });
+
+      // Filter to published/locked periods
+      let result = shifts.filter(
+        (shift) => shift.period?.status === 'PUBLISHED' || shift.period?.status === 'LOCKED'
+      );
+
+      // If includeIneligible is false (default), filter out ineligible shifts
+      if (!includeIneligible) {
+        result = await Promise.all(
+          result.map(async (shift) => {
+            // Check eligibility: employee must be eligible for job role
+            const isEligible = await isEmployeeEligibleForJob(
+              userContext,
+              {
+                propertyId: query.propertyId,
+                employeeId: userContext.userId,
+                jobRoleId: shift.jobRoleId,
+              },
+              this.prisma,
+              true // strict mode
+            );
+
+            if (!isEligible) {
+              return null;
+            }
+
+            // Check for overlap with existing assignments
+            const hasOverlap = await this.hasOverlapWithExistingAssignments(
+              userContext,
+              userContext.userId,
+              query.propertyId,
+              shift.startDateTime,
+              shift.endDateTime
+            );
+
+            if (hasOverlap) {
+              return null;
+            }
+
+            return shift;
+          })
+        );
+
+        // Filter out null values
+        result = result.filter((shift) => shift !== null);
+      }
+
+      return result.map((shift) => this.shiftToDTO(shift));
+    }
+
+    // For managers, query without period restriction
     const shifts = await this.prisma.wfmShiftPlan.findMany({
       where,
       include: {
@@ -1922,6 +2108,48 @@ export class SchedulingV2Service {
   }
 
   // ========== HELPER METHODS ==========
+
+  /**
+   * Check if employee has overlapping assignments with a candidate shift
+   * Returns true if there is OVERLAP, false if the shift is available (no overlap)
+   *
+   * @param userContext - Authorization context
+   * @param employeeId - Employee ID
+   * @param propertyId - Property ID
+   * @param startDateTime - Candidate shift start
+   * @param endDateTime - Candidate shift end
+   * @returns true if overlap exists, false otherwise
+   */
+  private async hasOverlapWithExistingAssignments(
+    userContext: AuthorizationContext,
+    employeeId: string,
+    propertyId: string,
+    startDateTime: Date,
+    endDateTime: Date
+  ): Promise<boolean> {
+    const overlappingShifts = await this.prisma.wfmShiftPlan.findMany({
+      where: {
+        tenantId: userContext.tenantId,
+        propertyId,
+        assignments: {
+          some: {
+            employeeId,
+          },
+        },
+        // Find shifts that overlap the candidate time window
+        AND: [
+          { startDateTime: { lt: endDateTime } },
+          { endDateTime: { gt: startDateTime } },
+        ],
+      },
+      select: {
+        id: true,
+      },
+      take: 1, // Only need to know if one exists
+    });
+
+    return overlappingShifts.length > 0;
+  }
 
   /**
    * Convert WfmShiftPlan to ShiftPlanDTO

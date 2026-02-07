@@ -361,3 +361,20 @@ export const AvailabilityCreateBodySchema = z
 export const AvailabilityDeleteQuerySchema = z.object({
   propertyId: z.string().describe('Property ID'),
 });
+
+/**
+ * List open shifts query validator
+ * Supports filtering open shifts by date range and department/job role
+ */
+export const OpenShiftsListQuerySchema = z.object({
+  propertyId: z.string().describe('Property ID (required)'),
+  start: z.string().datetime().describe('Start datetime filter (ISO datetime) (required)'),
+  end: z.string().datetime().describe('End datetime filter (ISO datetime) (required)'),
+  departmentId: z.string().optional().describe('Filter by department ID (managers only)'),
+  jobRoleId: z.string().optional().describe('Filter by job role ID (managers only)'),
+  includeIneligible: z
+    .enum(['true', 'false'])
+    .optional()
+    .default('false')
+    .describe('Include shifts employee is ineligible for (employees only)'),
+});

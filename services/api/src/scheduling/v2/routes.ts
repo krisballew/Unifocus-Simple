@@ -31,6 +31,7 @@ import {
   AvailabilityListQuerySchema,
   AvailabilityCreateBodySchema,
   AvailabilityDeleteQuerySchema,
+  OpenShiftsListQuerySchema,
 } from './validators.js';
 
 /**
@@ -374,6 +375,53 @@ export async function schedulingV2Routes(
       }
     }
   );
+
+  /**
+   * GET /api/scheduling/v2/open-shifts
+   * List open shifts for marketplace (employees and managers)
+   * Query params: propertyId (required), start (required), end (required), departmentId?, jobRoleId?, includeIneligible?
+   */
+  fastify.get('/open-shifts', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userContext = getAuthContext(request);
+      if (!userContext || !userContext.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      // Validate query params
+      const query = OpenShiftsListQuerySchema.parse(request.query);
+
+      const shifts = await service.listOpenShifts(userContext, query);
+
+      return reply.code(200).send({
+        success: true,
+        data: shifts,
+      });
+    } catch (error) {
+      if (error instanceof SchedulingAuthError) {
+        return reply.code(error.statusCode).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('validation')) {
+        return reply.code(400).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
 
   /**
    * POST /api/scheduling/v2/shifts

@@ -31,7 +31,7 @@
  * ```
  */
 
-import type { PrismaClient, WfmSchedulePeriod } from '@prisma/client';
+import type { Prisma, PrismaClient, WfmSchedulePeriod } from '@prisma/client';
 
 import type { AuthorizationContext } from '../../auth/rbac.js';
 import { hasScope } from '../../auth/rbac.js';
@@ -53,6 +53,16 @@ export class SchedulingAuthError extends Error {
     this.name = 'SchedulingAuthError';
     this.statusCode = statusCode;
   }
+}
+
+/**
+ * Check if user has scheduling view permission (manager-level visibility)
+ *
+ * @param userContext - Authorization context from getAuthContext()
+ * @returns true if user has scheduling.view permission, false otherwise
+ */
+export function hasSchedulingViewScope(userContext: AuthorizationContext): boolean {
+  return hasScope(userContext, SCHEDULING_PERMISSIONS.VIEW);
 }
 
 /**
@@ -132,7 +142,7 @@ export async function requireEmployeeAccess(
 export async function requireWritablePeriod(
   userContext: AuthorizationContext,
   schedulePeriodId: string,
-  prisma: PrismaClient
+  prisma: PrismaClient | Prisma.TransactionClient
 ): Promise<WfmSchedulePeriod> {
   // Load period with tenant scoping
   const period = await prisma.wfmSchedulePeriod.findFirst({

@@ -677,6 +677,7 @@ model WfmSwapRequest {
   managerUserId String?
   managerUser   User? @relation("WfmSwapRequestManager", fields: [managerUserId], references: [id], onDelete: SetNull)
   decisionAt DateTime?
+  notes      String?  @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
