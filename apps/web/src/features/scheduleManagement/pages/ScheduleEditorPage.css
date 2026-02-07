@@ -1,0 +1,33 @@
+.schedule-quick-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--uf-text-color);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.schedule-quick-filters__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--uf-mono-10);
+  border: 1px solid var(--uf-mono-20);
+  color: var(--uf-mono-90);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.schedule-quick-filters .button:focus-visible {
+  outline: 2px solid var(--uf-link-50);
+  outline-offset: 2px;
+}
+
+.schedule-quick-filters:focus-within {
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}

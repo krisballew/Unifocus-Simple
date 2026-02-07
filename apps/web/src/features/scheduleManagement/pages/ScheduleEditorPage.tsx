@@ -27,6 +27,7 @@ import { ShiftModal } from '../components/ShiftModal';
 import type { ShiftFormData } from '../components/ShiftModal';
 import { formatApiError } from '../utils/apiErrors';
 import { parseEditorQuery } from '../utils/editorQuery';
+import './ScheduleEditorPage.css';
 
 export function ScheduleEditorPage(): React.ReactElement {
   const { selectedTenantId, selectedPropertyId } = useSelection();
