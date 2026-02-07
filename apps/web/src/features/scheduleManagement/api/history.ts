@@ -3,7 +3,7 @@
  * Fetches schedule period lifecycle events (publish/lock)
  */
 
-import { apiClient } from '../../../services/api-client';
+import { getApiClient } from '../../../services/api-client';
 
 /**
  * Schedule event type
@@ -23,18 +23,14 @@ export async function getSchedulePeriodEvents(
   schedulePeriodId: string,
   propertyId: string
 ): Promise<ScheduleEvent[]> {
-  const response = await apiClient.get(
-    `/scheduling/v2/schedule-periods/${schedulePeriodId}/events`,
-    {
-      params: {
-        propertyId,
-      },
-    }
+  const client = getApiClient();
+  const response = await client.get<{ success: boolean; data: ScheduleEvent[] }>(
+    `/api/scheduling/v2/schedule-periods/${schedulePeriodId}/events?propertyId=${propertyId}`
   );
 
-  if (!response.data.success) {
-    throw new Error(response.data.message || 'Failed to fetch schedule events');
+  if (!response.success) {
+    throw new Error(response.message || 'Failed to fetch schedule events');
   }
 
-  return response.data.data || [];
+  return response.data || [];
 }
