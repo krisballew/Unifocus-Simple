@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 
 import type { AppConfig } from '../config.js';
+import { schedulingRoutes } from '../scheduling/routes.js';
 
 import { authRoutes } from './auth.js';
 import { complianceRoutes } from './compliance.js';
@@ -25,6 +26,7 @@ export async function registerRoutes(server: FastifyInstance, config: AppConfig)
   await server.register(userAdminRoutes, { prefix: '/api' });
   await server.register(employeeRoutes, { prefix: '/api' });
   await server.register(complianceRoutes, { prefix: '/api/compliance' });
+  await server.register(schedulingRoutes, { prefix: '/api/scheduling' });
   await server.register(async (srv) => tenantRoutes(srv, config));
   await server.register(taRoutes);
 
