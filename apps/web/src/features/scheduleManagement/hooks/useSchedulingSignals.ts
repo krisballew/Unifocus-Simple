@@ -15,6 +15,7 @@ import { getShifts } from '../api/shifts';
 import { queryKeys } from './useSchedulingSignals.keys';
 
 // Calculate date range for "next 7 days" in local timezone
+// Returns ISO 8601 datetime strings (required by backend validators)
 function getNext7DaysRange(): { start: string; end: string } {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -23,8 +24,8 @@ function getNext7DaysRange(): { start: string; end: string } {
   endDate.setDate(endDate.getDate() + 6); // +6 to get 7 days total (today through day+6)
   endDate.setHours(23, 59, 59, 999);
 
-  const start = today.toISOString().split('T')[0];
-  const end = endDate.toISOString().split('T')[0];
+  const start = today.toISOString();
+  const end = endDate.toISOString();
 
   return { start, end };
 }
