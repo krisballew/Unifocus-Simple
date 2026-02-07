@@ -1,6 +1,10 @@
+import { useQuery } from '@tanstack/react-query';
 import React, { useState } from 'react';
 
+import { getEmployees } from '../api/lookups';
+import type { EmployeeLookup } from '../api/lookups';
 import type { Shift } from '../api/shifts';
+import { formatEmployeeLabel } from '../utils/labels';
 
 export interface AssignEmployeesModalProps {
   shift: Shift;
@@ -17,15 +21,26 @@ export function AssignEmployeesModal({
   onUnassign,
   isLoading = false,
 }: AssignEmployeesModalProps): React.ReactElement {
-  const [employeeId, setEmployeeId] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showResults, setShowResults] = useState(false);
 
-  const handleAssign = () => {
-    if (!employeeId.trim()) {
-      alert('Please enter an employee ID');
-      return;
-    }
-    onAssign(employeeId.trim());
-    setEmployeeId('');
+  // Query employees when search query is at least 2 characters
+  const employeesQuery = useQuery({
+    queryKey: ['employees', shift.propertyId, shift.departmentId, searchQuery],
+    queryFn: () =>
+      getEmployees({
+        propertyId: shift.propertyId,
+        departmentId: shift.departmentId,
+        q: searchQuery,
+      }),
+    enabled: searchQuery.length >= 2,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+
+  const handleAssignEmployee = (employee: EmployeeLookup) => {
+    onAssign(employee.id);
+    setSearchQuery('');
+    setShowResults(false);
   };
 
   const handleUnassign = (empId: string) => {
@@ -70,35 +85,93 @@ export function AssignEmployeesModal({
           </div>
 
           <div className="form-group">
-            <label htmlFor="employee-id">Add Employee by ID</label>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <label htmlFor="employee-search">Search Employees</label>
+            <div style={{ position: 'relative' }}>
               <input
-                id="employee-id"
+                id="employee-search"
                 type="text"
                 className="form-control"
-                value={employeeId}
-                onChange={(e) => setEmployeeId(e.target.value)}
-                placeholder="Enter employee ID"
-                disabled={isLoading}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAssign();
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowResults(e.target.value.length >= 2);
+                }}
+                onFocus={() => {
+                  if (searchQuery.length >= 2) {
+                    setShowResults(true);
                   }
                 }}
+                placeholder="Type at least 2 characters to search..."
+                disabled={isLoading}
               />
-              <button
-                type="button"
-                className="button button--primary"
-                onClick={handleAssign}
-                disabled={isLoading || !employeeId.trim()}
-              >
-                Assign
-              </button>
+
+              {showResults && searchQuery.length >= 2 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    backgroundColor: '#fff',
+                    border: '1px solid #ddd',
+                    borderTop: 'none',
+                    borderRadius: '0 0 4px 4px',
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                    zIndex: 10,
+                  }}
+                >
+                  {employeesQuery.isLoading && (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: '#666' }}>
+                      Loading...
+                    </div>
+                  )}
+                  {employeesQuery.isError && (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: '#d32f2f' }}>
+                      Error loading employees
+                    </div>
+                  )}
+                  {employeesQuery.data && employeesQuery.data.length === 0 && (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: '#666' }}>
+                      No employees found
+                    </div>
+                  )}
+                  {employeesQuery.data && employeesQuery.data.length > 0 && (
+                    <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                      {employeesQuery.data.map((employee) => (
+                        <li key={employee.id}>
+                          <button
+                            type="button"
+                            onClick={() => handleAssignEmployee(employee)}
+                            disabled={isLoading}
+                            style={{
+                              width: '100%',
+                              padding: '0.75rem 1rem',
+                              textAlign: 'left',
+                              border: 'none',
+                              backgroundColor: 'transparent',
+                              cursor: 'pointer',
+                              borderBottom: '1px solid #f0f0f0',
+                              fontSize: '0.875rem',
+                            }}
+                            onMouseEnter={(e) => {
+                              (e.currentTarget as HTMLElement).style.backgroundColor = '#f5f5f5';
+                            }}
+                            onMouseLeave={(e) => {
+                              (e.currentTarget as HTMLElement).style.backgroundColor =
+                                'transparent';
+                            }}
+                          >
+                            {formatEmployeeLabel(employee)}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
-            <small className="text-muted">
-              TODO: Replace with employee search/selector with eligibility checks
-            </small>
+            <small className="text-muted">Search by name, email, or employee number</small>
           </div>
 
           <div style={{ marginTop: '1.5rem' }}>

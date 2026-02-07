@@ -51,4 +51,5 @@ export const SCHEDULING_PERMISSIONS = {
   PUBLISH: 'scheduling.publish',
   LOCK: 'scheduling.lock',
   VIEW: 'scheduling.view',
+  MANAGE_REQUESTS: 'scheduling.manage.requests',
 } as const;

@@ -1,5 +1,7 @@
+import { useQuery } from '@tanstack/react-query';
 import React, { useState } from 'react';
 
+import { getDepartments, getJobRoles } from '../api/lookups';
 import type { Shift } from '../api/shifts';
 
 export interface ShiftModalProps {
@@ -25,7 +27,7 @@ export interface ShiftFormData {
 export function ShiftModal({
   shift,
   selectedDate,
-  propertyId: _propertyId,
+  propertyId,
   schedulePeriodId: _schedulePeriodId,
   onClose,
   onSave,
@@ -52,6 +54,20 @@ export function ShiftModal({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Fetch departments for this property
+  const departmentsQuery = useQuery({
+    queryKey: ['departments', propertyId],
+    queryFn: () => getDepartments({ propertyId }),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Fetch job roles, optionally filtered by department
+  const jobRolesQuery = useQuery({
+    queryKey: ['jobRoles', propertyId, formData.departmentId],
+    queryFn: () => getJobRoles({ propertyId, departmentId: formData.departmentId || undefined }),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -176,38 +192,52 @@ export function ShiftModal({
 
             <div className="form-group">
               <label htmlFor="department-id">
-                Department ID <span className="text-required">*</span>
+                Department <span className="text-required">*</span>
               </label>
-              <input
+              <select
                 id="department-id"
-                type="text"
                 className={`form-control ${errors.departmentId ? 'error' : ''}`}
                 value={formData.departmentId}
-                onChange={(e) => handleChange('departmentId', e.target.value)}
-                placeholder="Enter department ID"
-                disabled={isLoading}
+                onChange={(e) => {
+                  handleChange('departmentId', e.target.value);
+                  // Clear job role when department changes
+                  setFormData((prev) => ({ ...prev, jobRoleId: '' }));
+                }}
+                disabled={isLoading || departmentsQuery.isLoading}
                 required
-              />
+              >
+                <option value="">Select a department</option>
+                {departmentsQuery.data?.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </option>
+                ))}
+              </select>
               {errors.departmentId && <small className="error-text">{errors.departmentId}</small>}
-              <small className="text-muted">TODO: Replace with department selector</small>
             </div>
 
             <div className="form-group">
               <label htmlFor="job-role-id">
-                Job Role ID <span className="text-required">*</span>
+                Job Role <span className="text-required">*</span>
               </label>
-              <input
+              <select
                 id="job-role-id"
-                type="text"
                 className={`form-control ${errors.jobRoleId ? 'error' : ''}`}
                 value={formData.jobRoleId}
                 onChange={(e) => handleChange('jobRoleId', e.target.value)}
-                placeholder="Enter job role ID"
-                disabled={isLoading}
+                disabled={isLoading || !formData.departmentId || jobRolesQuery.isLoading}
                 required
-              />
+              >
+                <option value="">
+                  {!formData.departmentId ? 'Select a department first' : 'Select a job role'}
+                </option>
+                {jobRolesQuery.data?.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.name}
+                  </option>
+                ))}
+              </select>
               {errors.jobRoleId && <small className="error-text">{errors.jobRoleId}</small>}
-              <small className="text-muted">TODO: Replace with job role selector</small>
             </div>
 
             <div className="form-group">

@@ -6,6 +6,7 @@ import { useSelection } from '../../../context/SelectionContext';
 import { useAuth } from '../../../hooks/useAuth';
 import { getSchedulePeriods } from '../../../services/api-client';
 import { hasPermission, SCHEDULING_PERMISSIONS } from '../../../utils/permissions';
+import { getDepartments, getJobRoles } from '../api/lookups';
 import {
   getShifts,
   createShift,
@@ -48,6 +49,23 @@ export function ScheduleEditorPage(): React.ReactElement {
         propertyId: selectedPropertyId!,
       }),
     enabled: Boolean(selectedTenantId && selectedPropertyId && canView),
+  });
+
+  // Fetch departments for filter
+  const departmentsQuery = useQuery({
+    queryKey: ['departments', selectedPropertyId],
+    queryFn: () => getDepartments({ propertyId: selectedPropertyId! }),
+    enabled: Boolean(selectedPropertyId && canView),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Fetch job roles for filter, optionally filtered by department
+  const jobRolesQuery = useQuery({
+    queryKey: ['jobRoles', selectedPropertyId, departmentFilter],
+    queryFn: () =>
+      getJobRoles({ propertyId: selectedPropertyId!, departmentId: departmentFilter || undefined }),
+    enabled: Boolean(selectedPropertyId && canView),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Auto-select most recent DRAFT period, or latest period
@@ -373,30 +391,46 @@ export function ScheduleEditorPage(): React.ReactElement {
               className="form-group"
               style={{ flex: '1 1 200px', minWidth: '200px', marginBottom: 0 }}
             >
-              <label htmlFor="department-filter">Department Filter</label>
-              <input
+              <label htmlFor="department-filter">Department</label>
+              <select
                 id="department-filter"
-                type="text"
                 className="form-control"
                 value={departmentFilter}
-                onChange={(e) => setDepartmentFilter(e.target.value)}
-                placeholder="Department ID (optional)"
-              />
+                onChange={(e) => {
+                  setDepartmentFilter(e.target.value);
+                  // Clear job role filter when department changes
+                  setJobRoleFilter('');
+                }}
+              >
+                <option value="">All Departments</option>
+                {departmentsQuery.isLoading && <option disabled>Loading...</option>}
+                {departmentsQuery.data?.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div
               className="form-group"
               style={{ flex: '1 1 200px', minWidth: '200px', marginBottom: 0 }}
             >
-              <label htmlFor="job-role-filter">Job Role Filter</label>
-              <input
+              <label htmlFor="job-role-filter">Job Role</label>
+              <select
                 id="job-role-filter"
-                type="text"
                 className="form-control"
                 value={jobRoleFilter}
                 onChange={(e) => setJobRoleFilter(e.target.value)}
-                placeholder="Job Role ID (optional)"
-              />
+              >
+                <option value="">All Job Roles</option>
+                {jobRolesQuery.isLoading && <option disabled>Loading...</option>}
+                {jobRolesQuery.data?.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </>
         )}

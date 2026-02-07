@@ -1,0 +1,155 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState } from 'react';
+
+import { approveRequest, denyRequest } from '../api/requests';
+import type { SchedulingRequest } from '../api/requests';
+
+import { DenyRequestModal } from './DenyRequestModal';
+import { RequestTypeBadge } from './RequestTypeBadge';
+
+export interface RequestsTableProps {
+  requests: SchedulingRequest[];
+  propertyId: string;
+  onRequestUpdated?: () => void;
+}
+
+export function RequestsTable({
+  requests,
+  propertyId,
+  onRequestUpdated,
+}: RequestsTableProps): React.ReactElement {
+  const queryClient = useQueryClient();
+  const [denyingRequestId, setDenyingRequestId] = useState<string | null>(null);
+
+  // Approve mutation
+  const approveMutation = useMutation({
+    mutationFn: (requestId: string) => approveRequest(requestId, { propertyId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['requests'] });
+      onRequestUpdated?.();
+    },
+  });
+
+  // Deny mutation
+  const denyMutation = useMutation({
+    mutationFn: ({ requestId, reason }: { requestId: string; reason?: string }) =>
+      denyRequest(requestId, { propertyId, reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['requests'] });
+      setDenyingRequestId(null);
+      onRequestUpdated?.();
+    },
+  });
+
+  const formatTime = (dateTimeStr: string): string => {
+    const date = new Date(dateTimeStr);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDate = (dateTimeStr: string): string => {
+    const date = new Date(dateTimeStr);
+    return date.toLocaleDateString();
+  };
+
+  const formatRequestor = (request: SchedulingRequest): string => {
+    if (request.requester) {
+      const name = `${request.requester.lastName}, ${request.requester.firstName}`;
+      if (request.requester.employeeNumber) {
+        return `${name} (${request.requester.employeeNumber})`;
+      }
+      return name;
+    }
+    return request.requesterId;
+  };
+
+  const formatEmployee = (request: SchedulingRequest): string => {
+    if (!request.toEmployee) return '—';
+    const name = `${request.toEmployee.lastName}, ${request.toEmployee.firstName}`;
+    if (request.toEmployee.employeeNumber) {
+      return `${name} (${request.toEmployee.employeeNumber})`;
+    }
+    return name;
+  };
+
+  return (
+    <>
+      <div className="page-table">
+        <div className="page-table__row page-table__header">
+          <div>Type</div>
+          <div>Date & Time</div>
+          <div>Department</div>
+          <div>Job Role</div>
+          <div>Requestor</div>
+          <div>Target Employee</div>
+          <div>Actions</div>
+        </div>
+
+        {requests.map((request) => {
+          const isProcessing = approveMutation.isPending || denyMutation.isPending;
+
+          return (
+            <div className="page-table__row" key={request.id}>
+              <div>
+                <RequestTypeBadge request={request} />
+              </div>
+
+              <div>
+                {request.shift && (
+                  <div>
+                    <div style={{ fontSize: '0.875rem' }}>
+                      {formatDate(request.shift.startDateTime)}
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#666' }}>
+                      {formatTime(request.shift.startDateTime)} -{' '}
+                      {formatTime(request.shift.endDateTime)}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>{request.shift?.department?.name || request.shift?.departmentId || '—'}</div>
+
+              <div>{request.shift?.jobRole?.name || request.shift?.jobRoleId || '—'}</div>
+
+              <div>{formatRequestor(request)}</div>
+
+              <div>{formatEmployee(request)}</div>
+
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="button button--small button--primary"
+                  onClick={() => approveMutation.mutate(request.id)}
+                  disabled={isProcessing}
+                  title="Approve this request"
+                >
+                  {approveMutation.isPending ? 'Approving...' : 'Approve'}
+                </button>
+                <button
+                  type="button"
+                  className="button button--small button--danger"
+                  onClick={() => setDenyingRequestId(request.id)}
+                  disabled={isProcessing}
+                  title="Deny this request"
+                >
+                  {denyMutation.isPending ? 'Denying...' : 'Deny'}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {denyingRequestId && (
+        <DenyRequestModal
+          requestId={denyingRequestId}
+          onClose={() => setDenyingRequestId(null)}
+          onDeny={(reason) => {
+            denyMutation.mutate({ requestId: denyingRequestId, reason });
+          }}
+          isLoading={denyMutation.isPending}
+        />
+      )}
+    </>
+  );
+}

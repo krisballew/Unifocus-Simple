@@ -6,9 +6,9 @@ import { LoadingSkeleton } from './components/LoadingSkeleton';
 import { LoginPage } from './components/LoginPage';
 import { I18nProvider } from './context/I18nContext';
 import { AvailabilityManagementPlaceholder } from './features/scheduleManagement/pages/AvailabilityManagementPlaceholder';
+import { RequestsPage } from './features/scheduleManagement/pages/RequestsPage';
 import { ScheduleEditorPage } from './features/scheduleManagement/pages/ScheduleEditorPage';
 import { SchedulePeriodsPage } from './features/scheduleManagement/pages/SchedulePeriodsPage';
-import { ScheduleRequestsPlaceholder } from './features/scheduleManagement/pages/ScheduleRequestsPlaceholder';
 import { EmployeesPage } from './pages/EmployeesPage';
 import { ExceptionsQueuePage } from './pages/ExceptionsQueuePage';
 import { HomePage } from './pages/HomePage';
@@ -85,11 +85,7 @@ function AppRoutes() {
         <Route
           path="schedule-management/requests"
           element={
-            FEATURE_SCHEDULING_V2 ? (
-              <ScheduleRequestsPlaceholder />
-            ) : (
-              <PlaceholderPage title="Schedule Requests" />
-            )
+            FEATURE_SCHEDULING_V2 ? <RequestsPage /> : <PlaceholderPage title="Schedule Requests" />
           }
         />
         <Route
