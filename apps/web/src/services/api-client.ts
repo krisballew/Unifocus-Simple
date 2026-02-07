@@ -784,7 +784,10 @@ export async function getSchedulePeriods(
     ...(params.start && { start: params.start }),
     ...(params.end && { end: params.end }),
   });
-  return client.get(`/api/scheduling/v2/schedule-periods?${queryParams.toString()}`);
+  const response = await client.get<{ success: boolean; data: SchedulePeriod[] }>(
+    `/api/scheduling/v2/schedule-periods?${queryParams.toString()}`
+  );
+  return response.data || [];
 }
 
 export async function createSchedulePeriod(
