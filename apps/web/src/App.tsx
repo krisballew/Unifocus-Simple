@@ -8,6 +8,7 @@ import { I18nProvider } from './context/I18nContext';
 import { AvailabilityPage } from './features/scheduleManagement/pages/AvailabilityPage';
 import { RequestsPage } from './features/scheduleManagement/pages/RequestsPage';
 import { ScheduleEditorPage } from './features/scheduleManagement/pages/ScheduleEditorPage';
+import { ScheduleHistoryPage } from './features/scheduleManagement/pages/ScheduleHistoryPage';
 import { SchedulePeriodsPage } from './features/scheduleManagement/pages/SchedulePeriodsPage';
 import { EmployeesPage } from './pages/EmployeesPage';
 import { ExceptionsQueuePage } from './pages/ExceptionsQueuePage';
@@ -96,6 +97,16 @@ function AppRoutes() {
               <AvailabilityPage />
             ) : (
               <PlaceholderPage title="Availability Management" />
+            )
+          }
+        />
+        <Route
+          path="schedule-management/history"
+          element={
+            FEATURE_SCHEDULING_V2 ? (
+              <ScheduleHistoryPage />
+            ) : (
+              <PlaceholderPage title="Schedule History" />
             )
           }
         />

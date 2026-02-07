@@ -228,6 +228,10 @@ function AppShellContent(): React.ReactElement {
         label: 'Employee Availability',
         path: '/schedule-management/availability',
       },
+      '/schedule-management/history': {
+        label: 'Schedule History',
+        path: '/schedule-management/history',
+      },
     };
 
     // Check if current path is a Schedule Management sub-page

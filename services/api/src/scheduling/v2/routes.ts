@@ -307,6 +307,58 @@ export async function schedulingV2Routes(
     }
   );
 
+  /**
+   * GET /api/scheduling/v2/schedule-periods/:id/events
+   * List schedule period lifecycle events (publish/lock)
+   * Query params: propertyId (required)
+   */
+  fastify.get(
+    '/schedule-periods/:id/events',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const userContext = getAuthContext(request);
+        if (!userContext || !userContext.userId) {
+          return reply.code(401).send({
+            success: false,
+            message: 'Unauthorized',
+          });
+        }
+
+        // Require scheduling.view permission
+        requireSchedulingPermission(userContext, SCHEDULING_PERMISSIONS.VIEW);
+
+        const { id } = request.params as { id: string };
+
+        const events = await service.listSchedulePeriodEvents(userContext, id);
+
+        return reply.code(200).send({
+          success: true,
+          data: events,
+        });
+      } catch (error) {
+        if (error instanceof SchedulingAuthError) {
+          return reply.code(error.statusCode).send({
+            success: false,
+            message: error.message,
+          });
+        }
+
+        if (error instanceof Error && error.message.includes('not found')) {
+          return reply.code(404).send({
+            success: false,
+            message: error.message,
+          });
+        }
+
+        fastify.log.error(error);
+        return reply.code(500).send({
+          success: false,
+          message: error instanceof Error ? error.message : 'Internal server error',
+        });
+      }
+    }
+  );
+
   // ========== SHIFT PLAN ROUTES ==========
 
   /**

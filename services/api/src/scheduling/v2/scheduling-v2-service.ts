@@ -237,6 +237,58 @@ export class SchedulingV2Service {
     return this.periodToDTO(updated);
   }
 
+  /**
+   * List schedule period lifecycle events (publish/lock)
+   * For MVP v1, returns publish events only
+   * @param userContext - Auth context with user ID and tenant ID
+   * @param schedulePeriodId - Schedule period ID to get events for
+   * @returns Array of schedule events in chronological order
+   */
+  async listSchedulePeriodEvents(
+    userContext: AuthorizationContext,
+    schedulePeriodId: string
+  ): Promise<any[]> {
+    // Verify the period exists and user has access to it
+    const period = await this.prisma.wfmSchedulePeriod.findFirst({
+      where: {
+        id: schedulePeriodId,
+        tenantId: userContext.tenantId,
+      },
+    });
+
+    if (!period) {
+      throw new Error(`Schedule period '${schedulePeriodId}' not found`);
+    }
+
+    // For MVP v1, query only publish events
+    // Lock events can be added in v2 with dedicated tracking
+    const publishEvents = await this.prisma.wfmPublishEvent.findMany({
+      where: {
+        schedulePeriodId,
+        tenantId: userContext.tenantId,
+      },
+      include: {
+        publishedByUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { publishedAt: 'asc' },
+    });
+
+    // Map to unified event format
+    return publishEvents.map((event) => ({
+      id: event.id,
+      type: 'PUBLISHED',
+      at: event.publishedAt.toISOString(),
+      byUserId: event.publishedByUserId,
+      byDisplayName: event.publishedByUser?.name || event.publishedByUser?.email || undefined,
+    }));
+  }
+
   // ========== SHIFT PLAN (V2) OPERATIONS ==========
 
   /**

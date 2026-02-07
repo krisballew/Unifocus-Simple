@@ -156,6 +156,18 @@ export interface PublishEventDTO {
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * Schedule Event (WFM V2) - Unified event type for publish/lock/etc
+ * For MVP v1, only contains mapped publish events
+ */
+export interface ScheduleEventDTO {
+  id: string;
+  type: 'PUBLISHED' | 'LOCKED'; // Event type
+  at: string; // ISO datetime when event occurred
+  byUserId: string; // User who triggered the event
+  byDisplayName?: string; // User display name (optional, populated if available)
+}
 /**
  * Shift Plan (WFM V2)
  * Represents a single shift in a schedule period

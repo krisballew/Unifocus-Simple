@@ -44,6 +44,13 @@ const SCHEDULE_FEATURES: FeatureCard[] = [
     path: '/schedule-management/availability',
     permission: SCHEDULING_PERMISSIONS.MANAGE_AVAILABILITY,
   },
+  {
+    id: 'history',
+    title: 'Schedule History',
+    description: 'View schedule period lifecycle events and audit trail',
+    icon: 'history',
+    path: '/schedule-management/history',
+  },
 ];
 
 function renderIcon(iconName: string): React.ReactElement {
@@ -55,6 +62,8 @@ function renderIcon(iconName: string): React.ReactElement {
       '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5.04-6.71l-2.75 3.54-2.96-3.83c-.37-.48-.09-1.02 .61-1.02 .36 0 .72 .2 .88 .53L10.5 13l1.62-2.16c.16-.33 .52-.53 .88-.53 .7 0 .98 .54 .61 1.02z"/></svg>',
     users:
       '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>',
+    history:
+      '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>',
   };
 
   const svgStr = iconSVGs[iconName] ?? iconSVGs['calendar'];
