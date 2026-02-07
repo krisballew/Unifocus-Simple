@@ -36,3 +36,7 @@ pnpm-debug.log*
 
 # OS
 Thumbs.db
+
+# Local build/test artifacts
+.tap/
+*.tsbuildinfo
