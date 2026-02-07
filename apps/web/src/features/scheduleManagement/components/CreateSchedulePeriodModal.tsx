@@ -23,10 +23,14 @@ export function CreateSchedulePeriodModal({
     e.preventDefault();
     if (!startDate || !endDate) return;
 
+    // Convert date strings to ISO datetime strings (start of day)
+    const startDateTime = new Date(startDate + 'T00:00:00.000Z').toISOString();
+    const endDateTime = new Date(endDate + 'T23:59:59.999Z').toISOString();
+
     onCreate({
       propertyId,
-      startDate,
-      endDate,
+      startDate: startDateTime,
+      endDate: endDateTime,
       name: name.trim() || undefined,
     });
   };
