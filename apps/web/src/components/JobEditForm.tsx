@@ -177,7 +177,7 @@ export function JobEditForm({
         jobDate: job.jobDate,
         endDate: job.endDate || '',
         jobStatus: job.jobStatus,
-        annualAmount: job.annualAmount || '',
+        annualAmount: (job.annualAmount as string) || '',
         payGroup: job.payGroup,
       });
     }

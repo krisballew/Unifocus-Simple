@@ -365,10 +365,11 @@ export async function employeeRoutes(server: FastifyInstance) {
             phone: payload.phone ?? existing.phone,
             hireDate: payload.hireDate ? new Date(payload.hireDate) : existing.hireDate,
             isActive: payload.isActive ?? existing.isActive,
-            employmentDetails:
-              payload.employmentStatus || payload.terminationDate || payload.terminationReason
-                ? updatedEmploymentDetails
-                : existing.employmentDetails,
+            employmentDetails: (payload.employmentStatus ||
+            payload.terminationDate ||
+            payload.terminationReason
+              ? updatedEmploymentDetails
+              : existing.employmentDetails) as Prisma.InputJsonValue,
           },
         });
 

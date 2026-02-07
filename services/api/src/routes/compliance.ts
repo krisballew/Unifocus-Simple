@@ -3,7 +3,7 @@
  * Endpoints for compiling, managing, and applying labor compliance rules
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type Prisma } from '@prisma/client';
 import { type FastifyInstance, type FastifyRequest, type FastifyReply } from 'fastify';
 import { z } from 'zod';
 
@@ -124,7 +124,7 @@ export async function complianceRoutes(fastify: FastifyInstance) {
         // Create the rule package in database
         const rulePackage = await prisma.rulePackage.create({
           data: {
-            tenantId: context.tenantId,
+            tenantId: context.tenantId!,
             name: name || `Rule Package ${new Date().toLocaleDateString()}`,
             version: 1,
             status: 'DRAFT',
@@ -138,9 +138,9 @@ export async function complianceRoutes(fastify: FastifyInstance) {
                   description: rule.description,
                   enabled: rule.enabled !== false,
                   severity: rule.severity,
-                  params: rule.params || {},
-                  citations: rule.citations,
-                  clarifications: rule.clarifications,
+                  params: (rule.params || {}) as Prisma.InputJsonValue,
+                  citations: (rule.citations || []) as Prisma.InputJsonValue,
+                  clarifications: (rule.clarifications || []) as Prisma.InputJsonValue,
                 })),
               },
             },
@@ -151,8 +151,8 @@ export async function complianceRoutes(fastify: FastifyInstance) {
         reply.code(201).send({
           success: true,
           rulePackageId: rulePackage.id,
-          rules: rulePackage.compiledRules,
-          message: `Successfully created rule package with ${rulePackage.compiledRules.length} rules`,
+          rules: (rulePackage as unknown as { compiledRules: unknown[] }).compiledRules,
+          message: `Successfully created rule package with ${(rulePackage as unknown as { compiledRules: unknown[] }).compiledRules.length} rules`,
         });
       } catch (error) {
         fastify.log.error(error);
@@ -218,7 +218,7 @@ export async function complianceRoutes(fastify: FastifyInstance) {
         // Publish the package (increment version, change status)
         const published = await prisma.rulePackage.create({
           data: {
-            tenantId: context.tenantId,
+            tenantId: context.tenantId!,
             propertyId: current.propertyId,
             name: current.name,
             version: current.version + 1,
@@ -240,9 +240,9 @@ export async function complianceRoutes(fastify: FastifyInstance) {
                       description: rule.description,
                       enabled: rule.enabled,
                       severity: rule.severity,
-                      params: rule.params,
-                      citations: rule.citations,
-                      clarifications: rule.clarifications,
+                      params: rule.params as Prisma.InputJsonValue,
+                      citations: rule.citations as Prisma.InputJsonValue,
+                      clarifications: rule.clarifications as Prisma.InputJsonValue,
                     }))
                   ),
               },
@@ -496,19 +496,19 @@ export async function complianceRoutes(fastify: FastifyInstance) {
           // Evaluate the rule package
           const evalResult = await rulesEngine.evaluate({
             rulePackageId: rulePackage.id,
-            compiledRules: rulePackage.compiledRules as CompiledRuleWithParams[],
+            compiledRules: rulePackage.compiledRules as unknown as CompiledRuleWithParams[],
             context: ruleContext,
           });
 
           // Store result in database
           const validationResult = await prisma.ruleValidationResult.create({
             data: {
-              tenantId: context.tenantId,
+              tenantId: context.tenantId!,
               rulePackageId: rulePackage.id,
               employeeId: employee.id,
               dateStart: startDate,
               dateEnd: endDate,
-              violations: evalResult.violations,
+              violations: evalResult.violations as unknown as Prisma.InputJsonValue,
               violationCount: evalResult.violations.length,
               hasErrors: evalResult.hasErrors,
               hasWarnings: evalResult.hasWarnings,

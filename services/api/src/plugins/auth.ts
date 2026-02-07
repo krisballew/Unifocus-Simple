@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type User } from '@prisma/client';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { jwtVerify, importSPKI } from 'jose';
 import NodeCache from 'node-cache';
@@ -43,7 +43,7 @@ async function getOrCreateDevUser(prisma: PrismaClient) {
     }
 
     // PRIORITIZE: First find any user with Platform Administrator role
-    let user: typeof adminRoleAssignment extends { user: infer U } ? U : null = null;
+    let user: User | null = null;
     const adminRoleAssignment = await prisma.userRoleAssignment.findFirst({
       where: {
         tenantId: tenant.id,
@@ -110,6 +110,11 @@ async function getOrCreateDevUser(prisma: PrismaClient) {
       }
     }
 
+    // Ensure we have a user at this point
+    if (!user) {
+      throw new Error('Failed to create or find a user for development mode');
+    }
+
     // Cache the IDs
     devTenantId = tenant.id;
     devUserId = user.id;
@@ -150,6 +155,11 @@ export async function registerAuthPlugin(
         const devUser = await getOrCreateDevUser(prisma);
         userId = devUser.userId;
         tenantId = devUser.tenantId;
+      }
+
+      // Ensure we have valid IDs at this point
+      if (!userId || !tenantId) {
+        throw new Error('Failed to obtain userId and tenantId for authentication');
       }
 
       // Fetch user's actual roles from database

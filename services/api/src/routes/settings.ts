@@ -751,19 +751,19 @@ export async function settingsRoutes(server: FastifyInstance) {
           });
         }
 
+        const updateData: Record<string, unknown> = {};
+        if (name) updateData.name = name.trim();
+        if (code !== undefined) updateData.code = code?.trim() ?? null;
+        if (costCenter !== undefined) updateData.costCenter = costCenter ?? null;
+        if (laborBudget !== undefined)
+          updateData.laborBudget = laborBudget ? BigInt(laborBudget) : null;
+        if (location !== undefined) updateData.location = location ?? null;
+        if (reportingGroupId !== undefined) updateData.reportingGroupId = reportingGroupId ?? null;
+        if (managerId !== undefined) updateData.managerId = managerId ?? null;
+
         const updated = await prisma.department.update({
           where: { id: departmentId },
-          data: {
-            ...(name && { name: name.trim() }),
-            ...(code !== undefined && { code: code?.trim() || null }),
-            ...(costCenter !== undefined && { costCenter: costCenter || null }),
-            ...(laborBudget !== undefined && {
-              laborBudget: laborBudget ? BigInt(laborBudget) : null,
-            }),
-            ...(location !== undefined && { location: location || null }),
-            ...(reportingGroupId !== undefined && { reportingGroupId: reportingGroupId || null }),
-            ...(managerId !== undefined && { managerId: managerId || null }),
-          },
+          data: updateData,
           include: { departmentCategory: true },
         });
 

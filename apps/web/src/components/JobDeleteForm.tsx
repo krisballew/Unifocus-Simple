@@ -51,7 +51,8 @@ export function JobDeleteForm({
 
       // Remove the job from the compensation record and update primary job if needed
       const updatedRecords = [
-        ...(employmentDetails.jobCompensationRecords || jobCompensationRecords),
+        ...((employmentDetails.jobCompensationRecords as typeof jobCompensationRecords) ||
+          jobCompensationRecords),
       ];
       updatedRecords[selectedEffectiveRangeIndex].jobs = updatedRecords[
         selectedEffectiveRangeIndex
@@ -167,7 +168,9 @@ export function JobDeleteForm({
       >
         Current primary job:{' '}
         <strong>
-          {jobs.find((j) => j.isPrimary)?.department} -{' '}
+          {(jobs.find((j) => j.isPrimary)?.department || '') +
+            ' - ' +
+            (jobs.find((j) => j.isPrimary)?.jobTitle || 'None')}
           {jobs.find((j) => j.isPrimary)?.jobTitle || 'None set'}
         </strong>
         {jobs.length > 1 && (

@@ -289,7 +289,8 @@ export function EmploymentDetailsModal({
           ) {
             setDetails((prev) => ({
               ...prev,
-              jobCompensationRecords: employmentDetails.jobCompensationRecords,
+              jobCompensationRecords:
+                employmentDetails.jobCompensationRecords as typeof prev.jobCompensationRecords,
             }));
           }
         } catch (error) {
@@ -393,10 +394,10 @@ export function EmploymentDetailsModal({
             setDetails((prev) => ({
               ...prev,
               // Core Record - Identifiers
-              externalEmployeeId: employmentDetails.externalEmployeeId || '',
-              legacyId: employmentDetails.legacyId || '',
-              badgeCardId: employmentDetails.badgeCardId || '',
-              biometricIdReference: employmentDetails.biometricIdReference || '',
+              externalEmployeeId: (employmentDetails.externalEmployeeId as string) || '',
+              legacyId: (employmentDetails.legacyId as string) || '',
+              badgeCardId: (employmentDetails.badgeCardId as string) || '',
+              biometricIdReference: (employmentDetails.biometricIdReference as string) || '',
 
               // Employment Relationship
               employmentType: employmentDetails.employmentType || 'full-time',
@@ -807,7 +808,7 @@ export function EmploymentDetailsModal({
                       onChange={(e) =>
                         setDetails((prev) => ({
                           ...prev,
-                          employmentType: e.target.value,
+                          employmentType: e.target.value as typeof prev.employmentType,
                         }))
                       }
                     >
@@ -827,7 +828,7 @@ export function EmploymentDetailsModal({
                       onChange={(e) =>
                         setDetails((prev) => ({
                           ...prev,
-                          workerClassification: e.target.value,
+                          workerClassification: e.target.value as typeof prev.workerClassification,
                         }))
                       }
                     >
@@ -855,7 +856,7 @@ export function EmploymentDetailsModal({
                       onChange={(e) =>
                         setDetails((prev) => ({
                           ...prev,
-                          unionStatus: e.target.value,
+                          unionStatus: e.target.value as typeof prev.unionStatus,
                         }))
                       }
                     >
@@ -884,7 +885,7 @@ export function EmploymentDetailsModal({
                       onChange={(e) =>
                         setDetails((prev) => ({
                           ...prev,
-                          employmentCategory: e.target.value,
+                          employmentCategory: e.target.value as typeof prev.employmentCategory,
                         }))
                       }
                     >
@@ -1233,7 +1234,8 @@ export function EmploymentDetailsModal({
                       onChange={(e) =>
                         setDetails((prev) => ({
                           ...prev,
-                          employmentRecordStatus: e.target.value,
+                          employmentRecordStatus: e.target
+                            .value as typeof prev.employmentRecordStatus,
                         }))
                       }
                     >
