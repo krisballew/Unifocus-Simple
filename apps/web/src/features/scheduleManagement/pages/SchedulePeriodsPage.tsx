@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { LoadingSkeleton } from '../../../components/LoadingSkeleton';
 import { useSelection } from '../../../context/SelectionContext';
 import { useAuth } from '../../../hooks/useAuth';
+import type { SchedulePeriod } from '../../../services/api-client';
 import {
   createSchedulePeriod,
   getSchedulePeriods,
@@ -11,6 +12,8 @@ import {
   publishSchedulePeriod,
 } from '../../../services/api-client';
 import { hasPermission, SCHEDULING_PERMISSIONS } from '../../../utils/permissions';
+import { ConfirmLockModal } from '../components/ConfirmLockModal';
+import { ConfirmPublishModal } from '../components/ConfirmPublishModal';
 import { CreateSchedulePeriodModal } from '../components/CreateSchedulePeriodModal';
 import { SchedulePeriodList } from '../components/SchedulePeriodList';
 import { formatApiError } from '../utils/apiErrors';
@@ -19,6 +22,8 @@ export function SchedulePeriodsPage(): React.ReactElement {
   const { selectedTenantId, selectedPropertyId } = useSelection();
   const { user } = useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [publishingPeriod, setPublishingPeriod] = useState<SchedulePeriod | null>(null);
+  const [lockingPeriod, setLockingPeriod] = useState<SchedulePeriod | null>(null);
   const queryClient = useQueryClient();
 
   // Permission checks
@@ -50,6 +55,7 @@ export function SchedulePeriodsPage(): React.ReactElement {
     mutationFn: (id: string) => publishSchedulePeriod({ id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedulePeriods'] });
+      setPublishingPeriod(null);
     },
     onError: (error) => {
       alert(`Failed to publish schedule: ${formatApiError(error)}`);
@@ -60,6 +66,7 @@ export function SchedulePeriodsPage(): React.ReactElement {
     mutationFn: (id: string) => lockSchedulePeriod({ id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedulePeriods'] });
+      setLockingPeriod(null);
     },
     onError: (error) => {
       alert(`Failed to lock schedule period: ${formatApiError(error)}`);
@@ -112,8 +119,8 @@ export function SchedulePeriodsPage(): React.ReactElement {
 
       <SchedulePeriodList
         periods={periods}
-        onPublish={(id) => publishMutation.mutate(id)}
-        onLock={(id) => lockMutation.mutate(id)}
+        onPublish={(period) => setPublishingPeriod(period)}
+        onLock={(period) => setLockingPeriod(period)}
         isLoading={isLoading}
         canPublish={canPublish}
         canLock={canLock}
@@ -125,6 +132,26 @@ export function SchedulePeriodsPage(): React.ReactElement {
           onClose={() => setShowCreateModal(false)}
           onCreate={(params) => createMutation.mutate(params)}
           isLoading={createMutation.isPending}
+        />
+      )}
+
+      {publishingPeriod && selectedPropertyId && (
+        <ConfirmPublishModal
+          period={publishingPeriod}
+          propertyId={selectedPropertyId}
+          onConfirm={() => publishMutation.mutate(publishingPeriod.id)}
+          onCancel={() => setPublishingPeriod(null)}
+          isLoading={publishMutation.isPending}
+        />
+      )}
+
+      {lockingPeriod && selectedPropertyId && (
+        <ConfirmLockModal
+          period={lockingPeriod}
+          propertyId={selectedPropertyId}
+          onConfirm={() => lockMutation.mutate(lockingPeriod.id)}
+          onCancel={() => setLockingPeriod(null)}
+          isLoading={lockMutation.isPending}
         />
       )}
     </div>

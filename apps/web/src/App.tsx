@@ -19,6 +19,7 @@ import { OrgStructurePage } from './pages/OrgStructurePage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { PropertiesPage } from './pages/PropertiesPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { ScheduleManagementHub } from './pages/ScheduleManagementHub';
 import { SettingsPage } from './pages/SettingsPage';
 import { TimecardPage } from './pages/TimecardPage';
 import { TimeClockPage } from './pages/TimeClockPage';
@@ -56,7 +57,7 @@ function AppRoutes() {
           path="schedule-management"
           element={
             FEATURE_SCHEDULING_V2 ? (
-              <SchedulePeriodsPage />
+              <ScheduleManagementHub />
             ) : (
               <PlaceholderPage title="Schedule Management" />
             )

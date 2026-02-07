@@ -116,6 +116,35 @@ export function ScheduleEditorPage(): React.ReactElement {
     return days;
   }, [selectedPeriod]);
 
+  const selectedDayIndex = periodDays.findIndex((day) => day === selectedDate);
+  const canPrevDay = selectedDayIndex > 0;
+  const canNextDay = selectedDayIndex >= 0 && selectedDayIndex < periodDays.length - 1;
+
+  const handlePrevDay = () => {
+    if (!canPrevDay) return;
+    setSelectedDate(periodDays[selectedDayIndex - 1]);
+  };
+
+  const handleNextDay = () => {
+    if (!canNextDay) return;
+    setSelectedDate(periodDays[selectedDayIndex + 1]);
+  };
+
+  const handleToday = () => {
+    const todayIso = new Date().toISOString().split('T')[0];
+    if (periodDays.includes(todayIso)) {
+      setSelectedDate(todayIso);
+      return;
+    }
+    if (periodDays.length > 0) {
+      setSelectedDate(periodDays[0]);
+    }
+  };
+
+  const periodLabel = selectedPeriod
+    ? `${new Date(selectedPeriod.startDate).toLocaleDateString()} - ${new Date(selectedPeriod.endDate).toLocaleDateString()}`
+    : '';
+
   // Fetch shifts for selected period and date
   const shiftsQuery = useQuery({
     queryKey: [
@@ -513,13 +542,39 @@ export function ScheduleEditorPage(): React.ReactElement {
   }
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <div>
-          <h2>Schedule Editor</h2>
-          <p>Create and manage shift schedules.</p>
+    <div className="page schedule-editor">
+      <div className="schedule-toolbar">
+        <div className="schedule-toolbar__left">
+          <div className="schedule-title">
+            <h2>Schedule Editor</h2>
+            <p>{periodLabel || 'Create and manage shift schedules.'}</p>
+          </div>
+          <div className="schedule-date-nav">
+            <button
+              type="button"
+              className="button button--secondary"
+              onClick={handlePrevDay}
+              disabled={!canPrevDay}
+              aria-label="Previous day"
+            >
+              ‹
+            </button>
+            <div className="schedule-date-range">{periodLabel || 'Select a period'}</div>
+            <button
+              type="button"
+              className="button button--secondary"
+              onClick={handleNextDay}
+              disabled={!canNextDay}
+              aria-label="Next day"
+            >
+              ›
+            </button>
+            <button type="button" className="button button--secondary" onClick={handleToday}>
+              Today
+            </button>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="schedule-toolbar__right">
           <button
             type="button"
             className="button button--secondary"
@@ -558,19 +613,8 @@ export function ScheduleEditorPage(): React.ReactElement {
         </div>
       </div>
 
-      <div
-        style={{
-          marginBottom: '1.5rem',
-          display: 'flex',
-          gap: '1rem',
-          flexWrap: 'wrap',
-          alignItems: 'flex-end',
-        }}
-      >
-        <div
-          className="form-group"
-          style={{ flex: '1 1 200px', minWidth: '200px', marginBottom: 0 }}
-        >
+      <div className="schedule-controls">
+        <div className="form-group">
           <label htmlFor="period-selector">Schedule Period</label>
           <select
             id="period-selector"
@@ -598,10 +642,7 @@ export function ScheduleEditorPage(): React.ReactElement {
 
         {canView && (
           <>
-            <div
-              className="form-group"
-              style={{ flex: '1 1 200px', minWidth: '200px', marginBottom: 0 }}
-            >
+            <div className="form-group">
               <label htmlFor="department-filter">Department</label>
               <select
                 id="department-filter"
@@ -623,10 +664,7 @@ export function ScheduleEditorPage(): React.ReactElement {
               </select>
             </div>
 
-            <div
-              className="form-group"
-              style={{ flex: '1 1 200px', minWidth: '200px', marginBottom: 0 }}
-            >
+            <div className="form-group">
               <label htmlFor="job-role-filter">Job Role</label>
               <select
                 id="job-role-filter"
@@ -648,28 +686,26 @@ export function ScheduleEditorPage(): React.ReactElement {
       </div>
 
       {selectedPeriod && periodDays.length > 0 && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {periodDays.map((day) => {
-              const date = new Date(day);
-              const isSelected = day === selectedDate;
-              return (
-                <button
-                  key={day}
-                  type="button"
-                  className={`button ${isSelected ? 'button--primary' : 'button--secondary'}`}
-                  onClick={() => setSelectedDate(day)}
-                  style={{ minWidth: '120px' }}
-                >
-                  {date.toLocaleDateString([], {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                </button>
-              );
-            })}
-          </div>
+        <div className="schedule-day-strip">
+          {periodDays.map((day) => {
+            const date = new Date(day);
+            const isSelected = day === selectedDate;
+            return (
+              <button
+                key={day}
+                type="button"
+                className={`schedule-day ${isSelected ? 'schedule-day--active' : ''}`}
+                onClick={() => setSelectedDate(day)}
+              >
+                <span className="schedule-day__weekday">
+                  {date.toLocaleDateString([], { weekday: 'short' })}
+                </span>
+                <span className="schedule-day__date">
+                  {date.toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
 

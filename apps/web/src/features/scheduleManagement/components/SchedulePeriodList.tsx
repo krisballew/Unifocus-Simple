@@ -6,8 +6,8 @@ import { ScheduleStatusBadge } from './ScheduleStatusBadge';
 
 export interface SchedulePeriodListProps {
   periods: SchedulePeriod[];
-  onPublish: (periodId: string) => void;
-  onLock: (periodId: string) => void;
+  onPublish: (period: SchedulePeriod) => void;
+  onLock: (period: SchedulePeriod) => void;
   isLoading?: boolean;
   canPublish?: boolean;
   canLock?: boolean;
@@ -64,7 +64,7 @@ export function SchedulePeriodList({
               <button
                 type="button"
                 className="button button--small"
-                onClick={() => onPublish(period.id)}
+                onClick={() => onPublish(period)}
                 disabled={isLoading || !canPublish}
                 title={!canPublish ? 'You do not have permission to publish schedule periods' : ''}
               >
@@ -75,7 +75,7 @@ export function SchedulePeriodList({
               <button
                 type="button"
                 className="button button--small"
-                onClick={() => onLock(period.id)}
+                onClick={() => onLock(period)}
                 disabled={isLoading || !canLock}
                 title={!canLock ? 'You do not have permission to lock schedule periods' : ''}
                 style={{ marginLeft: '0.5rem' }}
