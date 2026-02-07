@@ -8,10 +8,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 import { getAuthContext } from '../../auth/rbac.js';
 
-import {
-  requireSchedulingPermission,
-  SchedulingAuthError,
-} from './guard.js';
+import { requireSchedulingPermission, SchedulingAuthError } from './guard.js';
 import { SCHEDULING_PERMISSIONS } from './permissions.js';
 import { SchedulingV2Service } from './scheduling-v2-service.js';
 import {
@@ -19,6 +16,16 @@ import {
   CreateSchedulePeriodBodySchema,
   PublishSchedulePeriodBodySchema,
   LockSchedulePeriodBodySchema,
+  ListShiftsQuerySchema,
+  CreateShiftBodySchema,
+  UpdateShiftBodySchema,
+  DeleteShiftQuerySchema,
+  AssignShiftBodySchema,
+  UnassignShiftBodySchema,
+  ClaimOpenShiftBodySchema,
+  ListRequestsQuerySchema,
+  ApproveRequestBodySchema,
+  DenyRequestBodySchema,
 } from './validators.js';
 
 /**
@@ -138,7 +145,15 @@ export async function schedulingV2Routes(
         });
       }
 
-      if (error instanceof Error && error.message.includes('validation')) {
+      // Handle validation and business logic errors as 400
+      if (
+        error instanceof Error &&
+        (error.message.includes('validation') ||
+          error.message.includes('Invalid') ||
+          error.message.includes('must be') ||
+          error.message.includes('startDate') ||
+          error.message.includes('endDate'))
+      ) {
         return reply.code(400).send({
           success: false,
           message: error.message,
@@ -206,6 +221,23 @@ export async function schedulingV2Routes(
           });
         }
 
+        // Handle validation and business logic errors as 400
+        if (
+          error instanceof Error &&
+          (error.message.includes('locked') ||
+            error.message.includes('LOCKED') ||
+            error.message.includes('Cannot') ||
+            error.message.includes('Forbidden') ||
+            error.message.includes('validation') ||
+            error.message.includes('Invalid') ||
+            error.message.includes('must be'))
+        ) {
+          return reply.code(400).send({
+            success: false,
+            message: error.message,
+          });
+        }
+
         fastify.log.error(error);
         return reply.code(500).send({
           success: false,
@@ -268,6 +300,638 @@ export async function schedulingV2Routes(
       }
     }
   );
+
+  // ========== SHIFT PLAN ROUTES ==========
+
+  /**
+   * GET /api/scheduling/v2/schedule-periods/:id/shifts
+   * List shifts for a schedule period
+   * Query params: propertyId (required), departmentId?, jobRoleId?, start?, end?
+   */
+  fastify.get(
+    '/schedule-periods/:id/shifts',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const userContext = getAuthContext(request);
+        if (!userContext || !userContext.userId) {
+          return reply.code(401).send({
+            success: false,
+            message: 'Unauthorized',
+          });
+        }
+
+        const { id } = request.params as { id: string };
+
+        // Validate query params
+        const query = ListShiftsQuerySchema.parse(request.query);
+
+        // Parse date filters
+        const filters: { start?: Date; end?: Date; departmentId?: string; jobRoleId?: string } = {};
+        if (query.start) {
+          filters.start = new Date(query.start);
+        }
+        if (query.end) {
+          filters.end = new Date(query.end);
+        }
+        if (query.departmentId) {
+          filters.departmentId = query.departmentId;
+        }
+        if (query.jobRoleId) {
+          filters.jobRoleId = query.jobRoleId;
+        }
+
+        const shifts = await service.listShifts(userContext, id, query.propertyId, filters);
+
+        return reply.code(200).send({
+          success: true,
+          data: shifts,
+        });
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('Forbidden')) {
+          return reply.code(403).send({
+            success: false,
+            message: error.message,
+          });
+        }
+
+        if (error instanceof Error && error.message.includes('validation')) {
+          return reply.code(400).send({
+            success: false,
+            message: error.message,
+          });
+        }
+
+        fastify.log.error(error);
+        return reply.code(500).send({
+          success: false,
+          message: error instanceof Error ? error.message : 'Internal server error',
+        });
+      }
+    }
+  );
+
+  /**
+   * POST /api/scheduling/v2/shifts
+   * Create a new shift
+   * Body: schedulePeriodId, propertyId, departmentId, jobRoleId, startDateTime, endDateTime, breakMinutes?, isOpenShift?, notes?
+   */
+  fastify.post('/shifts', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userContext = getAuthContext(request);
+      if (!userContext || !userContext.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      // Validate request body
+      const body = CreateShiftBodySchema.parse(request.body);
+
+      const shift = await service.createShift(userContext, body);
+
+      return reply.code(201).send({
+        success: true,
+        data: shift,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Forbidden')) {
+        return reply.code(403).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.code(404).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('Validation')) {
+        return reply.code(400).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('validation')) {
+        return reply.code(400).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
+
+  /**
+   * PATCH /api/scheduling/v2/shifts/:shiftId
+   * Update a shift
+   * Body: propertyId, departmentId?, jobRoleId?, startDateTime?, endDateTime?, breakMinutes?, isOpenShift?, notes?
+   */
+  fastify.patch('/shifts/:shiftId', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userContext = getAuthContext(request);
+      if (!userContext || !userContext.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      const { shiftId } = request.params as { shiftId: string };
+
+      // Validate request body
+      const body = UpdateShiftBodySchema.parse(request.body);
+
+      const shift = await service.updateShift(userContext, shiftId, body);
+
+      return reply.code(200).send({
+        success: true,
+        data: shift,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Forbidden')) {
+        return reply.code(403).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.code(404).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('Validation')) {
+        return reply.code(400).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('validation')) {
+        return reply.code(400).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
+
+  /**
+   * DELETE /api/scheduling/v2/shifts/:shiftId
+   * Delete a shift
+   * Query params: propertyId (required)
+   */
+  fastify.delete('/shifts/:shiftId', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userContext = getAuthContext(request);
+      if (!userContext || !userContext.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      const { shiftId } = request.params as { shiftId: string };
+
+      // Validate query params
+      const query = DeleteShiftQuerySchema.parse(request.query);
+
+      await service.deleteShift(userContext, shiftId, query.propertyId);
+
+      return reply.code(204).send();
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Forbidden')) {
+        return reply.code(403).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.code(404).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('validation')) {
+        return reply.code(400).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
+
+  // ========== SHIFT ASSIGNMENT ROUTES ==========
+
+  /**
+   * POST /api/scheduling/v2/shifts/:shiftId/assign
+   * Assign an employee to a shift
+   */
+  fastify.post('/shifts/:shiftId/assign', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userContext = getAuthContext(request);
+      if (!userContext || !userContext.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      const { shiftId } = request.params as { shiftId: string };
+
+      // Validate body
+      const body = AssignShiftBodySchema.parse(request.body);
+
+      const shift = await service.assignEmployeeToShift(userContext, shiftId, body);
+
+      return reply.code(200).send({
+        success: true,
+        data: shift,
+      });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        'status' in error &&
+        (error as { status: number }).status === 409
+      ) {
+        return reply.code(409).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('Forbidden')) {
+        return reply.code(403).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.code(404).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('validation')) {
+        return reply.code(400).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
+
+  /**
+   * POST /api/scheduling/v2/shifts/:shiftId/unassign
+   * Unassign an employee from a shift
+   */
+  fastify.post(
+    '/shifts/:shiftId/unassign',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const userContext = getAuthContext(request);
+        if (!userContext || !userContext.userId) {
+          return reply.code(401).send({
+            success: false,
+            message: 'Unauthorized',
+          });
+        }
+
+        const { shiftId } = request.params as { shiftId: string };
+
+        // Validate body
+        const body = UnassignShiftBodySchema.parse(request.body);
+
+        const shift = await service.unassignEmployeeFromShift(userContext, shiftId, body);
+
+        return reply.code(200).send({
+          success: true,
+          data: shift,
+        });
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('Forbidden')) {
+          return reply.code(403).send({
+            success: false,
+            message: error.message,
+          });
+        }
+
+        if (error instanceof Error && error.message.includes('not found')) {
+          return reply.code(404).send({
+            success: false,
+            message: error.message,
+          });
+        }
+
+        if (error instanceof Error && error.message.includes('validation')) {
+          return reply.code(400).send({
+            success: false,
+            message: error.message,
+          });
+        }
+
+        fastify.log.error(error);
+        return reply.code(500).send({
+          success: false,
+          message: error instanceof Error ? error.message : 'Internal server error',
+        });
+      }
+    }
+  );
+
+  // ========== OPEN SHIFT CLAIM ROUTES ==========
+
+  /**
+   * POST /api/scheduling/v2/open-shifts/:shiftId/claim
+   * Employee claims an open shift
+   */
+  fastify.post(
+    '/open-shifts/:shiftId/claim',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const userContext = getAuthContext(request);
+        if (!userContext || !userContext.userId) {
+          return reply.code(401).send({
+            success: false,
+            message: 'Unauthorized',
+          });
+        }
+
+        const { shiftId } = request.params as { shiftId: string };
+
+        // Validate body
+        const body = ClaimOpenShiftBodySchema.parse(request.body);
+
+        const claimRequest = await service.claimOpenShift(userContext, shiftId, body);
+
+        return reply.code(201).send({
+          success: true,
+          data: claimRequest,
+        });
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          'status' in error &&
+          (error as { status: number }).status === 409
+        ) {
+          return reply.code(409).send({
+            success: false,
+            message: error.message,
+          });
+        }
+
+        if (
+          error instanceof Error &&
+          'status' in error &&
+          (error as { status: number }).status === 400
+        ) {
+          return reply.code(400).send({
+            success: false,
+            message: error.message,
+          });
+        }
+
+        if (error instanceof Error && error.message.includes('Forbidden')) {
+          return reply.code(403).send({
+            success: false,
+            message: error.message,
+          });
+        }
+
+        if (error instanceof Error && error.message.includes('not found')) {
+          return reply.code(404).send({
+            success: false,
+            message: error.message,
+          });
+        }
+
+        if (error instanceof Error && error.message.includes('validation')) {
+          return reply.code(400).send({
+            success: false,
+            message: error.message,
+          });
+        }
+
+        fastify.log.error(error);
+        return reply.code(500).send({
+          success: false,
+          message: error instanceof Error ? error.message : 'Internal server error',
+        });
+      }
+    }
+  );
+
+  /**
+   * GET /api/scheduling/v2/requests
+   * List scheduling requests (manager view)
+   */
+  fastify.get('/requests', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userContext = getAuthContext(request);
+      if (!userContext || !userContext.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      // Validate query params
+      const query = ListRequestsQuerySchema.parse(request.query);
+
+      const requests = await service.listRequests(userContext, query);
+
+      return reply.code(200).send({
+        success: true,
+        data: requests,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Forbidden')) {
+        return reply.code(403).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('validation')) {
+        return reply.code(400).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
+
+  /**
+   * POST /api/scheduling/v2/requests/:id/approve
+   * Approve a scheduling request (manager action)
+   */
+  fastify.post('/requests/:id/approve', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userContext = getAuthContext(request);
+      if (!userContext || !userContext.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      const { id } = request.params as { id: string };
+
+      // Validate body
+      const body = ApproveRequestBodySchema.parse(request.body);
+
+      const result = await service.approveRequest(userContext, id, body);
+
+      return reply.code(200).send({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        'status' in error &&
+        (error as { status: number }).status === 409
+      ) {
+        return reply.code(409).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('Forbidden')) {
+        return reply.code(403).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.code(404).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('validation')) {
+        return reply.code(400).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
+
+  /**
+   * POST /api/scheduling/v2/requests/:id/deny
+   * Deny a scheduling request (manager action)
+   */
+  fastify.post('/requests/:id/deny', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userContext = getAuthContext(request);
+      if (!userContext || !userContext.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      const { id } = request.params as { id: string };
+
+      // Validate body
+      const body = DenyRequestBodySchema.parse(request.body);
+
+      const result = await service.denyRequest(userContext, id, body);
+
+      return reply.code(200).send({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        'status' in error &&
+        (error as { status: number }).status === 409
+      ) {
+        return reply.code(409).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('Forbidden')) {
+        return reply.code(403).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.code(404).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('validation')) {
+        return reply.code(400).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
 
   // Placeholder health check
   fastify.get('/health', async () => ({
