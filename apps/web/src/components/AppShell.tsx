@@ -31,7 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Home', path: '/', icon: 'home', fullLabel: 'Home' },
   {
     label: 'Schedule Management',
-    path: '/schedules',
+    path: '/schedule-management',
     roles: ['Admin', 'Manager'],
     icon: 'calendar',
     fullLabel: 'Schedule Management',

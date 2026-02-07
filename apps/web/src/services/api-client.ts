@@ -730,3 +730,82 @@ export async function clarifyRule(params: {
   const client = getApiClient();
   return client.post('/api/compliance/clarify', params);
 }
+
+// ========== Scheduling V2 ==========
+
+export type ScheduleStatus = 'DRAFT' | 'PUBLISHED' | 'LOCKED';
+
+export interface SchedulePeriod {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  startDate: string; // ISO date string
+  endDate: string; // ISO date string
+  status: ScheduleStatus;
+  name?: string | null;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+  publishedAt?: string | null;
+  publishedBy?: string | null;
+  publishNotes?: string | null;
+  lockedAt?: string | null;
+  lockedBy?: string | null;
+}
+
+export interface CreateSchedulePeriodParams {
+  propertyId: string;
+  startDate: string; // ISO date string (YYYY-MM-DD)
+  endDate: string; // ISO date string (YYYY-MM-DD)
+  name?: string;
+}
+
+export interface PublishSchedulePeriodParams {
+  id: string;
+  notes?: string;
+}
+
+export interface LockSchedulePeriodParams {
+  id: string;
+}
+
+export interface GetSchedulePeriodsParams {
+  propertyId: string;
+  start?: string; // ISO date string
+  end?: string; // ISO date string
+}
+
+export async function getSchedulePeriods(
+  params: GetSchedulePeriodsParams
+): Promise<SchedulePeriod[]> {
+  const client = getApiClient();
+  const queryParams = new URLSearchParams({
+    propertyId: params.propertyId,
+    ...(params.start && { start: params.start }),
+    ...(params.end && { end: params.end }),
+  });
+  return client.get(`/api/scheduling/v2/periods?${queryParams.toString()}`);
+}
+
+export async function createSchedulePeriod(
+  params: CreateSchedulePeriodParams
+): Promise<SchedulePeriod> {
+  const client = getApiClient();
+  return client.post('/api/scheduling/v2/periods', params);
+}
+
+export async function publishSchedulePeriod(
+  params: PublishSchedulePeriodParams
+): Promise<SchedulePeriod> {
+  const client = getApiClient();
+  return client.post(`/api/scheduling/v2/periods/${params.id}/publish`, {
+    notes: params.notes,
+  });
+}
+
+export async function lockSchedulePeriod(
+  params: LockSchedulePeriodParams
+): Promise<SchedulePeriod> {
+  const client = getApiClient();
+  return client.post(`/api/scheduling/v2/periods/${params.id}/lock`, {});
+}

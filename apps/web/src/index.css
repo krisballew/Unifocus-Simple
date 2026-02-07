@@ -1297,6 +1297,21 @@ button.secondary {
   color: var(--uf-link-20);
 }
 
+.badge--draft {
+  background: var(--uf-neutral-95);
+  color: var(--uf-neutral-30);
+}
+
+.badge--published {
+  background: var(--uf-pistachio-95);
+  color: var(--uf-pistachio-30);
+}
+
+.badge--locked {
+  background: var(--uf-teal-95);
+  color: var(--uf-teal-30);
+}
+
 .alert-list,
 .action-list {
   display: flex;

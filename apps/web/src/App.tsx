@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { AppShell } from './components/AppShell';
 import { LoadingSkeleton } from './components/LoadingSkeleton';
 import { LoginPage } from './components/LoginPage';
 import { I18nProvider } from './context/I18nContext';
+import { AvailabilityManagementPlaceholder } from './features/scheduleManagement/pages/AvailabilityManagementPlaceholder';
+import { ScheduleEditorPlaceholder } from './features/scheduleManagement/pages/ScheduleEditorPlaceholder';
+import { SchedulePeriodsPage } from './features/scheduleManagement/pages/SchedulePeriodsPage';
+import { ScheduleRequestsPlaceholder } from './features/scheduleManagement/pages/ScheduleRequestsPlaceholder';
 import { EmployeesPage } from './pages/EmployeesPage';
 import { ExceptionsQueuePage } from './pages/ExceptionsQueuePage';
 import { HomePage } from './pages/HomePage';
@@ -22,6 +26,9 @@ import { UserAdministrationPage } from './pages/UserAdministrationPage';
 import { AuthenticatedRoute } from './routes/AuthenticatedRoute';
 import { initializeApiClient } from './services/api-client';
 import { initializeCognitoAuth } from './services/cognito-auth';
+
+// Feature flags
+const FEATURE_SCHEDULING_V2 = import.meta.env.VITE_FEATURE_SCHEDULING_V2 === 'true';
 
 function AppRoutes() {
   return (
@@ -44,7 +51,59 @@ function AppRoutes() {
         <Route path="employees" element={<EmployeesPage />} />
         <Route path="hr-management" element={<HrManagementPage />} />
         <Route path="org-structure" element={<OrgStructurePage />} />
-        <Route path="schedules" element={<PlaceholderPage title="Schedules" />} />
+        {/* Schedule Management - Canonical Routes */}
+        <Route
+          path="schedule-management"
+          element={
+            FEATURE_SCHEDULING_V2 ? (
+              <SchedulePeriodsPage />
+            ) : (
+              <PlaceholderPage title="Schedule Management" />
+            )
+          }
+        />
+        <Route
+          path="schedule-management/periods"
+          element={
+            FEATURE_SCHEDULING_V2 ? (
+              <SchedulePeriodsPage />
+            ) : (
+              <PlaceholderPage title="Schedule Periods" />
+            )
+          }
+        />
+        <Route
+          path="schedule-management/editor"
+          element={
+            FEATURE_SCHEDULING_V2 ? (
+              <ScheduleEditorPlaceholder />
+            ) : (
+              <PlaceholderPage title="Schedule Editor" />
+            )
+          }
+        />
+        <Route
+          path="schedule-management/requests"
+          element={
+            FEATURE_SCHEDULING_V2 ? (
+              <ScheduleRequestsPlaceholder />
+            ) : (
+              <PlaceholderPage title="Schedule Requests" />
+            )
+          }
+        />
+        <Route
+          path="schedule-management/availability"
+          element={
+            FEATURE_SCHEDULING_V2 ? (
+              <AvailabilityManagementPlaceholder />
+            ) : (
+              <PlaceholderPage title="Availability Management" />
+            )
+          }
+        />
+        {/* Legacy route - redirect to canonical path */}
+        <Route path="schedules" element={<Navigate to="/schedule-management" replace />} />
         <Route path="tasks" element={<PlaceholderPage title="Tasks" />} />
         <Route path="profile" element={<UserAdministrationPage />} />
         <Route path="settings" element={<SettingsPage />} />
