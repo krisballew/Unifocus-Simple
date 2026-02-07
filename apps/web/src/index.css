@@ -1820,6 +1820,172 @@ button.secondary {
   }
 }
 
+/* ========== SCHEDULE MANAGEMENT DASHBOARD TILES ========== */
+
+.scheduling-management-section {
+  margin: 20px 0;
+}
+
+.section-header {
+  margin-bottom: 16px;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--uf-text-color);
+  font-weight: 500;
+}
+
+.scheduling-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.scheduling-tile {
+  background: linear-gradient(135deg, var(--uf-teal-50), var(--uf-teal-60));
+  color: var(--uf-mono-100);
+  padding: 20px;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+  transition: all 0.2s ease;
+  text-align: left;
+  font-family: inherit;
+}
+
+.scheduling-tile:hover {
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
+  transform: translateY(-2px);
+}
+
+.scheduling-tile:active {
+  transform: translateY(0);
+}
+
+.scheduling-tile--requests {
+  background: linear-gradient(135deg, var(--uf-link-50), var(--uf-link-60));
+}
+
+.scheduling-tile--open-shifts {
+  background: linear-gradient(135deg, var(--uf-warning-50), var(--uf-warning-60));
+}
+
+.scheduling-tile--unassigned {
+  background: linear-gradient(135deg, var(--uf-sky-50), var(--uf-sky-60));
+}
+
+.scheduling-tile--status {
+  background: linear-gradient(135deg, var(--uf-cyan-50), var(--uf-cyan-60));
+}
+
+.tile-value {
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.tile-label {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.95;
+}
+
+.tile-subtext {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.2);
+  color: inherit;
+}
+
+.status-badge--draft {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.status-badge--published {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.status-badge--locked {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.status-badge--none {
+  opacity: 0.6;
+}
+
+.scheduling-tiles-loading {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.skeleton-tile {
+  background: linear-gradient(135deg, var(--uf-mono-50), var(--uf-mono-60));
+  padding: 20px;
+  border-radius: 14px;
+  height: 120px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.scheduling-error {
+  background: var(--uf-error-50);
+  color: var(--uf-mono-100);
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.scheduling-error p {
+  margin: 0;
+  flex: 1;
+}
+
+.retry-button {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--uf-mono-100);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 13px;
+  transition: background 0.2s ease;
+}
+
+.retry-button:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+@media (max-width: 960px) {
+  .scheduling-tiles {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .scheduling-tiles {
+    grid-template-columns: 1fr;
+  }
+}
+
 .error-boundary {
   min-height: 100vh;
   display: flex;

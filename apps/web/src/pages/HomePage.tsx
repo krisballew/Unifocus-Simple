@@ -1,14 +1,36 @@
 import { useQuery } from '@tanstack/react-query';
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
+import { useSelection } from '../context/SelectionContext';
+import { useSchedulingSignals } from '../features/scheduleManagement/hooks/useSchedulingSignals';
+import { useAuth } from '../hooks/useAuth';
 import { getCurrentUser } from '../services/api-client';
 import { queryKeys } from '../services/query-keys';
+import { hasPermission, SCHEDULING_PERMISSIONS } from '../utils/permissions';
+
+// Feature flags
+const FEATURE_SCHEDULING_V2 = import.meta.env.VITE_FEATURE_SCHEDULING_V2 === 'true';
 
 export function HomePage(): React.ReactElement {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { selectedPropertyId } = useSelection();
+
   const currentUserQuery = useQuery({
     queryKey: queryKeys.currentUser,
     queryFn: getCurrentUser,
+  });
+
+  // Check if user has scheduling.view permission and feature is enabled
+  const canViewScheduling =
+    FEATURE_SCHEDULING_V2 && hasPermission(user, SCHEDULING_PERMISSIONS.VIEW);
+
+  // Fetch scheduling signals if permitted
+  const schedulingSignals = useSchedulingSignals({
+    propertyId: selectedPropertyId,
+    enabled: canViewScheduling,
   });
 
   if (currentUserQuery.isLoading) {
@@ -51,6 +73,95 @@ export function HomePage(): React.ReactElement {
               <button type="button">View Issues</button>
             </div>
           </div>
+
+          {/* Schedule Management Section - Only show if feature enabled and user has permission */}
+          {canViewScheduling && selectedPropertyId && (
+            <div className="scheduling-management-section">
+              <div className="section-header">
+                <h3>Schedule Management</h3>
+              </div>
+
+              {schedulingSignals.hasError && (
+                <div className="scheduling-error">
+                  <p>{schedulingSignals.errorMessage}</p>
+                  <button
+                    type="button"
+                    className="retry-button"
+                    onClick={() => window.location.reload()}
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {schedulingSignals.isLoading ? (
+                <div className="scheduling-tiles-loading">
+                  <div className="skeleton-tile" />
+                  <div className="skeleton-tile" />
+                  <div className="skeleton-tile" />
+                  <div className="skeleton-tile" />
+                </div>
+              ) : (
+                <div className="scheduling-tiles">
+                  {/* Pending Requests Tile */}
+                  <button
+                    type="button"
+                    className="scheduling-tile scheduling-tile--requests"
+                    onClick={() => navigate('/schedule-management/requests')}
+                  >
+                    <div className="tile-value">{schedulingSignals.pendingRequestsCount}</div>
+                    <div className="tile-label">Pending Requests</div>
+                    <div className="tile-subtext">Awaiting approval</div>
+                  </button>
+
+                  {/* Open Shifts Tile */}
+                  <button
+                    type="button"
+                    className="scheduling-tile scheduling-tile--open-shifts"
+                    onClick={() => navigate('/schedule-management/editor')}
+                  >
+                    <div className="tile-value">{schedulingSignals.openShiftsCount}</div>
+                    <div className="tile-label">Open Shifts</div>
+                    <div className="tile-subtext">Next 7 days</div>
+                  </button>
+
+                  {/* Unassigned Shifts Tile */}
+                  <button
+                    type="button"
+                    className="scheduling-tile scheduling-tile--unassigned"
+                    onClick={() => navigate('/schedule-management/editor')}
+                  >
+                    <div className="tile-value">{schedulingSignals.unassignedShiftsCount}</div>
+                    <div className="tile-label">Unassigned Shifts</div>
+                    <div className="tile-subtext">Next 7 days</div>
+                  </button>
+
+                  {/* Schedule Status Tile */}
+                  <button
+                    type="button"
+                    className="scheduling-tile scheduling-tile--status"
+                    onClick={() => navigate('/schedule-management')}
+                  >
+                    <div className="tile-value">
+                      {schedulingSignals.currentPeriodStatus ? (
+                        <span
+                          className={`status-badge status-badge--${schedulingSignals.currentPeriodStatus.toLowerCase()}`}
+                        >
+                          {schedulingSignals.currentPeriodStatus}
+                        </span>
+                      ) : (
+                        <span className="status-badge status-badge--none">—</span>
+                      )}
+                    </div>
+                    <div className="tile-label">Schedule Status</div>
+                    {schedulingSignals.currentPeriodDateRange && (
+                      <div className="tile-subtext">{schedulingSignals.currentPeriodDateRange}</div>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="dashboard-row">
             <div className="dashboard-card">
