@@ -1,36 +1,194 @@
 # Unifocus Brand Guidelines (Text-Only)
+ --uf-pistachio-100: #ffffff;
+   --uf-pistachio-99: #fdfefc;
+   --uf-pistachio-95: #f4faee;
+   --uf-pistachio-90: #e8f4dd;
+   --uf-pistachio-80: #d1e9bb;
+   --uf-pistachio-70: #bbde98;
+   --uf-pistachio-60: #a4d376;
+   --uf-pistachio-50: #8dc854;
+   --uf-pistachio-40: #71a043;
+   --uf-pistachio-30: #557832;
+   --uf-pistachio-20: #385022;
+   --uf-pistachio-10: #1c2811;
+   --uf-pistachio-00: #000000;
 
-> **Source:** _Brand_Guidelines (2).pdf_ (text-only extraction)
+   --uf-cyan-100: #ffffff;
+   --uf-cyan-99: #fafeff;
+   --uf-cyan-95: #e6f9fd;
+   --uf-cyan-90: #ccf2fb;
+   --uf-cyan-80: #99e4f6;
+   --uf-cyan-70: #66d7f2;
+   --uf-cyan-60: #33c9ed;
+   --uf-cyan-50: #00bce9;
+   --uf-cyan-40: #0096ba;
+   --uf-cyan-30: #00718c;
+   --uf-cyan-20: #004b5d;
+   --uf-cyan-10: #00262f;
+   --uf-cyan-00: #000000;
 
-## Brand usage
-This document outlines how Unifocus presents itself when communicating with the world.
+   --uf-sky-100: #ffffff;
+   --uf-sky-99: #feffff;
+   --uf-sky-95: #fafdff;
+   --uf-sky-90: #f3fbfe;
+   --uf-sky-80: #e7f6fd;
+   --uf-sky-70: #dcf2fb;
+   --uf-sky-60: #d0edfa;
+   --uf-sky-50: #c4e9f9;
+   --uf-sky-40: #9dbac7;
+   --uf-sky-30: #768c95;
+   --uf-sky-20: #4e5d64;
+   --uf-sky-10: #272f32;
+   --uf-sky-00: #000000;
 
-## Brand voice
-As part of a fun, fresh, and innovative initiative, Unifocus modernized its company name and uses a lower case **"f"** in **Unifocus** going forward.
+   --uf-teal-100: #ffffff;
+   --uf-teal-99: #fafcfd;
+   --uf-teal-95: #e9f1f4;
+   --uf-teal-90: #d1e3e8;
+   --uf-teal-80: #a4c7d1;
+   --uf-teal-70: #76abb9;
+   --uf-teal-60: #4985a2;
+   --uf-teal-50: #1b738b;
+   --uf-teal-40: #165c6f;
+   --uf-teal-30: #104553;
+   --uf-teal-20: #0b2e38;
+   --uf-teal-10: #05171c;
+   --uf-teal-00: #000000;
 
-## Photography
-Unifocus’ photography style is both technology- and people-focused. Depict staff in the hospitality industry and individuals using smart phones and tablets; photography should feel approachable and relatable to the target audience. Cut-out images can be used when the subject is using technology. Avoid surrounding content that obstructs the subject in the frame.
+   --uf-error-100: #ffffff;
+   --uf-error-99: #fffbfc;
+   --uf-error-95: #ffeeee;
+   --uf-error-90: #ffdbdc;
+   --uf-error-80: #ffb8b9;
+   --uf-error-70: #ff9495;
+   --uf-error-60: #ff7172;
+   --uf-error-50: #ff4d4f;
+   --uf-error-40: #cc3e3f;
+   --uf-error-30: #992e2f;
+   --uf-error-20: #661f20;
+   --uf-error-10: #330f10;
+   --uf-error-00: #000000;
 
-## Iconography
-The Unifocus icon library uses simplified line illustrations showcased in **two colors** to create visual interest. When placed on a dark background, the icon may be paired with a **gradient hexagon** for depth while remaining clean and clear. Choose between light or dark icon sets based on greatest legibility.
+   --uf-warning-100: #ffffff;
+   --uf-warning-99: #fffefb;
+   --uf-warning-95: #fff9eb;
+   --uf-warning-90: #fff3d6;
+   --uf-warning-80: #ffe6ac;
+   --uf-warning-70: #ffda83;
+   --uf-warning-60: #ffce59;
+   --uf-warning-50: #ffc130;
+   --uf-warning-40: #cc9b26;
+   --uf-warning-30: #99741d;
+   --uf-warning-20: #664d13;
+   --uf-warning-10: #33270a;
+   --uf-warning-00: #000000;
 
-## Brand elements
+   --uf-success-100: #ffffff;
+   --uf-success-99: #fcfefa;
+   --uf-success-95: #eefae9;
+   --uf-success-90: #dcf3d1;
+   --uf-success-80: #bae7a3;
+   --uf-success-70: #97dc76;
+   --uf-success-60: #75d048;
+   --uf-success-50: #52c41a;
+   --uf-success-40: #429d15;
+   --uf-success-30: #317610;
+   --uf-success-20: #214e0a;
+   --uf-success-10: #102705;
+   --uf-success-00: #000000;
 
-### Dark mode
-Brand elements can be showcased in dark mode by using the darker hues of the color palette. This creates richness and contrast against other brand elements such as photography and icons.
+   --uf-link-100: #ffffff;
+   --uf-link-99: #fafdff;
+   --uf-link-95: #e8f7ff;
+   --uf-link-90: #d1eeff;
+   --uf-link-80: #a3ddff;
+   --uf-link-70: #74cbff;
+   --uf-link-60: #46baff;
+   --uf-link-50: #18a9ff;
+   --uf-link-40: #1387cc;
+   --uf-link-30: #0e6599;
+   --uf-link-20: #0a4466;
+   --uf-link-10: #052233;
+   --uf-link-00: #000000;
 
-### Light mode
-Brand elements can be showcased in light mode by using the lighter hues in the color palette. This creates a more airy, light feel while remaining modern, sleek, and innovative. Use the color mode that best suits the medium and platform where content will be displayed.
+   --uf-mono-100: #ffffff;
+   --uf-mono-99: #fcfcfc;
+   --uf-mono-95: #f2f2f2;
+   --uf-mono-90: #e5e5e5;
+   --uf-mono-80: #cccccc;
+   --uf-mono-70: #b3b3b3;
+   --uf-mono-60: #999999;
+   --uf-mono-50: #808080;
+   --uf-mono-40: #666666;
+   --uf-mono-30: #4c4c4c;
+   --uf-mono-20: #333333;
+   --uf-mono-10: #191919;
+   --uf-mono-00: #000000;
 
-### Pattern
-A **hexagon pattern** can be used at lower opacity behind content to add dimension and movement.
+   --uf-legacy-red-01: #ffa39e;
 
-### Illustration
-Use illustrations to communicate product features and platform capabilities simply and straightforwardly. These illustrations may include more detail and color than icon sets, but should never use more than **two to three** colors from the color palette.
+   --uf-legacy-yellow-01: #f7f4bd; /* Alert component - warning type - background color */
+   --uf-legacy-yellow-06: #f0ca75; /* Active Item highlight color, Selected Items, Text highlight bgcolor in certain circumstances */
+   --uf-legacy-yellow-07: #b8891a; /* Text highlight font color */
 
-## Information
-This document serves as a foundational guide to using the Unifocus brand identity for the Unifocus team and associated agencies. If in doubt, refer back to these guidelines. For questions, contact **hi@jennytod.com**.
+   --uf-primary-color: var(--uf-teal-50); /* Primary accent color for buttons, table headers, control outlines */
+   --uf-item-active-bg: var(--uf-cyan-90); /* Primary selection highlight color for active controls */
+   --uf-item-hover-bg: var(--uf-cyan-90); /* Hover color for most controls and selectable items */
 
----
+   --uf-primary-color-dark: var(--uf-teal-50); /* Primary accent color for buttons, table headers, control outlines*/
+   --uf-item-active-bg-dark: var(--uf-teal-40); /* Primary selection highlight color for active controls*/
+   --uf-item-hover-bg-dark: var(--uf-teal-30); /* Hover color for most controls and selectable items*/
 
-© 2022 Jenny Tod Creative LLC. All rights reserved.
+   --uf-heading-color: var(--uf-teal-30); /* Font color for headings*/
+   --uf-heading-color-neutral: rgb(var(--uf-mono-00), 0.85); /* Font color for headings on colored backgrounds*/
+   --uf-heading-color-dark: var(--uf-teal-100); /* Font color for headings on a dark background*/
+
+   --uf-text-color: fade(var(--uf-mono-00), 0.65); /* Body text color*/
+   --uf-text-color-secondary: fade(var(--uf-mono-00), 0.45); /* Secondary / de-emphasized body text color (notes, less important information)*/
+   --uf-text-color-disabled: fade(var(--uf-mono-00), 0.25); /* Disabled text color*/
+   --uf-text-color-label: fade(var(--uf-mono-00), 0.85); /* Font color for form field labels*/
+   --uf-text-color-dark: fade(var(--uf-mono-100), 0.85); /* Body text color on a dark background*/
+   --uf-text-color-secondary-dark: fade(var(--uf-mono-100), 0.65); /* Secondary / de-emphasized body text color (notes, less important information) on a dark background*/
+   --uf-text-color-disabled-dark: fade(var(--uf-mono-100), 0.45); /* Disabled text color on a dark background*/
+   --uf-text-color-label-dark: fade(var(--uf-mono-100), 0.100); /* Font color for form field labels*/
+
+   --uf-success-color: var(--uf-success-50); /* General color for success- / positive- / affirmative-themed text*/
+   --uf-error-color: var(--uf-error-50); /* General color for error text*/
+   --uf-text-highlight-bg: fade(var(--uf-legacy-yellow-06), 0.50); /* Background color for highlighted text*/
+   --uf-text-highlight-color: var(--uf-legacy-yellow-07); /* Text color for highlighted text*/
+   --uf-info-icon-color-light: var(--uf-teal-50); /* Information icon color*/
+   --uf-info-icon-color-dark: var(--uf-mono-100); /* Information icon color for dark theme*/
+   --uf-warn-icon-color-light: var(--uf-warning-50); /* Warning icon color*/
+   --uf-link-color: var(--uf-link-40); /* Hyperlink text color*/
+   --uf-link-hover-color: var(--uf-link-50); /* Hyperlink text hover color*/
+   --uf-link-active-color: var(--uf-link-40); /* Active Hyperlink text color*/
+
+   --uf-error: var(--uf-error-color); /* Error icon color - light*/
+   --uf-error-background: var(--uf-legacy-red-01); /* Error component background color. Use @uf-text-color for displaying text*/
+   --uf-error-background-selected: var(--uf-error);
+   --uf-warning: var(--uf-warning-50); /* Warning text/icon color - light*/
+   --uf-warning-background: var(--uf-legacy-yellow-01); /* Warning  component background color - Use @uf-text-color for displaying text*/
+   --uf-warning-background-selected: var(--uf-warning-70); /**/
+   --uf-info-background: var(--uf-link-50); /* Info message background color*/
+   --uf-border-color: fade(var(--uf-mono-00), 0.15); /* Layout component border color - light theme*/
+   --uf-border-color-dark: fade(var(--uf-mono-100), 0.25); /* Layout component border color - dark theme*/
+   --uf-border-color-disabled: var(--uf-mono-90); /* Layout component border color disabled - light theme*/
+   --uf-border-color-disabled-dark: fade(var(--uf-mono-100), 0.30); /* Layout component border color disabled - dark theme*/
+   --uf-divider: fade(var(--uf-mono-00), 0.09); /* Divider / HR color - light theme*/
+   --uf-divider-dark: fade(var(--uf-mono-100), 0.15); /* Divider / HR color - dark theme*/
+   --uf-application-bg: var(--uf-mono-95); /* Application background color - light theme*/
+   --uf-application-bg-dark: fade(var(--uf-mono-100), 0.09); /* Application background color - dark theme*/
+   --uf-button-affirmative-bg: var(--uf-success-50); /* Positive-themed button background color*/
+   --uf-button-affirmative-color: var(--uf-mono-100); /* Positive-themed button text color*/
+   --uf-layout-trigger-background: var(--uf-mono-90); /* Sidebar trigger button background color*/
+   --uf-menu-dark-bg: var(--uf-mono-20); /* Side menu component background color*/
+   --uf-menu-dark-submenu-bg: var(--uf-cyan-10); /* Side menu component submenu background color*/
+   --uf-layout-header-background: var(--uf-mono-100); /* Header background color*/
+   --uf-body-background: var(--uf-mono-95); /* Body background color*/
+   --uf-form-background: var(--uf-mono-100); /* Form background color*/
+   --uf-card-background-color: var(--uf-mono-100); /* Card / Section background color*/
+   --uf-secondary-button-bg: var(--uf-teal-50); /* Secondary/Default button background color*/
+   --uf-component-background: var(--uf-mono-100); /* Default component background color*/
+   --uf-component-background-disabled: var(--uf-mono-95); /* Default component background color - disabled*/
+   --uf-component-background-disabled-dark: var(--uf-mono-10); /* Default component background color - disabled - dark theme*/
+   --uf-control-background: var(--uf-mono-100); /* Default component background color*/

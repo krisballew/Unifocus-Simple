@@ -124,3 +124,35 @@ export interface BulkOperationResultDTO {
     data?: unknown;
   }>;
 }
+
+/**
+ * Schedule Period (WFM V2)
+ */
+export interface SchedulePeriodDTO {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  startDate: string; // ISO datetime
+  endDate: string; // ISO datetime
+  status: 'DRAFT' | 'PUBLISHED' | 'LOCKED' | 'ARCHIVED';
+  version: number;
+  name?: string;
+  createdByUserId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Publish Event (WFM V2)
+ */
+export interface PublishEventDTO {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  schedulePeriodId: string;
+  publishedByUserId: string;
+  publishedAt: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}

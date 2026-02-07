@@ -121,3 +121,45 @@ export const PublishScheduleSchema = z.object({
 export const LockScheduleSchema = z.object({
   reason: z.string().max(500).optional().describe('Reason for locking'),
 });
+
+// ============================================================================
+// SCHEDULE PERIOD (V2) VALIDATORS
+// ============================================================================
+
+/**
+ * List schedule periods query validator
+ */
+export const ListSchedulePeriodsQuerySchema = z.object({
+  propertyId: z.string().uuid().describe('Property ID (required)'),
+  start: z.string().datetime().optional().describe('Start date filter (ISO datetime)'),
+  end: z.string().datetime().optional().describe('End date filter (ISO datetime)'),
+  status: z.enum(['DRAFT', 'PUBLISHED', 'LOCKED', 'ARCHIVED']).optional().describe('Filter by status'),
+});
+
+/**
+ * Create schedule period request validator
+ */
+export const CreateSchedulePeriodBodySchema = z.object({
+  propertyId: z.string().uuid().describe('Property ID'),
+  startDate: z.string().datetime().describe('Start date (ISO datetime)'),
+  endDate: z.string().datetime().describe('End date (ISO datetime)'),
+  name: z.string().max(255).optional().describe('Period name'),
+}).refine(
+  (data) => new Date(data.startDate) < new Date(data.endDate),
+  {
+    message: 'startDate must be before endDate',
+    path: ['startDate'],
+  }
+);
+
+/**
+ * Publish schedule period request validator
+ */
+export const PublishSchedulePeriodBodySchema = z.object({
+  notes: z.string().max(1000).optional().describe('Publication notes'),
+});
+
+/**
+ * Lock schedule period request validator
+ */
+export const LockSchedulePeriodBodySchema = z.object({});

@@ -31,6 +31,8 @@
  * ```
  */
 
+import type { PrismaClient, WfmSchedulePeriod } from '@prisma/client';
+
 import type { AuthorizationContext } from '../../auth/rbac.js';
 import { hasScope } from '../../auth/rbac.js';
 
@@ -118,40 +120,45 @@ export async function requireEmployeeAccess(
 
 /**
  * Require schedule period is writable (not locked) or user has override permission
+ * Loads the period from the database with tenant scoping.
  *
- * @param userContext - Authorization context with user permissions
+ * @param userContext - Authorization context with user permissions and tenant ID
  * @param schedulePeriodId - Schedule period ID to check
+ * @param prisma - Prisma client for database access
  * @throws {SchedulingAuthError} 403 if period is locked and no override permission
- *
- * @remarks
- * Implementation currently stubbed - actual period lock check requires schedule period
- * retrieval logic to be implemented. Function signature and behavior contract defined
- * for future implementation.
- *
- * @todo Implement schedule period retrieval and lock status check
+ * @throws {SchedulingAuthError} 404 if period not found
+ * @returns The loaded WfmSchedulePeriod if writable
  */
 export async function requireWritablePeriod(
   userContext: AuthorizationContext,
-  schedulePeriodId: string
-): Promise<void> {
-  // TODO: Retrieve schedule period and check if status is LOCKED
-  // For now, check if user has override permission
-  // When period retrieval is implemented, replace with:
-  //   const period = await getSchedulePeriod(schedulePeriodId);
-  //   if (period.status === 'LOCKED' && !hasScope(userContext, SCHEDULING_PERMISSIONS.OVERRIDE)) {
-  //     throw new SchedulingAuthError('Forbidden: Schedule period is locked', 403);
-  //   }
+  schedulePeriodId: string,
+  prisma: PrismaClient
+): Promise<WfmSchedulePeriod> {
+  // Load period with tenant scoping
+  const period = await prisma.wfmSchedulePeriod.findFirst({
+    where: {
+      id: schedulePeriodId,
+      tenantId: userContext.tenantId,
+    },
+  });
 
-  const _period = schedulePeriodId; // Placeholder to avoid unused param warning
-
-  // Check if user has override permission (allows editing locked schedules)
-  if (!hasScope(userContext, SCHEDULING_PERMISSIONS.OVERRIDE)) {
-    // For now, assume period might be locked and deny without override permission
+  if (!period) {
     throw new SchedulingAuthError(
-      `Forbidden: Schedule period '${_period}' may be locked. Override permission required.`,
-      403
+      `Schedule period '${schedulePeriodId}' not found`,
+      404
     );
   }
 
-  // If user has override permission, allow write access regardless of lock status
+  // Check if period is locked
+  if (period.status === 'LOCKED') {
+    // Allow write access only if user has override permission
+    if (!hasScope(userContext, SCHEDULING_PERMISSIONS.OVERRIDE)) {
+      throw new SchedulingAuthError(
+        'Forbidden: Schedule period is locked. Override permission required.',
+        403
+      );
+    }
+  }
+
+  return period;
 }

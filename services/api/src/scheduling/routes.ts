@@ -62,7 +62,7 @@ export async function schedulingRoutes(fastify: FastifyInstance) {
   const schedulingService = createSchedulingService(prisma);
 
   // Register V2 routes
-  await fastify.register(schedulingV2Routes, { prefix: '/v2' });
+  await fastify.register(schedulingV2Routes, { prefix: '/v2', prisma });
 
   /**
    * GET /api/scheduling/shifts

@@ -3,11 +3,15 @@
  * Enterprise-grade scheduling business logic with org-aware access control
  */
 
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient, WfmPublishEvent, WfmSchedulePeriod } from '@prisma/client';
+
+import type { AuthorizationContext } from '../../auth/rbac.js';
 
 import type {
   BulkOperationResultDTO,
   CreateShiftDTO,
+  PublishEventDTO,
+  SchedulePeriodDTO,
   SchedulingConflictDTO,
   ShiftDTO,
   UpdateShiftDTO,
@@ -154,6 +158,230 @@ export class SchedulingV2Service {
     // - Send notifications if requested
     // - Create audit log entry
     throw new Error('Not implemented');
+  }
+
+  // ========== SCHEDULE PERIOD (V2) OPERATIONS ==========
+
+  /**
+   * List schedule periods for a property
+   * @param userContext - Authentication context with permissions
+   * @param propertyId - Property ID to list periods for
+   * @param filters - Optional start/end date filters
+   * @returns Array of schedule periods
+   */
+  async listSchedulePeriods(
+    userContext: AuthorizationContext,
+    propertyId: string,
+    filters?: { start?: Date; end?: Date; status?: string }
+  ): Promise<SchedulePeriodDTO[]> {
+    const periods = await this.prisma.wfmSchedulePeriod.findMany({
+      where: {
+        tenantId: userContext.tenantId,
+        propertyId,
+        ...(filters?.start && { startDate: { gte: filters.start } }),
+        ...(filters?.end && { endDate: { lte: filters.end } }),
+        ...(filters?.status && {
+          status: filters.status as 'DRAFT' | 'PUBLISHED' | 'LOCKED' | 'ARCHIVED',
+        }),
+      },
+      orderBy: [{ startDate: 'asc' }, { version: 'desc' }],
+    });
+
+    return periods.map((p) => this.periodToDTO(p));
+  }
+
+  /**
+   * Create a new schedule period in DRAFT status
+   * @param userContext - Authentication context with user ID
+   * @param propertyId - Property ID for the period
+   * @param startDate - Period start date
+   * @param endDate - Period end date
+   * @param name - Optional period name
+   * @returns Created schedule period
+   */
+  async createSchedulePeriod(
+    userContext: AuthorizationContext,
+    propertyId: string,
+    startDate: Date,
+    endDate: Date,
+    name?: string
+  ): Promise<SchedulePeriodDTO> {
+    if (!userContext.tenantId) {
+      throw new Error('Tenant ID is required');
+    }
+
+    // Enforce uniqueness at application level (Prisma constraint will also catch)
+    const existing = await this.prisma.wfmSchedulePeriod.findFirst({
+      where: {
+        tenantId: userContext.tenantId,
+        propertyId,
+        startDate,
+        version: 1,
+      },
+    });
+
+    if (existing) {
+      throw new Error(
+        `Schedule period for tenant ${userContext.tenantId}, property ${propertyId}, ` +
+          `and start date ${startDate.toISOString()} already exists`
+      );
+    }
+
+    const period = await this.prisma.wfmSchedulePeriod.create({
+      data: {
+        tenantId: userContext.tenantId,
+        propertyId,
+        startDate,
+        endDate,
+        name,
+        status: 'DRAFT',
+        version: 1,
+        createdByUserId: userContext.userId || undefined,
+      },
+    });
+
+    return this.periodToDTO(period);
+  }
+
+  /**
+   * Publish a schedule period
+   * @param userContext - Authentication context
+   * @param schedulePeriodId - Period ID to publish
+   * @param notes - Optional publication notes
+   * @returns Published schedule period and publish event
+   */
+  async publishSchedulePeriod(
+    userContext: AuthorizationContext,
+    schedulePeriodId: string,
+    notes?: string
+  ): Promise<{ period: SchedulePeriodDTO; event: PublishEventDTO }> {
+    if (!userContext.tenantId) {
+      throw new Error('Tenant ID is required');
+    }
+
+    const period = await this.prisma.wfmSchedulePeriod.findFirst({
+      where: {
+        id: schedulePeriodId,
+        tenantId: userContext.tenantId,
+      },
+    });
+
+    if (!period) {
+      throw new Error(`Schedule period '${schedulePeriodId}' not found`);
+    }
+
+    // Handle idempotency: if already published, return success
+    if (period.status === 'PUBLISHED') {
+      const event = await this.prisma.wfmPublishEvent.findFirst({
+        where: {
+          schedulePeriodId,
+          tenantId: userContext.tenantId,
+        },
+      });
+      return {
+        period: this.periodToDTO(period),
+        event: event ? this.eventToDTO(event) : ({} as PublishEventDTO),
+      };
+    }
+
+    // If locked, require override permission (but we don't check it here - caller should)
+    if (period.status === 'LOCKED') {
+      throw new Error('Cannot publish a locked schedule period');
+    }
+
+    // Update period status to PUBLISHED
+    const updated = await this.prisma.wfmSchedulePeriod.update({
+      where: { id: schedulePeriodId },
+      data: { status: 'PUBLISHED' },
+    });
+
+    // Create publish event
+    const event = await this.prisma.wfmPublishEvent.create({
+      data: {
+        tenantId: userContext.tenantId,
+        propertyId: period.propertyId,
+        schedulePeriodId,
+        publishedByUserId: userContext.userId,
+        notes,
+      },
+    });
+
+    return {
+      period: this.periodToDTO(updated),
+      event: this.eventToDTO(event),
+    };
+  }
+
+  /**
+   * Lock a schedule period to prevent edits
+   * @param userContext - Authentication context
+   * @param schedulePeriodId - Period ID to lock
+   * @returns Locked schedule period
+   */
+  async lockSchedulePeriod(
+    userContext: AuthorizationContext,
+    schedulePeriodId: string
+  ): Promise<SchedulePeriodDTO> {
+    const period = await this.prisma.wfmSchedulePeriod.findFirst({
+      where: {
+        id: schedulePeriodId,
+        tenantId: userContext.tenantId,
+      },
+    });
+
+    if (!period) {
+      throw new Error(`Schedule period '${schedulePeriodId}' not found`);
+    }
+
+    // Handle idempotency: if already locked, return success
+    if (period.status === 'LOCKED') {
+      return this.periodToDTO(period);
+    }
+
+    const updated = await this.prisma.wfmSchedulePeriod.update({
+      where: { id: schedulePeriodId },
+      data: { status: 'LOCKED' },
+    });
+
+    return this.periodToDTO(updated);
+  }
+
+  // ========== HELPER METHODS ==========
+
+  /**
+   * Convert WfmSchedulePeriod to DTO
+   */
+  private periodToDTO(period: WfmSchedulePeriod): SchedulePeriodDTO {
+    return {
+      id: period.id,
+      tenantId: period.tenantId,
+      propertyId: period.propertyId,
+      startDate: period.startDate.toISOString(),
+      endDate: period.endDate.toISOString(),
+      status: period.status,
+      version: period.version,
+      name: period.name || undefined,
+      createdByUserId: period.createdByUserId || undefined,
+      createdAt: period.createdAt.toISOString(),
+      updatedAt: period.updatedAt.toISOString(),
+    };
+  }
+
+  /**
+   * Convert WfmPublishEvent to DTO
+   */
+  private eventToDTO(event: WfmPublishEvent): PublishEventDTO {
+    return {
+      id: event.id,
+      tenantId: event.tenantId,
+      propertyId: event.propertyId,
+      schedulePeriodId: event.schedulePeriodId,
+      publishedByUserId: event.publishedByUserId,
+      publishedAt: event.publishedAt.toISOString(),
+      notes: event.notes || undefined,
+      createdAt: event.createdAt.toISOString(),
+      updatedAt: event.updatedAt.toISOString(),
+    };
   }
 
   /**
