@@ -33,8 +33,8 @@ export function RequestsTable({
     onSuccess: (_data, requestId) => {
       queryClient.invalidateQueries({ queryKey: ['requests'] });
       setRowErrors((prev) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { [requestId]: _, ...next } = prev;
+        const next = { ...prev };
+        delete next[requestId];
         return next;
       });
       onRequestUpdated?.();
@@ -52,8 +52,8 @@ export function RequestsTable({
       queryClient.invalidateQueries({ queryKey: ['requests'] });
       setDenyingRequestId(null);
       setRowErrors((prev) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { [requestId]: _, ...next } = prev;
+        const next = { ...prev };
+        delete next[requestId];
         return next;
       });
       onRequestUpdated?.();

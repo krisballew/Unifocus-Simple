@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { LoadingSkeleton } from '../../../components/LoadingSkeleton';
@@ -26,6 +26,7 @@ import { ShiftList } from '../components/ShiftList';
 import { ShiftModal } from '../components/ShiftModal';
 import type { ShiftFormData } from '../components/ShiftModal';
 import { formatApiError } from '../utils/apiErrors';
+import { parseEditorQuery } from '../utils/editorQuery';
 
 export function ScheduleEditorPage(): React.ReactElement {
   const { selectedTenantId, selectedPropertyId } = useSelection();
@@ -33,30 +34,20 @@ export function ScheduleEditorPage(): React.ReactElement {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const viewParam = searchParams.get('view');
-  const quickFilter = viewParam === 'openShifts' || viewParam === 'unassigned' ? viewParam : null;
-  const daysParam = Number(searchParams.get('days'));
-  const quickFilterDays =
-    quickFilter && Number.isFinite(daysParam) && daysParam > 0 ? daysParam : 7;
+  const editorQuery = useMemo(
+    () => parseEditorQuery(searchParams, new Date()),
+    [searchParams.toString()]
+  );
 
-  const quickFilterWindow = useMemo(() => {
-    if (!quickFilter) return null;
+  const quickFilter = editorQuery.quickFilter;
+  const quickFilterDays = editorQuery.days;
+  const quickFilterWindow = editorQuery.window;
 
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-
-    const end = new Date(start);
-    end.setDate(end.getDate() + quickFilterDays - 1);
-    end.setHours(23, 59, 59, 999);
-
-    return {
-      start,
-      end,
-      startIso: start.toISOString(),
-      endIso: end.toISOString(),
-      startDay: start.toISOString().split('T')[0],
-    };
-  }, [quickFilter, quickFilterDays]);
+  useEffect(() => {
+    if (import.meta.env.VITE_DEBUG === 'true') {
+      console.debug('ScheduleEditor query', editorQuery);
+    }
+  }, [editorQuery]);
 
   // Permission checks
   const canView = hasPermission(user, SCHEDULING_PERMISSIONS.VIEW);
