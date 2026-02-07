@@ -149,7 +149,7 @@ export async function registerAuthPlugin(
       // Try to get user from headers first
       let tenantId = request.headers['x-tenant-id'] as string | undefined;
       let userId = request.headers['x-user-id'] as string | undefined;
-      let scopes = request.headers['x-scopes'] as string | undefined;
+      const scopes = request.headers['x-scopes'] as string | undefined;
 
       // If no headers provided, get dev user from database
       if (!userId || !tenantId) {
@@ -176,8 +176,62 @@ export async function registerAuthPlugin(
 
       const roleNames = userRoles.map((ra) => ra.role.name);
 
-      // Parse scopes from header (comma or space separated) or use defaults
-      const scopeList = scopes ? scopes.split(/[,\s]+/).filter(Boolean) : ['read:all', 'write:all'];
+      // Helper: Derive scheduling scopes from role names
+      function deriveSchedulingScopes(roles: string[]): string[] {
+        // Map common admin roles to full scheduling access
+        const adminRoles = [
+          'Admin',
+          'Platform Administrator',
+          'Scheduling Administrator',
+          'Scheduling Admin',
+          'Workforce Manager',
+        ];
+
+        const managerRoles = [
+          'Manager',
+          'Property Manager',
+          'Property Administrator',
+          'HR Manager',
+          'Department Manager',
+        ];
+
+        // Check if user has admin role - grant all scheduling permissions
+        if (roles.some((r) => adminRoles.includes(r))) {
+          return [
+            'scheduling.view',
+            'scheduling.edit.shifts',
+            'scheduling.assign',
+            'scheduling.publish',
+            'scheduling.lock',
+            'scheduling.override',
+            'scheduling.manage.requests',
+            'scheduling.manage.availability',
+          ];
+        }
+
+        // Check if user has manager role - grant manager permissions
+        if (roles.some((r) => managerRoles.includes(r))) {
+          return [
+            'scheduling.view',
+            'scheduling.edit.shifts',
+            'scheduling.assign',
+            'scheduling.manage.requests',
+          ];
+        }
+
+        // Employee role - grant view only
+        if (roles.includes('Employee')) {
+          return ['scheduling.view'];
+        }
+
+        // Default to broad scopes for unrecognized roles
+        return ['read:all', 'write:all'];
+      }
+
+      // Parse scopes from header (comma or space separated) or derive from roles
+      const scopeList = scopes
+        ? scopes.split(/[,\s]+/).filter(Boolean)
+        : deriveSchedulingScopes(roleNames);
 
       // Set user object
       (request as AuthenticatedRequest).user = {
