@@ -12,7 +12,10 @@ export interface PropertySelectorProps {
   onPropertySelect?: (propertyId: string | null) => void;
 }
 
-export function PropertySelector({ userId, onPropertySelect }: PropertySelectorProps): React.ReactElement {
+export function PropertySelector({
+  userId,
+  onPropertySelect,
+}: PropertySelectorProps): React.ReactElement {
   const { selectedTenantId, selectedPropertyId, setSelectedTenantId, setSelectedPropertyId } =
     useSelection();
 

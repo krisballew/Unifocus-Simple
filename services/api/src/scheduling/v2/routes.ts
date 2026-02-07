@@ -5,8 +5,9 @@
 
 import type { PrismaClient } from '@prisma/client';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { ZodError } from 'zod';
 
-import { getAuthContext } from '../../auth/rbac.js';
+import { getAuthContext, hasScope } from '../../auth/rbac.js';
 
 import { requireSchedulingPermission, SchedulingAuthError } from './guard.js';
 import { SCHEDULING_PERMISSIONS } from './permissions.js';
@@ -16,6 +17,8 @@ import {
   CreateSchedulePeriodBodySchema,
   PublishSchedulePeriodBodySchema,
   LockSchedulePeriodBodySchema,
+  ScheduleSettingsQuerySchema,
+  ScheduleSettingsUpsertBodySchema,
   ListShiftsQuerySchema,
   CreateShiftBodySchema,
   UpdateShiftBodySchema,
@@ -95,7 +98,7 @@ export async function schedulingV2Routes(
         });
       }
 
-      if (error instanceof Error && error.message.includes('validation')) {
+      if (error instanceof ZodError || (error instanceof Error && error.message.includes('validation'))) {
         return reply.code(400).send({
           success: false,
           message: error.message,
@@ -136,7 +139,8 @@ export async function schedulingV2Routes(
         body.propertyId,
         new Date(body.startDate),
         new Date(body.endDate),
-        body.name
+        body.name,
+        body.planningTemplateId
       );
 
       return reply.code(201).send({
@@ -306,6 +310,130 @@ export async function schedulingV2Routes(
       }
     }
   );
+
+  // ========== SCHEDULE SETTINGS ROUTES ==========
+
+  /**
+   * GET /api/scheduling/v2/settings/schedule
+   * Query params: propertyId (required)
+   */
+  fastify.get('/settings/schedule', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userContext = getAuthContext(request);
+      if (!userContext || !userContext.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      const canViewSettings =
+        hasScope(userContext, SCHEDULING_PERMISSIONS.SETTINGS_VIEW) ||
+        hasScope(userContext, SCHEDULING_PERMISSIONS.VIEW);
+
+      if (!canViewSettings) {
+        throw new SchedulingAuthError(
+          `Forbidden: Required permission '${SCHEDULING_PERMISSIONS.SETTINGS_VIEW}' not found`,
+          403
+        );
+      }
+
+      const query = ScheduleSettingsQuerySchema.parse(request.query);
+      const settings = await service.getScheduleSettings(userContext, query.propertyId);
+
+      return reply.code(200).send({
+        success: true,
+        data: settings,
+      });
+    } catch (error) {
+      if (error instanceof SchedulingAuthError) {
+        return reply.code(error.statusCode).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.code(404).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof ZodError || (error instanceof Error && error.message.includes('validation'))) {
+        return reply.code(400).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
+
+  /**
+   * PUT /api/scheduling/v2/settings/schedule
+   * Query params: propertyId (required)
+   * Body: { templates: [...] }
+   */
+  fastify.put('/settings/schedule', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userContext = getAuthContext(request);
+      if (!userContext || !userContext.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      requireSchedulingPermission(userContext, SCHEDULING_PERMISSIONS.SETTINGS_EDIT);
+
+      const query = ScheduleSettingsQuerySchema.parse(request.query);
+      const body = ScheduleSettingsUpsertBodySchema.parse(request.body);
+
+      const settings = await service.upsertScheduleSettings(
+        userContext,
+        query.propertyId,
+        body.templates
+      );
+
+      return reply.code(200).send({
+        success: true,
+        data: settings,
+      });
+    } catch (error) {
+      if (error instanceof SchedulingAuthError) {
+        return reply.code(error.statusCode).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('not found')) {
+        return reply.code(404).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof Error && error.message.includes('validation')) {
+        return reply.code(400).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
 
   /**
    * GET /api/scheduling/v2/schedule-periods/:id/events

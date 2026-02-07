@@ -2,14 +2,39 @@ import React, { useState } from 'react';
 
 import { ComplianceRulesModal } from '../components/ComplianceRulesModal';
 import { JobStructureModal } from '../components/JobStructureModal';
-import { useProperty } from '../hooks/useProperty';
+import { useAuth } from '../hooks/useAuth';
+import { useSelection } from '../context/SelectionContext';
+import { hasAnyPermission, hasPermission, SCHEDULING_PERMISSIONS } from '../utils/permissions';
+import { ScheduleSettingsModal } from '../features/scheduleManagement/components/ScheduleSettingsModal';
 
 export function SettingsPage(): React.ReactElement {
   const [isJobStructureOpen, setIsJobStructureOpen] = useState(false);
   const [isComplianceOpen, setIsComplianceOpen] = useState(false);
-  const property = useProperty();
-  const tenantId = property?.tenantId || '';
-  const propertyId = property?.id;
+  const [isScheduleSettingsOpen, setIsScheduleSettingsOpen] = useState(false);
+  const { user } = useAuth();
+  const { selectedTenantId, selectedPropertyId, isHydrated } = useSelection();
+  const tenantId = selectedTenantId || '';
+  const propertyId = selectedPropertyId;
+
+
+  const featureSchedulingV2 = import.meta.env.VITE_FEATURE_SCHEDULING_V2 === 'true';
+  const hasScheduleSettingsScope = hasAnyPermission(user, [
+    SCHEDULING_PERMISSIONS.VIEW,
+    SCHEDULING_PERMISSIONS.SETTINGS_VIEW,
+    SCHEDULING_PERMISSIONS.SETTINGS_EDIT,
+  ]);
+  const canViewScheduleSettings = featureSchedulingV2 && hasScheduleSettingsScope;
+  const canOpenScheduleSettings = canViewScheduleSettings && isHydrated;
+  const scheduleSettingsTitle = !featureSchedulingV2
+    ? 'Scheduling V2 is disabled'
+    : !hasScheduleSettingsScope
+      ? 'You do not have permission to view schedule settings'
+      : !isHydrated
+        ? 'Loading selection...'
+        : !propertyId
+          ? 'Select a property to manage schedule settings'
+          : '';
+  const canEditScheduleSettings = hasPermission(user, SCHEDULING_PERMISSIONS.SETTINGS_EDIT);
 
   return (
     <div className="page-container">
@@ -37,6 +62,18 @@ export function SettingsPage(): React.ReactElement {
             automatically.
           </div>
         </button>
+
+        <button
+          className="settings-card"
+          type="button"
+          onClick={() => setIsScheduleSettingsOpen(true)}
+          disabled={!canOpenScheduleSettings}
+          title={scheduleSettingsTitle}
+        >
+          <div className="settings-card__meta">Scheduling</div>
+          <div className="settings-card__title">Schedule Settings</div>
+          <div className="settings-card__description">Planning period templates</div>
+        </button>
       </div>
 
       <JobStructureModal isOpen={isJobStructureOpen} onClose={() => setIsJobStructureOpen(false)} />
@@ -45,6 +82,12 @@ export function SettingsPage(): React.ReactElement {
         onClose={() => setIsComplianceOpen(false)}
         tenantId={tenantId}
         propertyId={propertyId}
+      />
+      <ScheduleSettingsModal
+        isOpen={isScheduleSettingsOpen}
+        onClose={() => setIsScheduleSettingsOpen(false)}
+        propertyId={propertyId}
+        canEdit={canEditScheduleSettings}
       />
     </div>
   );

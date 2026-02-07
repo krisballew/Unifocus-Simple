@@ -206,6 +206,8 @@ export async function registerAuthPlugin(
             'scheduling.override',
             'scheduling.manage.requests',
             'scheduling.manage.availability',
+            'scheduling.settings.view',
+            'scheduling.settings.edit',
           ];
         }
 
@@ -216,6 +218,7 @@ export async function registerAuthPlugin(
             'scheduling.edit.shifts',
             'scheduling.assign',
             'scheduling.manage.requests',
+            'scheduling.settings.view',
           ];
         }
 

@@ -3179,3 +3179,193 @@ test('Scheduling V2: Lookup Endpoints', async (t) => {
   // Cleanup
   await app.close();
 });
+
+test('Scheduling V2: Schedule Settings', async (t) => {
+  const config = {
+    port: 3010,
+    host: '0.0.0.0',
+    nodeEnv: 'test',
+    corsOrigin: '*',
+    databaseUrl: process.env.DATABASE_URL || 'postgresql://localhost:5432/test',
+    redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+    jwtSecret: 'test-secret',
+    logLevel: 'silent',
+    cognito: {
+      region: 'us-east-1',
+      userPoolId: 'us-east-1_test',
+      clientId: 'test-client',
+      issuer: 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_test',
+      jwksUri: 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_test/.well-known/jwks.json',
+    },
+    authSkipVerification: true,
+    complianceRulesEnabled: false,
+    openai: {
+      apiKey: '',
+      model: 'gpt-4',
+    },
+  };
+
+  const app = await buildServer(config);
+
+  const tenant = await prisma.tenant.create({
+    data: {
+      name: 'Schedule Settings Tenant',
+      slug: `schedule-settings-${Date.now()}`,
+    },
+  });
+
+  const property = await prisma.property.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Settings Property',
+    },
+  });
+
+  const adminUser = await createTestUser(prisma, {
+    tenantId: tenant.id,
+    propertyId: property.id,
+    email: 'settings-admin@test.com',
+    name: 'Settings Admin',
+  });
+
+  const managerUser = await createTestUser(prisma, {
+    tenantId: tenant.id,
+    propertyId: property.id,
+    email: 'settings-manager@test.com',
+    name: 'Settings Manager',
+  });
+
+  const adminHeaders = {
+    ...buildPersonaHeaders('schedulingAdmin', {
+      tenantId: tenant.id,
+      userId: adminUser.id,
+    }),
+    'content-type': 'application/json',
+  };
+
+  const managerHeaders = {
+    ...buildPersonaHeaders('departmentManager', {
+      tenantId: tenant.id,
+      userId: managerUser.id,
+    }),
+    'content-type': 'application/json',
+  };
+
+  t.teardown(async () => {
+    await prisma.wfmScheduleSettings.deleteMany({});
+    await prisma.userRoleAssignment.deleteMany({ where: { tenantId: tenant.id } });
+    await prisma.user.deleteMany({
+      where: {
+        email: { in: ['settings-admin@test.com', 'settings-manager@test.com'] },
+      },
+    });
+    await prisma.property.deleteMany({ where: { tenantId: tenant.id } });
+    await prisma.tenant.delete({ where: { id: tenant.id } });
+    await app.close();
+  });
+
+  await t.test('Admin can PUT then GET schedule settings', async (t) => {
+    const templates = [
+      {
+        id: 'tpl-weekly-1',
+        name: 'Weekly Mon-Sun',
+        type: 'WEEKLY',
+        weekly: { startDow: 1, endDow: 0 },
+      },
+      {
+        id: 'tpl-monthly-1',
+        name: 'Monthly 1st',
+        type: 'MONTHLY',
+        monthly: { startDom: 1 },
+      },
+    ];
+
+    const putResponse = await app.inject({
+      method: 'PUT',
+      url: `/api/scheduling/v2/settings/schedule?propertyId=${property.id}`,
+      headers: adminHeaders,
+      payload: { templates },
+    });
+
+    t.equal(putResponse.statusCode, 200, 'PUT returns 200');
+    const putBody = getData(putResponse) as { propertyId: string; templates: unknown[] };
+    t.equal(putBody.propertyId, property.id, 'Returns propertyId');
+    t.equal(putBody.templates.length, 2, 'Returns templates');
+
+    const getResponse = await app.inject({
+      method: 'GET',
+      url: `/api/scheduling/v2/settings/schedule?propertyId=${property.id}`,
+      headers: adminHeaders,
+    });
+
+    t.equal(getResponse.statusCode, 200, 'GET returns 200');
+    const getBody = getData(getResponse) as { propertyId: string; templates: unknown[] };
+    t.equal(getBody.templates.length, 2, 'Persists templates');
+  });
+
+  await t.test('Manager can GET but cannot PUT schedule settings', async (t) => {
+    const getResponse = await app.inject({
+      method: 'GET',
+      url: `/api/scheduling/v2/settings/schedule?propertyId=${property.id}`,
+      headers: managerHeaders,
+    });
+
+    t.equal(getResponse.statusCode, 200, 'GET returns 200');
+
+    const putResponse = await app.inject({
+      method: 'PUT',
+      url: `/api/scheduling/v2/settings/schedule?propertyId=${property.id}`,
+      headers: managerHeaders,
+      payload: { templates: [] },
+    });
+
+    t.equal(putResponse.statusCode, 403, 'PUT returns 403');
+  });
+
+  await t.test('Tenant isolation enforced on settings', async (t) => {
+    const tenant2 = await prisma.tenant.create({
+      data: {
+        name: 'Settings Tenant 2',
+        slug: `schedule-settings-2-${Date.now()}`,
+      },
+    });
+
+    const property2 = await prisma.property.create({
+      data: {
+        tenantId: tenant2.id,
+        name: 'Other Settings Property',
+      },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/scheduling/v2/settings/schedule?propertyId=${property2.id}`,
+      headers: adminHeaders,
+    });
+
+    t.equal(response.statusCode, 404, 'Returns 404 for other tenant');
+
+    await prisma.property.deleteMany({ where: { tenantId: tenant2.id } });
+    await prisma.tenant.delete({ where: { id: tenant2.id } });
+  });
+
+  await t.test('Validation returns 400 for invalid template', async (t) => {
+    const response = await app.inject({
+      method: 'PUT',
+      url: `/api/scheduling/v2/settings/schedule?propertyId=${property.id}`,
+      headers: adminHeaders,
+      payload: {
+        templates: [
+          {
+            id: 'tpl-invalid',
+            name: 'Invalid Monthly',
+            type: 'MONTHLY',
+            weekly: { startDow: 1, endDow: 0 },
+          },
+        ],
+      },
+    });
+
+    t.equal(response.statusCode, 400, 'Returns 400');
+  });
+});

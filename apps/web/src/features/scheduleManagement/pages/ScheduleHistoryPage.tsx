@@ -53,7 +53,7 @@ function formatDateTime(isoString: string): string {
 }
 
 export function ScheduleHistoryPage(): React.ReactElement {
-  const { selectedTenantId, selectedPropertyId } = useSelection();
+  const { selectedTenantId, selectedPropertyId, isHydrated } = useSelection();
   const { user } = useAuth();
 
   // Permission checks
@@ -69,7 +69,7 @@ export function ScheduleHistoryPage(): React.ReactElement {
       getSchedulePeriods({
         propertyId: selectedPropertyId!,
       }),
-    enabled: Boolean(selectedTenantId && selectedPropertyId && canViewScheduling),
+    enabled: Boolean(isHydrated && selectedTenantId && selectedPropertyId && canViewScheduling),
   });
 
   // Fetch events for selected period
@@ -79,7 +79,7 @@ export function ScheduleHistoryPage(): React.ReactElement {
       if (!selectedSchedulePeriodId) throw new Error('No period selected');
       return getSchedulePeriodEvents(selectedSchedulePeriodId, selectedPropertyId!);
     },
-    enabled: Boolean(selectedSchedulePeriodId && canViewScheduling),
+    enabled: Boolean(isHydrated && selectedSchedulePeriodId && canViewScheduling),
   });
 
   // Handle first period selection on load
@@ -88,6 +88,10 @@ export function ScheduleHistoryPage(): React.ReactElement {
       setSelectedSchedulePeriodId(periodsQuery.data[0].id);
     }
   }, [periodsQuery.data, selectedSchedulePeriodId]);
+
+  if (!isHydrated) {
+    return <LoadingSkeleton lines={10} card />;
+  }
 
   if (!selectedPropertyId) {
     return (

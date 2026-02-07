@@ -137,6 +137,7 @@ export interface SchedulePeriodDTO {
   status: 'DRAFT' | 'PUBLISHED' | 'LOCKED' | 'ARCHIVED';
   version: number;
   name?: string;
+  planningTemplateId?: string;
   createdByUserId?: string;
   createdAt: string;
   updatedAt: string;

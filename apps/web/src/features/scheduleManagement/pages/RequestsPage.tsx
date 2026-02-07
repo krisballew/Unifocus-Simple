@@ -10,7 +10,7 @@ import type { RequestStatus } from '../api/requests';
 import { RequestsTable } from '../components/RequestsTable';
 
 export function RequestsPage(): React.ReactElement {
-  const { selectedTenantId, selectedPropertyId } = useSelection();
+  const { selectedTenantId, selectedPropertyId, isHydrated } = useSelection();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -28,8 +28,12 @@ export function RequestsPage(): React.ReactElement {
         propertyId: selectedPropertyId!,
         status: statusFilter,
       }),
-    enabled: Boolean(selectedTenantId && selectedPropertyId && canManageRequests),
+    enabled: Boolean(isHydrated && selectedTenantId && selectedPropertyId && canManageRequests),
   });
+
+  if (!isHydrated) {
+    return <LoadingSkeleton lines={10} card />;
+  }
 
   if (!selectedPropertyId) {
     return (

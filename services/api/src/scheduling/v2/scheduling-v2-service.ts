@@ -21,6 +21,17 @@ import { isEmployeeEligibleForJob } from './hr-eligibility-adapter.js';
 
 type SwapRequestRecord = Omit<WfmSwapRequest, 'notes'> & { notes?: string | null };
 
+type PlanningPeriodType = 'WEEKLY' | 'BIWEEKLY' | 'SEMIMONTHLY' | 'MONTHLY';
+
+type ScheduleSettingsTemplate = {
+  id: string;
+  name: string;
+  type: PlanningPeriodType;
+  weekly?: { startDow: number; endDow: number };
+  monthly?: { startDom: number };
+  semiMonthly?: { startDom: number };
+};
+
 const SWAP_REQUEST_SELECT = {
   id: true,
   tenantId: true,
@@ -96,7 +107,8 @@ export class SchedulingV2Service {
     propertyId: string,
     startDate: Date,
     endDate: Date,
-    name?: string
+    name?: string,
+    planningTemplateId?: string
   ): Promise<SchedulePeriodDTO> {
     if (!userContext.tenantId) {
       throw new Error('Tenant ID is required');
@@ -126,6 +138,7 @@ export class SchedulingV2Service {
         startDate,
         endDate,
         name,
+        planningTemplateId,
         status: 'DRAFT',
         version: 1,
         createdByUserId: userContext.userId || undefined,
@@ -133,6 +146,94 @@ export class SchedulingV2Service {
     });
 
     return this.periodToDTO(period);
+  }
+
+  /**
+   * Get schedule settings for a property
+   * Returns empty templates if no settings exist
+   */
+  async getScheduleSettings(
+    userContext: AuthorizationContext,
+    propertyId: string
+  ): Promise<{ propertyId: string; templates: ScheduleSettingsTemplate[] }> {
+    if (!userContext.tenantId) {
+      throw new Error('Tenant ID is required');
+    }
+
+    const property = await this.prisma.property.findFirst({
+      where: {
+        id: propertyId,
+        tenantId: userContext.tenantId,
+      },
+    });
+
+    if (!property) {
+      throw new Error(`Property '${propertyId}' not found`);
+    }
+
+    const settings = await this.prisma.wfmScheduleSettings.findFirst({
+      where: {
+        tenantId: userContext.tenantId,
+        propertyId,
+      },
+    });
+
+    if (!settings) {
+      return { propertyId, templates: [] };
+    }
+
+    return {
+      propertyId,
+      templates: settings.templates as ScheduleSettingsTemplate[],
+    };
+  }
+
+  /**
+   * Upsert schedule settings for a property
+   */
+  async upsertScheduleSettings(
+    userContext: AuthorizationContext,
+    propertyId: string,
+    templates: ScheduleSettingsTemplate[]
+  ): Promise<{ propertyId: string; templates: ScheduleSettingsTemplate[] }> {
+    if (!userContext.tenantId) {
+      throw new Error('Tenant ID is required');
+    }
+
+    const property = await this.prisma.property.findFirst({
+      where: {
+        id: propertyId,
+        tenantId: userContext.tenantId,
+      },
+    });
+
+    if (!property) {
+      throw new Error(`Property '${propertyId}' not found`);
+    }
+
+    const settings = await this.prisma.wfmScheduleSettings.upsert({
+      where: {
+        tenantId_propertyId: {
+          tenantId: userContext.tenantId,
+          propertyId,
+        },
+      },
+      create: {
+        tenantId: userContext.tenantId,
+        propertyId,
+        templates,
+        updatedByUserId: userContext.userId || undefined,
+      },
+      update: {
+        templates,
+        updatedByUserId: userContext.userId || undefined,
+      },
+    });
+
+    return {
+      propertyId: settings.propertyId,
+      templates: settings.templates as ScheduleSettingsTemplate[],
+    };
   }
 
   /**
@@ -2271,6 +2372,7 @@ export class SchedulingV2Service {
       status: period.status,
       version: period.version,
       name: period.name || undefined,
+      planningTemplateId: period.planningTemplateId || undefined,
       createdByUserId: period.createdByUserId || undefined,
       createdAt: period.createdAt.toISOString(),
       updatedAt: period.updatedAt.toISOString(),

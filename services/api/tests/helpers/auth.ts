@@ -18,6 +18,8 @@ export const SCHEDULING_SCOPES = {
   OVERRIDE: 'scheduling.override',
   MANAGE_REQUESTS: 'scheduling.manage.requests',
   MANAGE_AVAILABILITY: 'scheduling.manage.availability',
+  SETTINGS_VIEW: 'scheduling.settings.view',
+  SETTINGS_EDIT: 'scheduling.settings.edit',
 } as const;
 
 /**
@@ -35,6 +37,8 @@ export const TEST_PERSONAS = {
       SCHEDULING_SCOPES.OVERRIDE,
       SCHEDULING_SCOPES.MANAGE_REQUESTS,
       SCHEDULING_SCOPES.MANAGE_AVAILABILITY,
+      SCHEDULING_SCOPES.SETTINGS_VIEW,
+      SCHEDULING_SCOPES.SETTINGS_EDIT,
     ],
   },
 

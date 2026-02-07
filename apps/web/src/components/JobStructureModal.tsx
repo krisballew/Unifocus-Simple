@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
 
-import { useProperty } from '../hooks/useProperty';
+import { useSelection } from '../context/SelectionContext';
 import { useToast } from '../hooks/useToast';
 import {
   getJobStructure,
@@ -44,7 +44,8 @@ export function JobStructureModal({ isOpen, onClose }: JobStructureModalProps) {
   const [detailFormValues, setDetailFormValues] = useState<
     Record<string, string | number | boolean | undefined>
   >({});
-  const { propertyId } = useProperty();
+  const { selectedPropertyId, isHydrated } = useSelection();
+  const propertyId = selectedPropertyId;
   const { showToast } = useToast();
   const queryClient = useQueryClient();
 
@@ -52,7 +53,7 @@ export function JobStructureModal({ isOpen, onClose }: JobStructureModalProps) {
   const { data: jobStructure, isLoading: isLoadingStructure } = useQuery({
     queryKey: queryKeys.jobStructure(propertyId!),
     queryFn: () => getJobStructure(propertyId!),
-    enabled: isOpen && !!propertyId,
+    enabled: isOpen && !!propertyId && isHydrated,
   });
 
   // Division creation

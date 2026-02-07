@@ -739,10 +739,11 @@ export interface SchedulePeriod {
   id: string;
   tenantId: string;
   propertyId: string;
-  startDate: string; // ISO date string
-  endDate: string; // ISO date string
+  startDate: string; // ISO datetime string
+  endDate: string; // ISO datetime string
   status: ScheduleStatus;
   name?: string | null;
+  planningTemplateId?: string | null;
   createdAt: string;
   createdBy: string;
   updatedAt: string;
@@ -755,9 +756,10 @@ export interface SchedulePeriod {
 
 export interface CreateSchedulePeriodParams {
   propertyId: string;
-  startDate: string; // ISO date string (YYYY-MM-DD)
-  endDate: string; // ISO date string (YYYY-MM-DD)
+  startDate: string; // ISO datetime string
+  endDate: string; // ISO datetime string
   name?: string;
+  planningTemplateId?: string;
 }
 
 export interface PublishSchedulePeriodParams {

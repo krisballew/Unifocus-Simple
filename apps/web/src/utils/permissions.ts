@@ -53,4 +53,6 @@ export const SCHEDULING_PERMISSIONS = {
   VIEW: 'scheduling.view',
   MANAGE_REQUESTS: 'scheduling.manage.requests',
   MANAGE_AVAILABILITY: 'scheduling.manage.availability',
+  SETTINGS_VIEW: 'scheduling.settings.view',
+  SETTINGS_EDIT: 'scheduling.settings.edit',
 } as const;

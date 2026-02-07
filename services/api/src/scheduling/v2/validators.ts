@@ -148,6 +148,7 @@ export const CreateSchedulePeriodBodySchema = z
     startDate: z.string().datetime().describe('Start date (ISO datetime)'),
     endDate: z.string().datetime().describe('End date (ISO datetime)'),
     name: z.string().max(255).optional().describe('Period name'),
+    planningTemplateId: z.string().optional().describe('Planning template ID'),
   })
   .refine((data) => new Date(data.startDate) < new Date(data.endDate), {
     message: 'startDate must be before endDate',
@@ -165,6 +166,74 @@ export const PublishSchedulePeriodBodySchema = z.object({
  * Lock schedule period request validator
  */
 export const LockSchedulePeriodBodySchema = z.object({});
+
+// ============================================================================
+// SCHEDULE SETTINGS (V2) VALIDATORS
+// ============================================================================
+
+const DOW_SCHEMA = z.number().int().min(0).max(6);
+const DOM_SCHEMA = z.number().int().min(1).max(28);
+
+const ScheduleTemplateWeeklySchema = z
+  .object({
+    id: z.string().min(1).describe('Template ID'),
+    name: z.string().min(1).max(64).describe('Template name'),
+    type: z.literal('WEEKLY'),
+    weekly: z.object({
+      startDow: DOW_SCHEMA,
+      endDow: DOW_SCHEMA,
+    }),
+  })
+  .strict();
+
+const ScheduleTemplateBiWeeklySchema = z
+  .object({
+    id: z.string().min(1).describe('Template ID'),
+    name: z.string().min(1).max(64).describe('Template name'),
+    type: z.literal('BIWEEKLY'),
+    weekly: z.object({
+      startDow: DOW_SCHEMA,
+      endDow: DOW_SCHEMA,
+    }),
+  })
+  .strict();
+
+const ScheduleTemplateMonthlySchema = z
+  .object({
+    id: z.string().min(1).describe('Template ID'),
+    name: z.string().min(1).max(64).describe('Template name'),
+    type: z.literal('MONTHLY'),
+    monthly: z.object({
+      startDom: DOM_SCHEMA,
+    }),
+  })
+  .strict();
+
+const ScheduleTemplateSemiMonthlySchema = z
+  .object({
+    id: z.string().min(1).describe('Template ID'),
+    name: z.string().min(1).max(64).describe('Template name'),
+    type: z.literal('SEMIMONTHLY'),
+    semiMonthly: z.object({
+      startDom: DOM_SCHEMA,
+    }),
+  })
+  .strict();
+
+export const ScheduleSettingsTemplateSchema = z.union([
+  ScheduleTemplateWeeklySchema,
+  ScheduleTemplateBiWeeklySchema,
+  ScheduleTemplateSemiMonthlySchema,
+  ScheduleTemplateMonthlySchema,
+]);
+
+export const ScheduleSettingsQuerySchema = z.object({
+  propertyId: z.string().cuid().describe('Property ID (required)'),
+});
+
+export const ScheduleSettingsUpsertBodySchema = z.object({
+  templates: z.array(ScheduleSettingsTemplateSchema).describe('Planning templates'),
+});
 // ============================================================================
 // SHIFT PLAN (V2) VALIDATORS
 // ============================================================================

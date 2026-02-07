@@ -35,6 +35,13 @@ enum WfmAvailabilityType {
   PREFERRED
 }
 
+enum WfmPlanningPeriodType {
+  WEEKLY
+  BIWEEKLY
+  SEMIMONTHLY
+  MONTHLY
+}
+
 // ============================================================================
 // TENANT & ORGANIZATION STRUCTURE
 // ============================================================================
@@ -70,6 +77,7 @@ model Tenant {
   wfmSwapRequests     WfmSwapRequest[]     @relation("WfmSwapRequestTenant")
   wfmPublishEvents    WfmPublishEvent[]    @relation("WfmPublishEventTenant")
   wfmScheduleEvents   WfmScheduleEvent[]   @relation("WfmScheduleEventTenant")
+  wfmScheduleSettings WfmScheduleSettings[] @relation("WfmScheduleSettingsTenant")
   punches     Punch[]
   exceptions  Exception[]
   auditLogs   AuditLog[]
@@ -113,6 +121,7 @@ model Property {
   wfmSwapRequests     WfmSwapRequest[]     @relation("WfmSwapRequestProperty")
   wfmPublishEvents    WfmPublishEvent[]    @relation("WfmPublishEventProperty")
   wfmScheduleEvents   WfmScheduleEvent[]   @relation("WfmScheduleEventProperty")
+  wfmScheduleSettings WfmScheduleSettings[] @relation("WfmScheduleSettingsProperty")
 
   @@unique([tenantId, id])
   @@index([tenantId])
@@ -322,6 +331,7 @@ model User {
   wfmSwapRequestsManaged WfmSwapRequest[] @relation("WfmSwapRequestManager")
   wfmPublishEventsPublished WfmPublishEvent[] @relation("WfmPublishEventPublishedBy")
   wfmScheduleEventsCreated WfmScheduleEvent[] @relation("WfmScheduleEventUser")
+  wfmScheduleSettingsUpdated WfmScheduleSettings[] @relation("WfmScheduleSettingsUpdatedBy")
 
   // Labor compliance rules system
   createdRulePackages RulePackage[] @relation("RulePackageCreatedBy")
@@ -557,6 +567,7 @@ model WfmSchedulePeriod {
   status    WfmScheduleStatus @default(DRAFT)
   version   Int      @default(1)
   name      String?
+  planningTemplateId String?
 
   createdByUserId String?
   createdByUser   User? @relation("WfmSchedulePeriodCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
@@ -570,6 +581,27 @@ model WfmSchedulePeriod {
 
   @@unique([tenantId, propertyId, startDate, version])
   @@index([tenantId, propertyId, startDate])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([createdAt])
+}
+
+model WfmScheduleSettings {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation("WfmScheduleSettingsTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId String
+  property  Property @relation("WfmScheduleSettingsProperty", fields: [propertyId], references: [id], onDelete: Cascade)
+
+  templates Json
+
+  updatedByUserId String?
+  updatedByUser   User? @relation("WfmScheduleSettingsUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, propertyId])
   @@index([tenantId])
   @@index([propertyId])
   @@index([createdAt])

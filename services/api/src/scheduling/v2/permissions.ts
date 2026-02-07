@@ -31,6 +31,12 @@ export const SCHEDULING_PERMISSIONS = {
 
   /** Manage employee availability windows */
   MANAGE_AVAILABILITY: 'scheduling.manage.availability',
+
+  /** View schedule settings (planning templates) */
+  SETTINGS_VIEW: 'scheduling.settings.view',
+
+  /** Edit schedule settings (planning templates) */
+  SETTINGS_EDIT: 'scheduling.settings.edit',
 } as const;
 
 /**

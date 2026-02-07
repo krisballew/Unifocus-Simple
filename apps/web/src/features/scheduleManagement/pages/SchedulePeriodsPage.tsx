@@ -19,7 +19,7 @@ import { SchedulePeriodList } from '../components/SchedulePeriodList';
 import { formatApiError } from '../utils/apiErrors';
 
 export function SchedulePeriodsPage(): React.ReactElement {
-  const { selectedTenantId, selectedPropertyId } = useSelection();
+  const { selectedTenantId, selectedPropertyId, isHydrated } = useSelection();
   const { user } = useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [publishingPeriod, setPublishingPeriod] = useState<SchedulePeriod | null>(null);
@@ -37,7 +37,7 @@ export function SchedulePeriodsPage(): React.ReactElement {
       getSchedulePeriods({
         propertyId: selectedPropertyId!,
       }),
-    enabled: Boolean(selectedTenantId && selectedPropertyId),
+    enabled: Boolean(isHydrated && selectedTenantId && selectedPropertyId),
   });
 
   const createMutation = useMutation({
@@ -74,6 +74,10 @@ export function SchedulePeriodsPage(): React.ReactElement {
   });
 
   const isLoading = createMutation.isPending || publishMutation.isPending || lockMutation.isPending;
+
+  if (!isHydrated) {
+    return <LoadingSkeleton lines={10} card />;
+  }
 
   if (!selectedPropertyId) {
     return (

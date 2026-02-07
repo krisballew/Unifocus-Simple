@@ -13,7 +13,7 @@ import { AvailabilityTable } from '../components/AvailabilityTable';
 import { formatApiError } from '../utils/apiErrors';
 
 export function AvailabilityPage(): React.ReactElement {
-  const { selectedTenantId, selectedPropertyId } = useSelection();
+  const { selectedTenantId, selectedPropertyId, isHydrated } = useSelection();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -55,7 +55,9 @@ export function AvailabilityPage(): React.ReactElement {
         start: dateRange.start,
         end: dateRange.end,
       }),
-    enabled: Boolean(selectedTenantId && selectedPropertyId && selectedEmployeeId && canView),
+    enabled: Boolean(
+      isHydrated && selectedTenantId && selectedPropertyId && selectedEmployeeId && canView
+    ),
   });
 
   // Create availability mutation
@@ -91,6 +93,10 @@ export function AvailabilityPage(): React.ReactElement {
       alert(`Failed to create availability: ${formatApiError(error)}`);
     },
   });
+
+  if (!isHydrated) {
+    return <LoadingSkeleton lines={10} card />;
+  }
 
   if (!selectedPropertyId) {
     return (

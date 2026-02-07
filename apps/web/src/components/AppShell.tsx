@@ -107,7 +107,7 @@ function hasAnyRole(userRoles: string[] = [], requiredRoles: string[] = []) {
 function AppShellContent(): React.ReactElement {
   const navigate = useNavigate();
   const location = useLocation();
-  const { selectedPropertyId, setSelectedPropertyId } = useSelection();
+  const { selectedPropertyId, setSelectedPropertyId, isHydrated } = useSelection();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [openTabs, setOpenTabs] = useState<Tab[]>([{ id: 'home', label: 'Home', path: '/' }]);
   const [activeTabId, setActiveTabId] = useState('home');
@@ -153,10 +153,11 @@ function AppShellContent(): React.ReactElement {
 
   // Set default property from user preferences on initial load
   useEffect(() => {
+    if (!isHydrated) return;
     if (userPreferencesQuery.data?.defaultPropertyId && !selectedPropertyId) {
       setSelectedPropertyId(userPreferencesQuery.data.defaultPropertyId);
     }
-  }, [userPreferencesQuery.data, selectedPropertyId]);
+  }, [userPreferencesQuery.data, selectedPropertyId, isHydrated]);
 
   const selectedProperty = useQuery({
     queryKey: ['property', selectedPropertyId],

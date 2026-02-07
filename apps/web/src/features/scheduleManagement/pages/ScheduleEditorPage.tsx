@@ -32,7 +32,7 @@ import { parseEditorQuery } from '../utils/editorQuery';
 import './ScheduleEditorPage.css';
 
 export function ScheduleEditorPage(): React.ReactElement {
-  const { selectedTenantId, selectedPropertyId } = useSelection();
+  const { selectedTenantId, selectedPropertyId, isHydrated } = useSelection();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -86,14 +86,14 @@ export function ScheduleEditorPage(): React.ReactElement {
       getSchedulePeriods({
         propertyId: selectedPropertyId!,
       }),
-    enabled: Boolean(selectedTenantId && selectedPropertyId && canView),
+    enabled: Boolean(isHydrated && selectedTenantId && selectedPropertyId && canView),
   });
 
   // Fetch departments for filter
   const departmentsQuery = useQuery({
     queryKey: ['departments', selectedPropertyId],
     queryFn: () => getDepartments({ propertyId: selectedPropertyId! }),
-    enabled: Boolean(selectedPropertyId && canView),
+    enabled: Boolean(isHydrated && selectedPropertyId && canView),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -102,7 +102,7 @@ export function ScheduleEditorPage(): React.ReactElement {
     queryKey: ['jobRoles', selectedPropertyId, departmentFilter],
     queryFn: () =>
       getJobRoles({ propertyId: selectedPropertyId!, departmentId: departmentFilter || undefined }),
-    enabled: Boolean(selectedPropertyId && canView),
+    enabled: Boolean(isHydrated && selectedPropertyId && canView),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -244,7 +244,12 @@ export function ScheduleEditorPage(): React.ReactElement {
       });
     },
     enabled: Boolean(
-      selectedPropertyId && selectedPeriodId && selectedDate && shiftQueryWindow && canView
+      isHydrated &&
+        selectedPropertyId &&
+        selectedPeriodId &&
+        selectedDate &&
+        shiftQueryWindow &&
+        canView
     ),
   });
 
@@ -693,6 +698,10 @@ export function ScheduleEditorPage(): React.ReactElement {
     assignMutation.isPending ||
     unassignMutation.isPending ||
     toggleOpenMutation.isPending;
+
+  if (!isHydrated) {
+    return <LoadingSkeleton lines={10} card />;
+  }
 
   // Authorization check
   if (!canView) {
