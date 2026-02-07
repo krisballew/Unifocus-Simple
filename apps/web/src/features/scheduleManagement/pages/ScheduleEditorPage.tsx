@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import { LoadingSkeleton } from '../../../components/LoadingSkeleton';
 import { useSelection } from '../../../context/SelectionContext';
@@ -30,6 +31,32 @@ export function ScheduleEditorPage(): React.ReactElement {
   const { selectedTenantId, selectedPropertyId } = useSelection();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const viewParam = searchParams.get('view');
+  const quickFilter = viewParam === 'openShifts' || viewParam === 'unassigned' ? viewParam : null;
+  const daysParam = Number(searchParams.get('days'));
+  const quickFilterDays =
+    quickFilter && Number.isFinite(daysParam) && daysParam > 0 ? daysParam : 7;
+
+  const quickFilterWindow = useMemo(() => {
+    if (!quickFilter) return null;
+
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(end.getDate() + quickFilterDays - 1);
+    end.setHours(23, 59, 59, 999);
+
+    return {
+      start,
+      end,
+      startIso: start.toISOString(),
+      endIso: end.toISOString(),
+      startDay: start.toISOString().split('T')[0],
+    };
+  }, [quickFilter, quickFilterDays]);
 
   // Permission checks
   const canView = hasPermission(user, SCHEDULING_PERMISSIONS.VIEW);
@@ -92,12 +119,19 @@ export function ScheduleEditorPage(): React.ReactElement {
       const defaultPeriod = draftPeriods.length > 0 ? draftPeriods[0] : periodsQuery.data[0];
       setSelectedPeriodId(defaultPeriod.id);
 
-      // Set default date to start of period
-      const startDate = new Date(defaultPeriod.startDate);
-      const isoDate = startDate.toISOString().split('T')[0];
-      setSelectedDate(isoDate);
+      // Set default date to today when quick filter is active and in range, otherwise period start
+      const periodStart = defaultPeriod.startDate;
+      const periodEnd = defaultPeriod.endDate;
+      const quickStart = quickFilterWindow?.startDay;
+      if (quickStart && quickStart >= periodStart && quickStart <= periodEnd) {
+        setSelectedDate(quickStart);
+      } else {
+        const startDate = new Date(defaultPeriod.startDate);
+        const isoDate = startDate.toISOString().split('T')[0];
+        setSelectedDate(isoDate);
+      }
     }
-  }, [periodsQuery.data, selectedPeriodId]);
+  }, [periodsQuery.data, selectedPeriodId, quickFilterWindow]);
 
   const selectedPeriod = periodsQuery.data?.find((p) => p.id === selectedPeriodId);
 
@@ -145,36 +179,97 @@ export function ScheduleEditorPage(): React.ReactElement {
     ? `${new Date(selectedPeriod.startDate).toLocaleDateString()} - ${new Date(selectedPeriod.endDate).toLocaleDateString()}`
     : '';
 
-  // Fetch shifts for selected period and date
-  const shiftsQuery = useQuery({
-    queryKey: [
+  const shiftQueryWindow = useMemo(() => {
+    if (!selectedDate) return null;
+
+    if (quickFilterWindow) {
+      return { start: quickFilterWindow.startIso, end: quickFilterWindow.endIso };
+    }
+
+    const startOfDay = new Date(selectedDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(selectedDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    return { start: startOfDay.toISOString(), end: endOfDay.toISOString() };
+  }, [selectedDate, quickFilterWindow]);
+
+  const shiftsQueryKey = useMemo(() => {
+    if (!shiftQueryWindow) return ['shifts', 'empty'];
+
+    if (quickFilterWindow) {
+      return [
+        'shifts',
+        selectedPeriodId,
+        'range',
+        shiftQueryWindow.start,
+        shiftQueryWindow.end,
+        departmentFilter,
+        jobRoleFilter,
+        selectedPropertyId,
+        quickFilter,
+      ];
+    }
+
+    return [
       'shifts',
       selectedPeriodId,
       selectedDate,
       departmentFilter,
       jobRoleFilter,
       selectedPropertyId,
-    ],
+    ];
+  }, [
+    shiftQueryWindow,
+    quickFilterWindow,
+    selectedPeriodId,
+    selectedDate,
+    departmentFilter,
+    jobRoleFilter,
+    selectedPropertyId,
+    quickFilter,
+  ]);
+
+  // Fetch shifts for selected period and date
+  const shiftsQuery = useQuery({
+    queryKey: shiftsQueryKey,
     queryFn: () => {
-      if (!selectedDate) return [];
-
-      const startOfDay = new Date(selectedDate);
-      startOfDay.setHours(0, 0, 0, 0);
-
-      const endOfDay = new Date(selectedDate);
-      endOfDay.setHours(23, 59, 59, 999);
+      if (!selectedDate || !shiftQueryWindow) return [];
 
       return getShifts({
         propertyId: selectedPropertyId!,
         schedulePeriodId: selectedPeriodId,
-        start: startOfDay.toISOString(),
-        end: endOfDay.toISOString(),
+        start: shiftQueryWindow.start,
+        end: shiftQueryWindow.end,
         ...(departmentFilter && { departmentId: departmentFilter }),
         ...(jobRoleFilter && { jobRoleId: jobRoleFilter }),
       });
     },
-    enabled: Boolean(selectedPropertyId && selectedPeriodId && selectedDate && canView),
+    enabled: Boolean(
+      selectedPropertyId && selectedPeriodId && selectedDate && shiftQueryWindow && canView
+    ),
   });
+
+  const displayedShifts = useMemo(() => {
+    const shifts = shiftsQuery.data ?? [];
+    if (!selectedDate) return shifts;
+
+    const selectedDayShifts = shifts.filter((shift) => {
+      const shiftDate = new Date(shift.startDateTime).toISOString().split('T')[0];
+      return shiftDate === selectedDate;
+    });
+
+    if (!quickFilter) return selectedDayShifts;
+
+    if (quickFilter === 'openShifts') {
+      return selectedDayShifts.filter((shift) => shift.isOpenShift);
+    }
+
+    return selectedDayShifts.filter(
+      (shift) => !shift.isOpenShift && (!shift.assignments || shift.assignments.length === 0)
+    );
+  }, [shiftsQuery.data, selectedDate, quickFilter]);
 
   // Mutations
   const createMutation = useMutation({
@@ -685,6 +780,28 @@ export function ScheduleEditorPage(): React.ReactElement {
         )}
       </div>
 
+      {quickFilter && (
+        <div className="schedule-quick-filters">
+          <span>Quick Filter:</span>
+          <span className="schedule-quick-filters__chip">
+            {quickFilter === 'openShifts' ? 'Open Shifts' : 'Unassigned Shifts'} (Next{' '}
+            {quickFilterDays} days)
+          </span>
+          <button
+            type="button"
+            className="button button--secondary"
+            onClick={() => {
+              const next = new URLSearchParams(searchParams);
+              next.delete('view');
+              next.delete('days');
+              setSearchParams(next, { replace: true });
+            }}
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
       {selectedPeriod && periodDays.length > 0 && (
         <div className="schedule-day-strip">
           {periodDays.map((day) => {
@@ -717,7 +834,7 @@ export function ScheduleEditorPage(): React.ReactElement {
         </div>
       ) : (
         <ShiftList
-          shifts={shiftsQuery.data ?? []}
+          shifts={displayedShifts}
           propertyId={selectedPropertyId!}
           onEdit={handleEditShift}
           onDelete={handleDeleteShift}

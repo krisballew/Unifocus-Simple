@@ -118,7 +118,7 @@ export function HomePage(): React.ReactElement {
                   <button
                     type="button"
                     className="scheduling-tile scheduling-tile--open-shifts"
-                    onClick={() => navigate('/schedule-management/editor')}
+                    onClick={() => navigate('/schedule-management/editor?view=openShifts&days=7')}
                   >
                     <div className="tile-value">{schedulingSignals.openShiftsCount}</div>
                     <div className="tile-label">Open Shifts</div>
@@ -129,7 +129,7 @@ export function HomePage(): React.ReactElement {
                   <button
                     type="button"
                     className="scheduling-tile scheduling-tile--unassigned"
-                    onClick={() => navigate('/schedule-management/editor')}
+                    onClick={() => navigate('/schedule-management/editor?view=unassigned&days=7')}
                   >
                     <div className="tile-value">{schedulingSignals.unassignedShiftsCount}</div>
                     <div className="tile-label">Unassigned Shifts</div>
