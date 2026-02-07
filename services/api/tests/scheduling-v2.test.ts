@@ -1103,7 +1103,7 @@ test('Scheduling V2: Employee Swap Requests', async (t) => {
   );
 
   await t.test(
-    'POST /api/scheduling/v2/swap-requests/:id/cancel - Cannot cancel another employee\'s request',
+    "POST /api/scheduling/v2/swap-requests/:id/cancel - Cannot cancel another employee's request",
     async (t) => {
       // Create a new employee
       const employee8 = await prisma.employee.create({
@@ -1560,7 +1560,7 @@ test('Scheduling V2: Publish Visibility Rules', async (t) => {
   });
 
   // Create shifts in draft and published periods
-  const draftShift = await prisma.wfmShiftPlan.create({
+  const _draftShift = await prisma.wfmShiftPlan.create({
     data: {
       tenantId: tenant.id,
       propertyId: property.id,
@@ -1588,7 +1588,7 @@ test('Scheduling V2: Publish Visibility Rules', async (t) => {
     },
   });
 
-  const publishedShiftNotAssignedToEmployee = await prisma.wfmShiftPlan.create({
+  const _publishedShiftNotAssignedToEmployee = await prisma.wfmShiftPlan.create({
     data: {
       tenantId: tenant.id,
       propertyId: property.id,
@@ -1674,7 +1674,8 @@ test('Scheduling V2: Publish Visibility Rules', async (t) => {
     const data = getData(response);
     t.ok(Array.isArray(data), 'Returns array of periods');
 
-    const statuses = data.map((p: any) => p.status);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const statuses = data.map((p: any) => (p as Record<string, unknown>).status);
     t.ok(statuses.includes('PUBLISHED'), 'Includes PUBLISHED period');
     t.ok(statuses.includes('LOCKED'), 'Includes LOCKED period');
     t.notOk(statuses.includes('DRAFT'), 'Does not include DRAFT period');
@@ -1691,7 +1692,8 @@ test('Scheduling V2: Publish Visibility Rules', async (t) => {
     t.equal(response.statusCode, 200, 'Request succeeds');
     const data = getData(response);
 
-    const statuses = data.map((p: any) => p.status);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const statuses = data.map((p: any) => (p as Record<string, unknown>).status);
     t.ok(statuses.includes('DRAFT'), 'Includes DRAFT');
     t.ok(statuses.includes('PUBLISHED'), 'Includes PUBLISHED');
     t.ok(statuses.includes('LOCKED'), 'Includes LOCKED');
@@ -1786,7 +1788,11 @@ test('Scheduling V2: Publish Visibility Rules', async (t) => {
 
     t.equal(response.statusCode, 403, 'Returns 403 Forbidden');
     const body = getData(response);
-    t.match(body.message, /department|cannot filter/i, 'Error indicates cannot filter by department');
+    t.match(
+      body.message,
+      /department|cannot filter/i,
+      'Error indicates cannot filter by department'
+    );
   });
 
   await t.test('Employee cannot filter by job role on shifts', async (t) => {
@@ -1955,18 +1961,21 @@ test('Scheduling V2: Availability Workflows', async (t) => {
     t.equal(listData[0].id, createData.id, 'Listed entry matches created entry');
   });
 
-  await t.test('Employee cannot list another employee\'s availability without permission', async (t) => {
-    // Employee tries to list another employee's availability
-    const response = await app.inject({
-      method: 'GET',
-      url: `/api/scheduling/v2/availability?propertyId=${property.id}&employeeId=${employee2.id}`,
-      headers: employeeHeaders,
-    });
+  await t.test(
+    "Employee cannot list another employee's availability without permission",
+    async (t) => {
+      // Employee tries to list another employee's availability
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/scheduling/v2/availability?propertyId=${property.id}&employeeId=${employee2.id}`,
+        headers: employeeHeaders,
+      });
 
-    t.equal(response.statusCode, 403, 'Returns 403 Forbidden');
-    const body = getData(response);
-    t.match(body.message, /Forbidden|permission/i, 'Error indicates forbidden action');
-  });
+      t.equal(response.statusCode, 403, 'Returns 403 Forbidden');
+      const body = getData(response);
+      t.match(body.message, /Forbidden|permission/i, 'Error indicates forbidden action');
+    }
+  );
 
   await t.test('Invalid time range (startTime >= endTime) returns 400', async (t) => {
     const availDate = new Date('2026-03-15');
@@ -2028,7 +2037,10 @@ test('Scheduling V2: Availability Workflows', async (t) => {
     });
 
     const listData = getData(listResponse);
-    t.ok(!listData.some((a: { id: string }) => a.id === createdId), 'Availability entry is deleted');
+    t.ok(
+      !listData.some((a: { id: string }) => a.id === createdId),
+      'Availability entry is deleted'
+    );
   });
 
   // ========== Manager Access Control Tests ==========
@@ -2062,28 +2074,31 @@ test('Scheduling V2: Availability Workflows', async (t) => {
     t.ok(data.length > 0, 'Returns availability entries');
   });
 
-  await t.test('Manager can create availability for scoped employee with scheduling.manage.availability', async (t) => {
-    const availDate = new Date('2026-03-18');
+  await t.test(
+    'Manager can create availability for scoped employee with scheduling.manage.availability',
+    async (t) => {
+      const availDate = new Date('2026-03-18');
 
-    // Create availability for another employee as manager
-    const response = await app.inject({
-      method: 'POST',
-      url: '/api/scheduling/v2/availability',
-      headers: managerHeaders,
-      payload: {
-        propertyId: property.id,
-        employeeId: employeeUser.id, // Different employee
-        date: availDate.toISOString().split('T')[0],
-        startTime: '08:00',
-        endTime: '16:00',
-        type: 'PREFERRED',
-      },
-    });
+      // Create availability for another employee as manager
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/scheduling/v2/availability',
+        headers: managerHeaders,
+        payload: {
+          propertyId: property.id,
+          employeeId: employeeUser.id, // Different employee
+          date: availDate.toISOString().split('T')[0],
+          startTime: '08:00',
+          endTime: '16:00',
+          type: 'PREFERRED',
+        },
+      });
 
-    t.equal(response.statusCode, 201, 'Manager can create availability for employee');
-    const data = getData(response);
-    t.equal(data.type, 'PREFERRED', 'Type set correctly');
-  });
+      t.equal(response.statusCode, 201, 'Manager can create availability for employee');
+      const data = getData(response);
+      t.equal(data.type, 'PREFERRED', 'Type set correctly');
+    }
+  );
 
   await t.test('Manager can delete employee availability with permission', async (t) => {
     const availDate = new Date('2026-03-19');
@@ -2593,4 +2608,320 @@ test('Scheduling V2: Open Shifts Marketplace', async (t) => {
   });
 });
 
+/**
+ * Lookup Endpoints Test Suite
+ * Tests for department, job role, and employee lookups used in scheduling UI
+ */
+test('Scheduling V2: Lookup Endpoints', async (t) => {
+  const config = {
+    port: 3005,
+    host: '0.0.0.0',
+    nodeEnv: 'test',
+    corsOrigin: '*',
+    databaseUrl: process.env.DATABASE_URL || 'postgresql://localhost:5432/test',
+    redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+    jwtSecret: 'test-secret',
+    logLevel: 'silent',
+    cognito: {
+      region: 'us-east-1',
+      userPoolId: 'us-east-1_test',
+      clientId: 'test-client',
+      issuer: 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_test',
+      jwksUri: 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_test/.well-known/jwks.json',
+    },
+    authSkipVerification: true,
+    complianceRulesEnabled: false,
+    openai: {
+      apiKey: '',
+      model: 'gpt-4',
+    },
+  };
 
+  const app = await buildServer(config);
+
+  // Setup: Create tenant, property, and test data
+  const tenant = await prisma.tenant.create({
+    data: {
+      name: 'Lookup Test Tenant',
+      slug: `lookup-test-${Date.now()}`,
+    },
+  });
+
+  const property = await prisma.property.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Test Property',
+    },
+  });
+
+  const division = await prisma.division.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      name: 'Main Division',
+    },
+  });
+
+  const deptCategory = await prisma.departmentCategory.create({
+    data: {
+      name: 'Operations',
+    },
+  });
+
+  const dept1 = await prisma.department.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      divisionId: division.id,
+      departmentCategoryId: deptCategory.id,
+      name: 'Front Desk',
+      code: 'FD',
+    },
+  });
+
+  const _dept2 = await prisma.department.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      divisionId: division.id,
+      departmentCategoryId: deptCategory.id,
+      name: 'Housekeeping',
+      code: 'HK',
+    },
+  });
+
+  const jobCategory = await prisma.jobCategory.create({
+    data: {
+      name: 'Hospitality',
+    },
+  });
+
+  const jobRole1 = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      departmentId: dept1.id,
+      jobCategoryId: jobCategory.id,
+      name: 'Front Desk Associate',
+      code: 'FDA',
+    },
+  });
+
+  const jobRole2 = await prisma.jobRole.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      departmentId: dept1.id,
+      jobCategoryId: jobCategory.id,
+      name: 'Manager on Duty',
+      code: 'MOD',
+    },
+  });
+
+  const employee1 = await prisma.employee.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      firstName: 'John',
+      lastName: 'Doe',
+      employeeId: 'EMP001',
+      email: 'john@example.com',
+      isActive: true,
+    },
+  });
+
+  const _employee2 = await prisma.employee.create({
+    data: {
+      tenantId: tenant.id,
+      propertyId: property.id,
+      firstName: 'Jane',
+      lastName: 'Smith',
+      employeeId: 'EMP002',
+      email: 'jane@example.com',
+      isActive: true,
+    },
+  });
+
+  const user = await createTestUser(prisma, {
+    tenantId: tenant.id,
+    propertyId: property.id,
+    email: 'manager@example.com',
+    name: 'Manager User',
+  });
+
+  const managerHeaders = buildPersonaHeaders('departmentManager', {
+    tenantId: tenant.id,
+    userId: user.id,
+  });
+
+  // Test: GET /lookups/departments
+  await t.test('GET /lookups/departments returns departments', async (t) => {
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/scheduling/v2/lookups/departments?propertyId=${property.id}`,
+      headers: managerHeaders,
+    });
+
+    t.equal(response.statusCode, 200, 'Returns 200');
+    const body = JSON.parse(response.body);
+    t.ok(body.success, 'Returns success flag');
+    t.ok(Array.isArray(body.data), 'Returns array');
+    t.equal(body.data.length, 2, 'Returns both departments');
+
+    const dept = body.data.find(
+      (d: Record<string, unknown>) => (d as Record<string, unknown>).id === dept1.id
+    );
+    t.ok(dept, 'Found department 1');
+    t.equal(dept.name, 'Front Desk', 'Has name');
+    t.equal(dept.code, 'FD', 'Has code');
+  });
+
+  await t.test('GET /lookups/departments requires propertyId', async (t) => {
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/scheduling/v2/lookups/departments`,
+      headers: managerHeaders,
+    });
+
+    t.equal(response.statusCode, 400, 'Returns 400');
+    const body = JSON.parse(response.body);
+    t.ok(body.message.includes('propertyId'), 'Error message mentions propertyId');
+  });
+
+  await t.test('GET /lookups/departments enforces tenant isolation', async (t) => {
+    // Create another tenant's property
+    const tenant2 = await prisma.tenant.create({
+      data: {
+        name: 'Other Tenant',
+        slug: `other-tenant-${Date.now()}`,
+      },
+    });
+
+    const property2 = await prisma.property.create({
+      data: {
+        tenantId: tenant2.id,
+        name: 'Other Property',
+      },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/scheduling/v2/lookups/departments?propertyId=${property2.id}`,
+      headers: managerHeaders,
+    });
+
+    t.equal(response.statusCode, 403, 'Returns 403 for other tenant');
+
+    // Cleanup
+    await prisma.property.deleteMany({ where: { tenantId: tenant2.id } });
+    await prisma.tenant.deleteMany({ where: { id: tenant2.id } });
+  });
+
+  // Test: GET /lookups/job-roles
+  await t.test('GET /lookups/job-roles returns job roles', async (t) => {
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/scheduling/v2/lookups/job-roles?propertyId=${property.id}`,
+      headers: managerHeaders,
+    });
+
+    t.equal(response.statusCode, 200, 'Returns 200');
+    const body = JSON.parse(response.body);
+    t.ok(body.success, 'Returns success flag');
+    t.ok(Array.isArray(body.data), 'Returns array');
+    t.equal(body.data.length, 2, 'Returns both job roles');
+
+    const role = body.data.find(
+      (r: Record<string, unknown>) => (r as Record<string, unknown>).id === jobRole1.id
+    );
+    t.ok(role, 'Found job role 1');
+    t.equal(role.name, 'Front Desk Associate', 'Has name');
+    t.equal(role.code, 'FDA', 'Has code');
+  });
+
+  await t.test('GET /lookups/job-roles filters by departmentId', async (t) => {
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/scheduling/v2/lookups/job-roles?propertyId=${property.id}&departmentId=${dept1.id}`,
+      headers: managerHeaders,
+    });
+
+    t.equal(response.statusCode, 200, 'Returns 200');
+    const body = JSON.parse(response.body);
+    t.ok(Array.isArray(body.data), 'Returns array');
+
+    // All job roles are in dept1
+    t.ok(
+      body.data.every(
+        (r: Record<string, unknown>) =>
+          (r as Record<string, unknown>).id === jobRole1.id ||
+          (r as Record<string, unknown>).id === jobRole2.id
+      ),
+      'Only returns matching roles'
+    );
+  });
+
+  // Test: GET /lookups/employees
+  await t.test('GET /lookups/employees returns active employees', async (t) => {
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/scheduling/v2/lookups/employees?propertyId=${property.id}`,
+      headers: managerHeaders,
+    });
+
+    t.equal(response.statusCode, 200, 'Returns 200');
+    const body = JSON.parse(response.body);
+    t.ok(body.success, 'Returns success flag');
+    t.ok(Array.isArray(body.data), 'Returns array');
+    t.ok(body.data.length > 0, 'Returns employees');
+
+    const emp = body.data.find(
+      (e: Record<string, unknown>) => (e as Record<string, unknown>).id === employee1.id
+    );
+    t.ok(emp, 'Found employee');
+    t.ok(emp.displayName, 'Has displayName');
+    t.equal(emp.firstName, 'John', 'Has firstName');
+    t.equal(emp.lastName, 'Doe', 'Has lastName');
+    t.equal(emp.employeeNumber, 'EMP001', 'Has employeeNumber');
+    t.ok(emp.email, 'Has email');
+  });
+
+  await t.test(
+    'GET /lookups/employees requires scheduling.assign or scheduling.manage.requests',
+    async (t) => {
+      const employeeHeaders = buildPersonaHeaders('employee', {
+        tenantId: tenant.id,
+        userId: user.id,
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/scheduling/v2/lookups/employees?propertyId=${property.id}`,
+        headers: employeeHeaders,
+      });
+
+      t.equal(response.statusCode, 403, 'Returns 403 for employee without permission');
+    }
+  );
+
+  await t.test('GET /lookups/employees supports search parameter', async (t) => {
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/scheduling/v2/lookups/employees?propertyId=${property.id}&q=John`,
+      headers: managerHeaders,
+    });
+
+    t.equal(response.statusCode, 200, 'Returns 200');
+    const body = JSON.parse(response.body);
+    t.ok(Array.isArray(body.data), 'Returns array');
+
+    // Should find John Doe
+    const emp = body.data.find(
+      (e: Record<string, unknown>) => (e as Record<string, unknown>).id === employee1.id
+    );
+    t.ok(emp, 'Found employee by first name search');
+  });
+
+  // Cleanup
+  await app.close();
+});

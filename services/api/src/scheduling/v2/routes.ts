@@ -1287,6 +1287,310 @@ export async function schedulingV2Routes(
     }
   });
 
+  // ========== LOOKUP ROUTES ==========
+
+  /**
+   * GET /api/lookups/departments
+   * List departments available for scheduling in a property
+   * Query params: propertyId (required)
+   * Auth: requires scheduling.view
+   */
+  fastify.get('/lookups/departments', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userContext = getAuthContext(request);
+      if (!userContext?.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      requireSchedulingPermission(userContext, SCHEDULING_PERMISSIONS.VIEW);
+
+      const { propertyId } = request.query as { propertyId?: string };
+
+      if (!propertyId) {
+        return reply.code(400).send({
+          success: false,
+          message: 'propertyId query parameter is required',
+        });
+      }
+
+      // Verify property exists and belongs to tenant
+      const property = await prisma.property.findFirst({
+        where: {
+          id: propertyId,
+          tenantId: userContext.tenantId,
+        },
+      });
+
+      if (!property) {
+        return reply.code(403).send({
+          success: false,
+          message: 'Property not found or access denied',
+        });
+      }
+
+      // List departments for this property
+      const departments = await prisma.department.findMany({
+        where: {
+          propertyId,
+          tenantId: userContext.tenantId,
+        },
+        select: {
+          id: true,
+          name: true,
+          code: true,
+        },
+        orderBy: { name: 'asc' },
+      });
+
+      return reply.code(200).send({
+        success: true,
+        data: departments,
+      });
+    } catch (error) {
+      if (error instanceof SchedulingAuthError) {
+        return reply.code(error.statusCode).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
+
+  /**
+   * GET /api/lookups/job-roles
+   * List job roles available for scheduling in a property
+   * Query params: propertyId (required), departmentId? (optional filter)
+   * Auth: requires scheduling.view
+   */
+  fastify.get('/lookups/job-roles', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userContext = getAuthContext(request);
+      if (!userContext?.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      requireSchedulingPermission(userContext, SCHEDULING_PERMISSIONS.VIEW);
+
+      const { propertyId, departmentId } = request.query as {
+        propertyId?: string;
+        departmentId?: string;
+      };
+
+      if (!propertyId) {
+        return reply.code(400).send({
+          success: false,
+          message: 'propertyId query parameter is required',
+        });
+      }
+
+      // Verify property exists and belongs to tenant
+      const property = await prisma.property.findFirst({
+        where: {
+          id: propertyId,
+          tenantId: userContext.tenantId,
+        },
+      });
+
+      if (!property) {
+        return reply.code(403).send({
+          success: false,
+          message: 'Property not found or access denied',
+        });
+      }
+
+      // Build query with optional department filter
+      const where: Record<string, string | boolean> = {
+        propertyId,
+        tenantId: userContext.tenantId,
+      };
+
+      if (departmentId) {
+        where.departmentId = departmentId;
+      }
+
+      // List job roles
+      const jobRoles = await prisma.jobRole.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          code: true,
+        },
+        orderBy: { name: 'asc' },
+      });
+
+      return reply.code(200).send({
+        success: true,
+        data: jobRoles,
+      });
+    } catch (error) {
+      if (error instanceof SchedulingAuthError) {
+        return reply.code(error.statusCode).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
+
+  /**
+   * GET /api/lookups/employees
+   * List employees available for scheduling assignment in a property
+   * Query params: propertyId (required), departmentId? (optional), q? (optional search)
+   * Auth: requires scheduling.assign OR scheduling.manage.requests
+   */
+  fastify.get('/lookups/employees', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userContext = getAuthContext(request);
+      if (!userContext?.userId) {
+        return reply.code(401).send({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      // Check for scheduling.assign OR scheduling.manage.requests permission
+      const hasAssignPermission = userContext.scopes?.includes(SCHEDULING_PERMISSIONS.ASSIGN);
+      const hasManageRequestsPermission = userContext.scopes?.includes(
+        SCHEDULING_PERMISSIONS.MANAGE_REQUESTS
+      );
+
+      if (!hasAssignPermission && !hasManageRequestsPermission) {
+        return reply.code(403).send({
+          success: false,
+          message: 'Requires scheduling.assign or scheduling.manage.requests permission',
+        });
+      }
+
+      const { propertyId, departmentId, q } = request.query as {
+        propertyId?: string;
+        departmentId?: string;
+        q?: string;
+      };
+
+      if (!propertyId) {
+        return reply.code(400).send({
+          success: false,
+          message: 'propertyId query parameter is required',
+        });
+      }
+
+      // Verify property exists and belongs to tenant
+      const property = await prisma.property.findFirst({
+        where: {
+          id: propertyId,
+          tenantId: userContext.tenantId,
+        },
+      });
+
+      if (!property) {
+        return reply.code(403).send({
+          success: false,
+          message: 'Property not found or access denied',
+        });
+      }
+
+      // Build query with optional filters
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const where: Record<string, any> = {
+        propertyId,
+        tenantId: userContext.tenantId,
+        isActive: true,
+      };
+
+      if (departmentId) {
+        // If department filter provided, verify it exists in this property
+        const dept = await prisma.department.findFirst({
+          where: {
+            id: departmentId,
+            propertyId,
+            tenantId: userContext.tenantId,
+          },
+        });
+
+        if (!dept) {
+          return reply.code(403).send({
+            success: false,
+            message: 'Department not found or access denied',
+          });
+        }
+
+        // TODO: Once org-scope is fully implemented, add department access check here
+        where.departmentId = departmentId;
+      }
+
+      // Build OR conditions for search if provided
+      if (q && q.trim()) {
+        where.OR = [
+          { firstName: { contains: q.trim(), mode: 'insensitive' } },
+          { lastName: { contains: q.trim(), mode: 'insensitive' } },
+          { email: { contains: q.trim(), mode: 'insensitive' } },
+          { employeeId: { contains: q.trim(), mode: 'insensitive' } },
+        ];
+      }
+
+      // List employees with minimal PII
+      const employees = await prisma.employee.findMany({
+        where,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          employeeId: true,
+          email: true,
+        },
+        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+        take: 100, // Limit to 100 results
+      });
+
+      // Format response with display name
+      const formatted = employees.map((emp) => ({
+        id: emp.id,
+        displayName: `${emp.firstName} ${emp.lastName}`,
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        employeeNumber: emp.employeeId,
+        email: emp.email,
+      }));
+
+      return reply.code(200).send({
+        success: true,
+        data: formatted,
+      });
+    } catch (error) {
+      if (error instanceof SchedulingAuthError) {
+        return reply.code(error.statusCode).send({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      fastify.log.error(error);
+      return reply.code(500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error',
+      });
+    }
+  });
+
   // Placeholder health check
   fastify.get('/health', async () => ({
     status: 'ok',
