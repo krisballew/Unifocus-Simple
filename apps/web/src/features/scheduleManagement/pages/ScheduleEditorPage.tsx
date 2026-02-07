@@ -25,7 +25,9 @@ import type { CopyDayOptions } from '../components/CopyDayModal';
 import { ShiftList } from '../components/ShiftList';
 import { ShiftModal } from '../components/ShiftModal';
 import type { ShiftFormData } from '../components/ShiftModal';
+import { useScheduleLookups } from '../hooks/useScheduleLookups';
 import { formatApiError } from '../utils/apiErrors';
+import { toCsv, downloadCsv } from '../utils/csv';
 import { parseEditorQuery } from '../utils/editorQuery';
 import './ScheduleEditorPage.css';
 
@@ -103,6 +105,9 @@ export function ScheduleEditorPage(): React.ReactElement {
     enabled: Boolean(selectedPropertyId && canView),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  // Schedule lookups for export (department/job role names)
+  const lookups = useScheduleLookups(selectedPropertyId);
 
   // Auto-select most recent DRAFT period, or latest period
   useMemo(() => {
@@ -472,6 +477,111 @@ export function ScheduleEditorPage(): React.ReactElement {
     setShowBulkCreateModal(false);
   };
 
+  const handleExportCsv = async () => {
+    if (!selectedPropertyId || !selectedPeriodId || !selectedDate) return;
+
+    try {
+      // Determine export date window
+      let exportStart: string;
+      let exportEnd: string;
+
+      if (quickFilterWindow) {
+        // Use quick filter window (already computed multi-day range)
+        exportStart = quickFilterWindow.startIso;
+        exportEnd = quickFilterWindow.endIso;
+      } else {
+        // Normal mode: export 7 days centered on selected date
+        const centerDate = new Date(selectedDate);
+        const startDate = new Date(centerDate);
+        startDate.setDate(startDate.getDate() - 3); // 3 days before
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = new Date(centerDate);
+        endDate.setDate(endDate.getDate() + 3); // 3 days after
+        endDate.setHours(23, 59, 59, 999);
+        exportStart = startDate.toISOString();
+        exportEnd = endDate.toISOString();
+      }
+
+      // Fetch shifts for export window
+      const exportShifts = await getShifts({
+        propertyId: selectedPropertyId,
+        schedulePeriodId: selectedPeriodId,
+        start: exportStart,
+        end: exportEnd,
+        ...(departmentFilter && { departmentId: departmentFilter }),
+        ...(jobRoleFilter && { jobRoleId: jobRoleFilter }),
+      });
+
+      if (exportShifts.length === 0) {
+        alert('No shifts found in the selected date range.');
+        return;
+      }
+
+      // Apply quick filter if active
+      let filteredShifts = exportShifts;
+      if (quickFilter === 'openShifts') {
+        filteredShifts = exportShifts.filter((shift) => shift.isOpenShift);
+      } else if (quickFilter === 'unassigned') {
+        filteredShifts = exportShifts.filter(
+          (shift) => !shift.isOpenShift && (!shift.assignments || shift.assignments.length === 0)
+        );
+      }
+
+      if (filteredShifts.length === 0) {
+        alert('No shifts match the current filter.');
+        return;
+      }
+
+      // Format shifts for CSV
+      const csvRows = filteredShifts.map((shift) => {
+        const shiftDate = new Date(shift.startDateTime).toISOString().split('T')[0];
+        const startTime = new Date(shift.startDateTime).toTimeString().slice(0, 5); // HH:MM
+        const endTime = new Date(shift.endDateTime).toTimeString().slice(0, 5); // HH:MM
+        const department = lookups.departmentsById[shift.departmentId]?.name || shift.departmentId;
+        const jobRole = lookups.jobRolesById[shift.jobRoleId]?.name || shift.jobRoleId;
+
+        // Format assigned employees
+        let assignedEmployees = '';
+        if (shift.assignments && shift.assignments.length > 0) {
+          assignedEmployees = shift.assignments
+            .map((assignment) => {
+              if (assignment.employee) {
+                return `${assignment.employee.firstName} ${assignment.employee.lastName}`.trim();
+              }
+              return assignment.employeeId;
+            })
+            .join('; ');
+        }
+
+        return {
+          Date: shiftDate,
+          'Start Time': startTime,
+          'End Time': endTime,
+          Department: department,
+          'Job Role': jobRole,
+          'Assigned Employees': assignedEmployees,
+          'Open Shift': shift.isOpenShift ? 'Yes' : 'No',
+          'Break Minutes': shift.breakMinutes,
+          Notes: shift.notes || '',
+        };
+      });
+
+      // Generate CSV
+      const csv = toCsv(csvRows);
+
+      // Generate filename
+      const periodStart = selectedPeriod?.startDate.replace(/-/g, '') || 'unknown';
+      const periodEnd = selectedPeriod?.endDate.replace(/-/g, '') || 'unknown';
+      const timestamp = new Date().toISOString().replace(/T/, '-').replace(/:/g, '').slice(0, 15); // YYYYMMDD-HHmm
+      const filename = `schedule_${selectedPropertyId}_${periodStart}_${periodEnd}_${timestamp}.csv`;
+
+      // Download CSV
+      downloadCsv(filename, csv);
+    } catch (error) {
+      alert(`Failed to export CSV: ${formatApiError(error)}`);
+    }
+  };
+
   const handleCopyDay = async (sourceDate: string, targetDate: string, options: CopyDayOptions) => {
     if (!selectedPropertyId || !selectedPeriodId) return;
 
@@ -662,6 +772,17 @@ export function ScheduleEditorPage(): React.ReactElement {
           </div>
         </div>
         <div className="schedule-toolbar__right">
+          <button
+            type="button"
+            className="button button--secondary"
+            onClick={handleExportCsv}
+            disabled={
+              shiftsQuery.isLoading || !selectedDate || (shiftsQuery.data?.length ?? 0) === 0
+            }
+            title={!canView ? 'You do not have permission to export' : 'Export shifts as CSV'}
+          >
+            Export CSV
+          </button>
           <button
             type="button"
             className="button button--secondary"
